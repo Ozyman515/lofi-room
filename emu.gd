@@ -12,6 +12,7 @@ enum State { IDLE, MENU, STARTING, RUNNING, ERROR }
 const SYSTEMS := {
 	"nes": {"title": "NES", "core": "fceumm_libretro", "ext": ["nes", "fds", "unf", "unif"]},
 	"snes": {"title": "SNES", "core": "snes9x2010_libretro", "ext": ["sfc", "smc", "swc", "fig"]},
+	"sgb": {"title": "SGB", "core": "mgba_libretro", "ext": ["gb", "gbc", "gba", "sgb"]},
 }
 # libretro joypad bits
 const B_B := 1 << 0
@@ -102,7 +103,7 @@ func _ensure_dirs() -> void:
 	if not FileAccess.file_exists(readme):
 		var f := FileAccess.open(readme, FileAccess.WRITE)
 		if f != null:
-			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
+			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
 
 
 # ---------------------------------------------------------------- the text screen (menu, messages)
@@ -233,7 +234,7 @@ func _scan_roms() -> void:
 
 # ---------------------------------------------------------------- called by the room
 
-# "" = no cart, "nes", "snes". Anything else (the secret cart) is not ours.
+# "" = no cart, "nes", "snes", "sgb". Anything else (the secret cart) is not ours.
 func set_system(sys: String) -> void:
 	if sys == system:
 		return

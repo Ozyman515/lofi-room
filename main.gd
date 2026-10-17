@@ -67,7 +67,7 @@ var tv_root: Node3D
 var console_root: Node3D
 var console_on := false
 var emu: Node                         # NES / SNES games (emu.gd)
-var slot_cart := ""                   # the cart in the console: "", "nes", "snes" or "egg" (the secret one)
+var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb" or "egg" (the secret one)
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
 var drawer_node: Node3D               # the nightstand drawer
 var drawer_open := false
@@ -1672,9 +1672,11 @@ func _apply_console() -> void:
 		_close_controls()
 	var from_emu := slot_cart != "egg"           # the secret cart plays the built-in scene, the others the emulator / its menu
 	tv_mat.set_shader_parameter("console_file", from_emu)
-	tv_mat.set_shader_parameter("console_aspect", 1.3333)
 	if from_emu and emu != null:
 		tv_mat.set_shader_parameter("console_tex", emu.tex)
+		_console_fit(emu.tex)
+	else:
+		_console_fit(null)
 	if emu != null:
 		emu.set_power(console_on and vcr.tv_on)
 	if tv_screen_ui != null:
@@ -1692,6 +1694,16 @@ func _apply_console() -> void:
 func _on_emu_screen(t: Texture2D) -> void:
 	if tv_mat != null and slot_cart != "egg":
 		tv_mat.set_shader_parameter("console_tex", t)
+		_console_fit(t)
+
+
+# NES / SNES fill the 4:3 glass; the handheld picture keeps its own shape (black bars at the sides or top).
+func _console_fit(t: Texture2D) -> void:
+	if tv_mat == null:
+		return
+	var handheld := slot_cart == "sgb" and t != null and t.get_height() > 0
+	tv_mat.set_shader_parameter("console_contain", handheld)
+	tv_mat.set_shader_parameter("console_aspect", float(t.get_width()) / float(t.get_height()) if handheld else 1.3333)
 
 
 # ---- game carts
@@ -1719,24 +1731,68 @@ func _cart_mesh(body_c: Color, label_c: Color, stripe_c: Color, text: String) ->
 	return n
 
 
+# A Super Game Boy style cart: taller grey body, ridged sides, a raised top block, four screws, white label.
+func _sgb_cart_mesh() -> Node3D:
+	var n := Node3D.new()
+	room.add_child(n)
+	var gc := Color(0.66, 0.65, 0.64)
+	var body := _mat(gc, 0.55)
+	var dark := _mat(Color(0.22, 0.22, 0.24), 0.7)
+	_box(Vector3(0, 0.005, 0), Vector3(0.15, 0.12, 0.022), body, n)
+	_box(Vector3(0, 0.07, 0), Vector3(0.088, 0.024, 0.024), _mat(gc.lightened(0.05), 0.5), n)               # raised top block
+	_box(Vector3(0, 0.0595, 0.0), Vector3(0.088, 0.004, 0.0245), dark, n)                                       # the dark gap under it
+	_box(Vector3(0.0, 0.074, 0.0125), Vector3(0.02, 0.01, 0.0015), dark, n)                                       # little embossed mark
+	for sx in [-1.0, 1.0]:
+		for i in 6:                                                                                               # grooves on both sides
+			_box(Vector3(sx * 0.0545, 0.036 - i * 0.0165, 0.0), Vector3(0.037, 0.0028, 0.0232), dark, n)
+		for sy in [0.03, -0.043]:                                                                                 # screws
+			var sc := _cyl(Vector3(sx * 0.0345 + sx * 0.0, sy, 0.0116), 0.0036, 0.0012, dark, n)
+			sc.rotation.x = PI / 2.0
+	_box(Vector3(0, -0.046, 0.0), Vector3(0.07, 0.03, 0.0236), _mat(gc.darkened(0.04), 0.6), n)                  # the lower panel
+	_box(Vector3(0, -0.0575, 0.0), Vector3(0.06, 0.0025, 0.0238), dark, n)
+	_box(Vector3(0, -0.0585, 0), Vector3(0.12, 0.004, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)             # contacts
+	_box(Vector3(0, 0.014, 0.0125), Vector3(0.088, 0.054, 0.003), _mat(Color(0.95, 0.95, 0.96), 0.5), n)        # white label
+	var sup := Label3D.new()
+	sup.text = "Super"
+	sup.font_size = 36
+	sup.pixel_size = 0.0006
+	sup.outline_size = 0
+	sup.modulate = Color(0.85, 0.15, 0.2)
+	sup.position = Vector3(-0.018, 0.0315, 0.0147)
+	n.add_child(sup)
+	_box(Vector3(0.01, 0.0205, 0.0143), Vector3(0.06, 0.0018, 0.0006), _mat(Color(0.85, 0.15, 0.2), 0.5), n)    # red swoosh
+	var gb := Label3D.new()
+	gb.text = "SGB"
+	gb.font_size = 52
+	gb.pixel_size = 0.0007
+	gb.outline_size = 0
+	gb.modulate = Color(0.16, 0.18, 0.55)
+	gb.position = Vector3(0, 0.0035, 0.0147)
+	n.add_child(gb)
+	return n
+
+
 func _build_carts() -> void:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)       # lying flat, label up
 	var nes := _cart_mesh(Color(0.56, 0.56, 0.60), Color(0.86, 0.22, 0.26), Color(0.12, 0.12, 0.14), "NES")
 	var snes := _cart_mesh(Color(0.70, 0.68, 0.76), Color(0.36, 0.30, 0.62), Color(0.88, 0.25, 0.55), "SNES")
+	var sgb := _sgb_cart_mesh()
 	var egg_c := _cart_mesh(Color(0.19, 0.18, 0.22), Color.BLACK, Color.BLACK, "")
 	var tv_top := 0.04 + TV_WIDTH * 0.72
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.5) * lay, Vector3(-2.3, 0.034, 1.12))}
 	carts["snes"] = {"node": snes, "name": "SNES CART", "busy": false,
 		"home": func() -> Transform3D: return tv_root.global_transform * Transform3D(Basis(Vector3.UP, 0.3) * lay, Vector3(0.52, tv_top + 0.011, 0.05))}
+	carts["sgb"] = {"node": sgb, "name": "SGB CART", "busy": false,
+		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 1.36))}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
-	for id in ["nes", "snes"]:
+	for id in ["nes", "snes", "sgb"]:
 		var n: Node3D = carts[id]["node"]
 		n.global_transform = (carts[id]["home"] as Callable).call()
 	egg_c.reparent(drawer_node, false)
 	egg_c.transform = Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))
-	for id in ["nes", "snes", "egg"]:
+	for id in ["nes", "snes", "sgb", "egg"]:
 		interactables.append({"node": carts[id]["node"], "half": Vector3(0.085, 0.065, 0.03), "egg_lock": true,
 			"label": _cart_label.bind(id), "cb": _cart_click.bind(id)})
 
@@ -1803,7 +1859,7 @@ func _cart_changed() -> void:
 	konami_progress = 0
 	_close_controls()
 	if emu != null:
-		emu.set_system(slot_cart if (slot_cart == "nes" or slot_cart == "snes") else "")
+		emu.set_system(slot_cart if (slot_cart == "nes" or slot_cart == "snes" or slot_cart == "sgb") else "")
 	_apply_console()
 
 

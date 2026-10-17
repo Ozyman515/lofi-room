@@ -19,6 +19,7 @@ uniform bool use_console = false;  // the game console is switched on: it takes 
 uniform bool console_file = false; // true when media/console.gif (.png...) exists, otherwise a built-in 8-bit scene plays
 uniform sampler2D console_tex : source_color, filter_nearest, repeat_disable;
 uniform float console_aspect = 1.3333;
+uniform bool console_contain = false;   // keep the picture's own shape, black bars around it (handheld games)
 uniform float tv_power = 1.0;      // 1 = on, 0 = off; in between plays the old CRT switch-off squash
 
 const int GC[7] = int[7](14, 17, 16, 16, 16, 17, 14);   // C
@@ -253,7 +254,13 @@ void fragment() {
 
 	if (use_console) {
 		if (console_file) {
-			col = texture(console_tex, cover_uv(uc, console_aspect)).rgb;
+			if (console_contain) {
+				vec2 cu = contain_uv(uc, console_aspect);
+				float ins = step(0.0, cu.x) * step(cu.x, 1.0) * step(0.0, cu.y) * step(cu.y, 1.0);
+				col = texture(console_tex, clamp(cu, 0.0, 1.0)).rgb * ins;
+			} else {
+				col = texture(console_tex, cover_uv(uc, console_aspect)).rgb;
+			}
 		} else {
 			col = console_scene(uc, t);
 		}
