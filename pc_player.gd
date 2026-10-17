@@ -364,7 +364,7 @@ func _build_settings_window() -> void:
 	_st_window.visible = false
 	ui.root.add_child(_st_window)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
+	v.add_theme_constant_override("separation", 6)
 	_st_window.add_child(v)
 	var head := HBoxContainer.new()
 	v.add_child(head)
@@ -380,11 +380,11 @@ func _build_settings_window() -> void:
 	title.text = "Aiming dot"
 	v.add_child(title)
 	var hint := Label.new()
-	hint.text = "A small dot in the middle of the view so you can see where you are pointing (desktop view; in VR the laser does this)."
+	hint.text = "A small dot in the middle of the view (desktop only; in VR the laser does this)."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
 	_st_reticle_btn = Button.new()
-	_st_reticle_btn.custom_minimum_size = Vector2(0, 52)
+	_st_reticle_btn.custom_minimum_size = Vector2(0, 42)
 	_st_reticle_btn.pressed.connect(func() -> void: _main.set_reticle_on(not _main.reticle_on))
 	v.add_child(_st_reticle_btn)
 	var ct := Label.new()
@@ -395,7 +395,7 @@ func _build_settings_window() -> void:
 	v.add_child(row)
 	for i in _main.RETICLE_COLORS.size():
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(0, 52)
+		b.custom_minimum_size = Vector2(0, 42)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.add_theme_color_override("font_color", _main.RETICLE_COLORS[i][1])
 		b.add_theme_color_override("font_hover_color", _main.RETICLE_COLORS[i][1])
@@ -410,7 +410,7 @@ func _build_settings_window() -> void:
 	_st_update_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_st_update_label)
 	_st_update_btn = Button.new()
-	_st_update_btn.custom_minimum_size = Vector2(0, 52)
+	_st_update_btn.custom_minimum_size = Vector2(0, 42)
 	_st_update_btn.pressed.connect(func() -> void:
 		var u: Node = _main.updater
 		if u.state == "available":

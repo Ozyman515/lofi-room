@@ -57,6 +57,8 @@ func _state(s: String, m: String) -> void:
 func _ok_path(p: String) -> bool:
 	if p == "" or p.begins_with("/") or p.contains("..") or p.contains("\\") or p.contains(":"):
 		return false
+	if p == "project.godot" or p.ends_with(".import") or p.ends_with(".uid"):
+		return false
 	for s in SKIP_PREFIXES:
 		if p.begins_with(s):
 			return false

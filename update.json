@@ -1,5 +1,5 @@
 {
- "version": 35,
+ "version": 36,
  "files": {
   "README.md": {
    "sha": "155e8c9585026814bc4c7c3fd7873938074305fb08235c1cd23729221731acf5",
@@ -13,33 +13,17 @@
    "sha": "7f8632cc27b697eb8b020468661eedc94751cb826d40454cb29e5def312f90c7",
    "size": 2167
   },
-  "addons/godot-vlc/format_loader.gd.uid": {
-   "sha": "02539edd1dcf47133de0926ab466fc6628709b08bb143f8950a3c5717eb3bd90",
-   "size": 20
-  },
   "addons/godot-vlc/godot_vlc.gdextension": {
    "sha": "303225b8ffd75c92a92c80e54fd31a9c06c08bc3292c53a73ab4709606e85bd6",
    "size": 1394
-  },
-  "addons/godot-vlc/godot_vlc.gdextension.uid": {
-   "sha": "fdd84d08aa8a4151033c33971e88b3cbd46fdeadf97b65fd150a6ba7e6a4c5f4",
-   "size": 20
   },
   "addons/godot-vlc/icons/VLCMedia.svg": {
    "sha": "683b72ded617a02ba1c3a32494b7c14136bc77661918f8cbeadd691d8cdda631",
    "size": 2576
   },
-  "addons/godot-vlc/icons/VLCMedia.svg.import": {
-   "sha": "219ab55ca77074e9f81adf556d2e7dd648bfb6fee2089f4985fd37549c5a1d04",
-   "size": 1073
-  },
   "addons/godot-vlc/icons/VLCMediaPlayer.svg": {
    "sha": "a0f0bb7a9151c9ee6be85db102fb8a3963523705bf5f1c15bb8ac3932b2e26c3",
    "size": 2910
-  },
-  "addons/godot-vlc/icons/VLCMediaPlayer.svg.import": {
-   "sha": "cf44ecf69fc10af8b66ee6b05c0538250515516722aa4502426982bad0ef3421",
-   "size": 1092
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -110,12 +94,8 @@
    "size": 10744
   },
   "pc_player.gd": {
-   "sha": "bb110dbeae1b526699747cf8155d6279451bd832b6497e1f0a283b4259075f58",
-   "size": 24368
-  },
-  "project.godot": {
-   "sha": "b1ff8e7b52ce41863305a99f1b356e6b2777c4b975cc875692da623a368676c4",
-   "size": 423
+   "sha": "9ad935974ea51568ee6e6d864cee70ff847a37d23f2d0044bb8487b43f140eea",
+   "size": 24329
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -157,24 +137,20 @@
    "sha": "088ffe0f37c263f4bd9d0460883e044c797633d6cd5d952449ebebe6537c05ce",
    "size": 2368730
   },
-  "textures/poster.png.import": {
-   "sha": "bb2bf238561c8adf7de93a5b8b35482c4e95d6f617254dfffd761082f568d72c",
-   "size": 761
-  },
   "tornado_event.gd": {
    "sha": "43c1f42fc94fa0ab32e199d66e65d54c1be3931e9e6d92cd27557fa488045193",
    "size": 34291
   },
   "updater.gd": {
-   "sha": "e76c3932f60df1529177d0872d87998481d2120622c60b27a466b9691fbfbb5b",
-   "size": 5436
+   "sha": "f2a5ca5ebf17f61812826b9ac7cca9de5f0e2fcd5036fe139a35c0cac7db8bf2",
+   "size": 5526
   },
   "vcr.gd": {
    "sha": "5d1385a22f27d5ce935e0dc4a2f36501267281bcb4c30c41665c2351185a5b2a",
    "size": 39889
   },
   "version.txt": {
-   "sha": "90d7ec0f0acef104d8b6252794295f661a0149634868d02a1ae0c358099638f5",
+   "sha": "a4b2c5db15348c29451e18b8307e5ef81625ea638e807935f39ceaa8d9ac7758",
    "size": 3
   },
   "weather.gd": {
