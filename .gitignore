@@ -1,0 +1,6 @@
+.godot/
+*.zip
+carts/*/roms/*
+carts/*/saves/*
+tools/
+addons/godot-vlc/bin/

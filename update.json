@@ -1,0 +1,185 @@
+{
+ "version": 34,
+ "files": {
+  "README.md": {
+   "sha": "c6a0992177d248382ac2fbd53b524e77ec225ce518fc1a1967e66a8a6761ca7d",
+   "size": 13681
+  },
+  "addons/godot-vlc/LICENSE": {
+   "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
+   "size": 26526
+  },
+  "addons/godot-vlc/format_loader.gd": {
+   "sha": "7f8632cc27b697eb8b020468661eedc94751cb826d40454cb29e5def312f90c7",
+   "size": 2167
+  },
+  "addons/godot-vlc/format_loader.gd.uid": {
+   "sha": "02539edd1dcf47133de0926ab466fc6628709b08bb143f8950a3c5717eb3bd90",
+   "size": 20
+  },
+  "addons/godot-vlc/godot_vlc.gdextension": {
+   "sha": "303225b8ffd75c92a92c80e54fd31a9c06c08bc3292c53a73ab4709606e85bd6",
+   "size": 1394
+  },
+  "addons/godot-vlc/godot_vlc.gdextension.uid": {
+   "sha": "fdd84d08aa8a4151033c33971e88b3cbd46fdeadf97b65fd150a6ba7e6a4c5f4",
+   "size": 20
+  },
+  "addons/godot-vlc/icons/VLCMedia.svg": {
+   "sha": "683b72ded617a02ba1c3a32494b7c14136bc77661918f8cbeadd691d8cdda631",
+   "size": 2576
+  },
+  "addons/godot-vlc/icons/VLCMedia.svg.import": {
+   "sha": "219ab55ca77074e9f81adf556d2e7dd648bfb6fee2089f4985fd37549c5a1d04",
+   "size": 1073
+  },
+  "addons/godot-vlc/icons/VLCMediaPlayer.svg": {
+   "sha": "a0f0bb7a9151c9ee6be85db102fb8a3963523705bf5f1c15bb8ac3932b2e26c3",
+   "size": 2910
+  },
+  "addons/godot-vlc/icons/VLCMediaPlayer.svg.import": {
+   "sha": "cf44ecf69fc10af8b66ee6b05c0538250515516722aa4502426982bad0ef3421",
+   "size": 1092
+  },
+  "assets/PUT_MODELS_HERE.txt": {
+   "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
+   "size": 155
+  },
+  "bin/retro_host.exe": {
+   "sha": "6d9f16edfb28ef4de2d6723a7cca7b2a927f080d7bbc6b7581af0792bc2fce2f",
+   "size": 12288
+  },
+  "bin/retro_host_linux": {
+   "sha": "9e3297b4bfd145861d575bd2e617bc50c2a6d3d2775b473d94a0f795c0c81186",
+   "size": 23064
+  },
+  "cores/fceumm_libretro.dll": {
+   "sha": "b0643e0fa2852a60cdb13b3de58905b1f27d19cdb3789e046c145ee6318d106a",
+   "size": 4082688
+  },
+  "cores/fceumm_libretro.so": {
+   "sha": "ff0aa3f2e1550e7e5231fd0b175e2ad4e09046d5eab658e716cd81e79206fab2",
+   "size": 4715456
+  },
+  "cores/snes9x2010_libretro.dll": {
+   "sha": "6e185b1d30358cbcaeb927810e75ff9843343eee9ca3328e893eaf7a493e01c8",
+   "size": 2889728
+  },
+  "cores/snes9x2010_libretro.so": {
+   "sha": "3479b968b8d3f9124d1f1f1b4af3a4a66453f6b58d3c6ed351a9d52ef41188c5",
+   "size": 2896968
+  },
+  "emu.gd": {
+   "sha": "c50acef6daf3d681b020db16941290697e6cf5d981c72c9153c62fb26d545eb3",
+   "size": 17117
+  },
+  "file_browser.gd": {
+   "sha": "6e97fc563fe953bd6f93af4dac2611cac0f390e5d8431c6db3ff62baf5d85444",
+   "size": 3998
+  },
+  "gif_player.gd": {
+   "sha": "270391ad48b3737e208cada68917b3a1165dc7e67d205b504798cd195f61c700",
+   "size": 7852
+  },
+  "lofi_theme.gd": {
+   "sha": "d0e4fbf72e2c8a5b623cf29802526e6447f0178ed4ca1bc9aebf2adba3dfd25c",
+   "size": 2869
+  },
+  "main.gd": {
+   "sha": "3b9e8505a8ce66f809c192c243cc893bbf2f93a8b67fe58f99ef16619d408382",
+   "size": 101683
+  },
+  "main.tscn": {
+   "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
+   "size": 161
+  },
+  "media/monitor.gif": {
+   "sha": "585fb65b9b7004e8d4b496d78ed775e3acd692737570b38e861df3d76bc4d0a5",
+   "size": 627600
+  },
+  "media/tv.gif": {
+   "sha": "f00180678aa3eafb30bd9861a959bef0e3b4fceb3ca0834c49b11aa0f70502ef",
+   "size": 9927
+  },
+  "openxr_action_map.tres": {
+   "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
+   "size": 56337
+  },
+  "padmap.gd": {
+   "sha": "e9c68997dba196fe6b5312e6fbed8890650d779b055ed7022c220da7c2ef360b",
+   "size": 10744
+  },
+  "pc_player.gd": {
+   "sha": "bb110dbeae1b526699747cf8155d6279451bd832b6497e1f0a283b4259075f58",
+   "size": 24368
+  },
+  "project.godot": {
+   "sha": "b1ff8e7b52ce41863305a99f1b356e6b2777c4b975cc875692da623a368676c4",
+   "size": 423
+  },
+  "reticle.gd": {
+   "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
+   "size": 952
+  },
+  "screen_ui.gd": {
+   "sha": "be7b3cc54e6128e7305c438fb8f891336a9d1ee0999ec30bbfd958cdff0c7050",
+   "size": 4072
+  },
+  "shaders/building.gdshader": {
+   "sha": "75f4444b481037ff49170304e3e88f86107bf2d2a91709beb7f27193e3d9c26a",
+   "size": 1909
+  },
+  "shaders/crt.gdshader": {
+   "sha": "daa6783ae559b21fa405837f104ca574ead4d7d0b810352244702818d2072268",
+   "size": 11153
+  },
+  "shaders/curtain.gdshader": {
+   "sha": "ea92bc4a86af5cea6103f88b2319fd3834437e311588e1dfd79e8caf8e73a62d",
+   "size": 492
+  },
+  "shaders/funnel.gdshader": {
+   "sha": "48b0ddef8127eb6373c954838594725df6bce972bafc426d59507344a08201ed",
+   "size": 1913
+  },
+  "shaders/screen.gdshader": {
+   "sha": "7a5f4e919db0bb4ddec7d72d97884aba5d12c416d9589389392957ade445ba6a",
+   "size": 1522
+  },
+  "shaders/sky.gdshader": {
+   "sha": "aa32997d62fba7c791b0c4fc7ef9114cdec8a1032132427c3b6e6678d6e67b06",
+   "size": 2452
+  },
+  "speaker_bank.gd": {
+   "sha": "4e7f02e3e3fd1e079febd1299f97fb5a94e3532a96302fcac867eef58f9b5c4e",
+   "size": 3985
+  },
+  "textures/poster.png": {
+   "sha": "088ffe0f37c263f4bd9d0460883e044c797633d6cd5d952449ebebe6537c05ce",
+   "size": 2368730
+  },
+  "textures/poster.png.import": {
+   "sha": "bb2bf238561c8adf7de93a5b8b35482c4e95d6f617254dfffd761082f568d72c",
+   "size": 761
+  },
+  "tornado_event.gd": {
+   "sha": "43c1f42fc94fa0ab32e199d66e65d54c1be3931e9e6d92cd27557fa488045193",
+   "size": 34291
+  },
+  "updater.gd": {
+   "sha": "e76c3932f60df1529177d0872d87998481d2120622c60b27a466b9691fbfbb5b",
+   "size": 5436
+  },
+  "vcr.gd": {
+   "sha": "5d1385a22f27d5ce935e0dc4a2f36501267281bcb4c30c41665c2351185a5b2a",
+   "size": 39889
+  },
+  "version.txt": {
+   "sha": "ea243e5457028e97f9bc93b37a72f8e80ea61ae081911bb037765590ee6aa435",
+   "size": 3
+  },
+  "weather.gd": {
+   "sha": "6c09bdd5b9ffffd909a892bc177b43338da4ee5ca68b5ef95a96b6d16e70bb01",
+   "size": 28545
+  }
+ }
+}

@@ -1,0 +1,2 @@
+Drop .glb or .gltf models in this folder.
+A model named bed.glb here automatically replaces the built-in bed (it is scaled to fit and stood on the floor).
