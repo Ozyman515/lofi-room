@@ -125,3 +125,5 @@ A/X and the trigger (when not pointing at a screen) still sit and stand.
 ## Sending the project to someone
 Open it once in the Godot editor so it imports the images and shaders, then press F5. (Scripts no longer depend on
 Godot's class cache, so a fresh copy runs without the "could not find type" errors.)
+
+_Update test: version 35 installed through the in-game updater._

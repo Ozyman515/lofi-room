@@ -1,9 +1,9 @@
 {
- "version": 34,
+ "version": 35,
  "files": {
   "README.md": {
-   "sha": "c6a0992177d248382ac2fbd53b524e77ec225ce518fc1a1967e66a8a6761ca7d",
-   "size": 13681
+   "sha": "155e8c9585026814bc4c7c3fd7873938074305fb08235c1cd23729221731acf5",
+   "size": 13747
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -174,7 +174,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "ea243e5457028e97f9bc93b37a72f8e80ea61ae081911bb037765590ee6aa435",
+   "sha": "90d7ec0f0acef104d8b6252794295f661a0149634868d02a1ae0c358099638f5",
    "size": 3
   },
   "weather.gd": {
