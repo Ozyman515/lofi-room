@@ -32,6 +32,7 @@ var _rep_track_btn: Button
 var _rep_folder_btn: Button
 var _st_weather_btn: Button
 var _st_resume_btn: Button
+var _st_cart_btn: Button
 var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
 var _ct_window: PanelContainer
@@ -426,6 +427,10 @@ func _build_settings_window() -> void:
 	_st_resume_btn.custom_minimum_size = Vector2(0, 42)
 	_st_resume_btn.pressed.connect(func() -> void: _main.set_resume_games(not _main.emu.resume_games))
 	v.add_child(_st_resume_btn)
+	_st_cart_btn = Button.new()
+	_st_cart_btn.custom_minimum_size = Vector2(0, 42)
+	_st_cart_btn.pressed.connect(func() -> void: _main.set_cart_style(not _main.cart_wash))
+	v.add_child(_st_cart_btn)
 	var ct := Label.new()
 	ct.text = "Dot colour"
 	v.add_child(ct)
@@ -469,6 +474,8 @@ func _st_refresh() -> void:
 	_st_reticle_btn.text = "Aiming dot:  %s" % ("ON" if _main.reticle_on else "OFF")
 	if _st_resume_btn != null:
 		_st_resume_btn.text = "Games keep your place:  " + ("ON" if _main.emu.resume_games else "OFF")
+	if _st_cart_btn != null:
+		_st_cart_btn.text = "Cartridge colours:  " + ("LOFI PINK" if _main.cart_wash else "ORIGINAL")
 	if _st_weather_btn != null:
 		_st_weather_btn.text = "Weather at start:  " + ("THE LAST ONE" if _main.weather_start == "remember" else "RANDOM")
 	if _st_update_label != null:

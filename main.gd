@@ -1904,8 +1904,30 @@ func _cart_text(text: String, fsize: int, psize: float, col: Color, pos: Vector3
 const CART_WASH := Color(0.86, 0.30, 0.58)
 
 
-func _wash(c: Color, k: float = 0.38) -> Color:
-	return c.lerp(CART_WASH, k)
+var cart_wash := true                  # true = the lofi pink wash, false = the plastic's original colours
+var _cart_tints: Array = []            # [material, colour function] for every cart body part
+
+
+func _wc(base: Color, k: float, wash: bool) -> Color:
+	return base.lerp(CART_WASH, k) if wash else base
+
+
+func _tm(fn: Callable, rough: float) -> StandardMaterial3D:
+	var m := _mat(fn.call(cart_wash), rough)
+	_cart_tints.append([m, fn])
+	return m
+
+
+func set_cart_style_quiet(wash: bool) -> void:
+	cart_wash = wash
+	for e in _cart_tints:
+		(e[0] as StandardMaterial3D).albedo_color = (e[1] as Callable).call(cart_wash)
+
+
+func set_cart_style(wash: bool) -> void:
+	set_cart_style_quiet(wash)
+	_save_settings()
+	settings_changed.emit()
 
 
 func _cart_node(bottom: float, depth: float) -> Node3D:
@@ -1919,10 +1941,11 @@ func _cart_node(bottom: float, depth: float) -> Node3D:
 # NES: grey, tall, a ribbed column beside a label set into the right of the face, a triangle mark near the bottom.
 func _nes_cart_mesh(egg: bool = false) -> Node3D:
 	var n := _cart_node(0.09, 0.04)
-	var gc := _wash(Color(0.19, 0.18, 0.22), 0.30) if egg else _wash(Color(0.60, 0.60, 0.62))
-	var body := _mat(gc, 0.55)
-	var dark := _mat(gc.darkened(0.32), 0.7)
-	var light := _mat(gc.lightened(0.07), 0.5)
+	var base := Color(0.19, 0.18, 0.22) if egg else Color(0.60, 0.60, 0.62)
+	var k := 0.30 if egg else 0.38
+	var body := _tm(func(w: bool) -> Color: return _wc(base, k, w), 0.55)
+	var dark := _tm(func(w: bool) -> Color: return _wc(base, k, w).darkened(0.32), 0.7)
+	var light := _tm(func(w: bool) -> Color: return _wc(base, k, w).lightened(0.07), 0.5)
 	var t := 0.024
 	_extrude_poly([Vector2(-0.075, -0.0825), Vector2(0.075, -0.0825), Vector2(0.075, 0.0765), Vector2(0.063, 0.0765), Vector2(0.063, 0.0825),
 		Vector2(-0.063, 0.0825), Vector2(-0.063, 0.0765), Vector2(-0.075, 0.0765)], -t / 2.0, t / 2.0, body, n)
@@ -1942,9 +1965,9 @@ func _nes_cart_mesh(egg: bool = false) -> Node3D:
 # SNES: wide and short, ribbed shoulders, a raised middle with the label, a recessed panel at the bottom and two screws.
 func _snes_cart_mesh() -> Node3D:
 	var n := _cart_node(0.049, 0.04)
-	var gc := _wash(Color(0.73, 0.72, 0.78))
-	var body := _mat(gc, 0.55)
-	var dark := _mat(gc.darkened(0.30), 0.7)
+	var base := Color(0.73, 0.72, 0.78)
+	var body := _tm(func(w: bool) -> Color: return _wc(base, 0.38, w), 0.55)
+	var dark := _tm(func(w: bool) -> Color: return _wc(base, 0.38, w).darkened(0.30), 0.7)
 	var t := 0.022
 	_extrude_poly([Vector2(-0.075, -0.0468), Vector2(0.075, -0.0468), Vector2(0.075, 0.0432), Vector2(0.0513, 0.0432), Vector2(0.0513, 0.0467),
 		Vector2(-0.0513, 0.0467), Vector2(-0.0513, 0.0432), Vector2(-0.075, 0.0432)], -t / 2.0, t / 2.0, body, n)
@@ -1954,7 +1977,7 @@ func _snes_cart_mesh() -> Node3D:
 			_box(Vector3(sx * 0.0631, gy, 0), Vector3(0.022, 0.0016, t + 0.0004), dark, n)
 		var sc := _cyl(Vector3(sx * 0.0605, -0.040, t / 2.0 + 0.0004), 0.0033, 0.0014, _mat(Color(0.78, 0.66, 0.35), 0.4), n)
 		sc.rotation.x = PI / 2.0
-	_box(Vector3(0, -0.03, t / 2.0 + 0.0002), Vector3(0.091, 0.0335, 0.0006), _mat(gc.darkened(0.07), 0.6), n)    # the recess at the bottom
+	_box(Vector3(0, -0.03, t / 2.0 + 0.0002), Vector3(0.091, 0.0335, 0.0006), _tm(func(w: bool) -> Color: return _wc(base, 0.38, w).darkened(0.07), 0.6), n)    # the recess at the bottom
 	for vx in [-0.0165, 0.0165]:
 		_box(Vector3(vx, -0.03, t / 2.0 + 0.0007), Vector3(0.0016, 0.0335, 0.0006), dark, n)
 	_box(Vector3(0.0006, 0.0241, t / 2.0 + 0.0002), Vector3(0.0953, 0.0462, 0.0004), _mat(Color(0.05, 0.04, 0.08), 0.6), n)
@@ -1966,11 +1989,11 @@ func _snes_cart_mesh() -> Node3D:
 # Super GB: taller grey body, ridged sides, a raised top block, four screws, a lavender label.
 func _sgb_cart_mesh() -> Node3D:
 	var n := _cart_node(0.0605, 0.035)
-	var gc := _wash(Color(0.66, 0.65, 0.64))
-	var body := _mat(gc, 0.55)
+	var base := Color(0.66, 0.65, 0.64)
+	var body := _tm(func(w: bool) -> Color: return _wc(base, 0.38, w), 0.55)
 	var dark := _mat(Color(0.22, 0.22, 0.24), 0.7)
 	_box(Vector3(0, 0.005, 0), Vector3(0.15, 0.12, 0.022), body, n)
-	_box(Vector3(0, 0.07, 0), Vector3(0.088, 0.024, 0.024), _mat(gc.lightened(0.05), 0.5), n)               # raised top block
+	_box(Vector3(0, 0.07, 0), Vector3(0.088, 0.024, 0.024), _tm(func(w: bool) -> Color: return _wc(base, 0.38, w).lightened(0.05), 0.5), n)               # raised top block
 	_box(Vector3(0, 0.0595, 0.0), Vector3(0.088, 0.004, 0.0245), dark, n)                                       # the dark gap under it
 	_box(Vector3(0.0, 0.074, 0.0125), Vector3(0.02, 0.01, 0.0015), dark, n)                                       # little embossed mark
 	for sx in [-1.0, 1.0]:
@@ -1979,7 +2002,7 @@ func _sgb_cart_mesh() -> Node3D:
 		for sy in [0.03, -0.043]:                                                                                 # screws
 			var sc := _cyl(Vector3(sx * 0.0345, sy, 0.0116), 0.0036, 0.0012, dark, n)
 			sc.rotation.x = PI / 2.0
-	_box(Vector3(0, -0.046, 0.0), Vector3(0.07, 0.03, 0.0236), _mat(gc.darkened(0.04), 0.6), n)                  # the lower panel
+	_box(Vector3(0, -0.046, 0.0), Vector3(0.07, 0.03, 0.0236), _tm(func(w: bool) -> Color: return _wc(base, 0.38, w).darkened(0.04), 0.6), n)                  # the lower panel
 	_box(Vector3(0, -0.0575, 0.0), Vector3(0.06, 0.0025, 0.0238), dark, n)
 	_box(Vector3(0, -0.0585, 0), Vector3(0.12, 0.004, 0.012), _mat(GOLD, 0.4), n)                              # contacts
 	_box(Vector3(0, 0.014, 0.0125), Vector3(0.088, 0.054, 0.003), _mat(Color(0.86, 0.78, 0.96), 0.5), n)        # lavender label
@@ -1992,7 +2015,7 @@ func _sgb_cart_mesh() -> Node3D:
 # Sega style: black shell, thick grippy side pillars, a flat middle with the label, a grid panel and a name plate under it.
 func _gen_cart_mesh() -> Node3D:
 	var n := _cart_node(0.059, 0.022)
-	var blk := _mat(_wash(Color(0.07, 0.07, 0.085), 0.28), 0.5)
+	var blk := _tm(func(w: bool) -> Color: return _wc(Color(0.07, 0.07, 0.085), 0.28, w), 0.5)
 	var dark := _mat(Color(0.03, 0.03, 0.04), 0.7)
 	_extrude_poly([Vector2(-0.056, -0.051), Vector2(0.056, -0.051), Vector2(0.056, 0.051), Vector2(-0.056, 0.051)], -0.010, 0.010, blk, n)
 	for sx in [-1.0, 1.0]:                                                                                       # side pillars, rounded at the top
@@ -2216,8 +2239,8 @@ func _pick_arcade() -> void:
 # Neo Geo: a big black block, stepped shoulders, fins across the lower part and a small label up top with blue stripes beside it.
 func _neo_cart_mesh() -> Node3D:
 	var n := _cart_node(0.0975, 0.0)
-	var blk := _mat(_wash(Color(0.105, 0.105, 0.12), 0.28), 0.5)
-	var fin := _mat(_wash(Color(0.12, 0.12, 0.14), 0.36), 0.5)
+	var blk := _tm(func(w: bool) -> Color: return _wc(Color(0.105, 0.105, 0.12), 0.28, w), 0.5)
+	var fin := _tm(func(w: bool) -> Color: return _wc(Color(0.12, 0.12, 0.14), 0.36, w), 0.5)
 	var dark := _mat(Color(0.02, 0.02, 0.03), 0.7)
 	var t := 0.032
 	_extrude_poly([Vector2(-0.125, -0.0925), Vector2(0.125, -0.0925), Vector2(0.125, 0.073), Vector2(0.108, 0.073), Vector2(0.108, 0.0925),
@@ -2420,6 +2443,7 @@ func _load_prefs() -> void:
 				weather.set_level(i + 1, float(lv[i]))              # the kind of weather is still random, its strength is yours
 			weather.snap()
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
+		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
 		weather_start = "remember" if str(cfg.get_value("settings", "weather_start", "random")) == "remember" else "random"
 		if weather_start == "remember" and cfg.has_section_key("room", "weather_mode"):
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
@@ -2468,6 +2492,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "reticle_color", reticle_color_idx)
 	cfg.set_value("settings", "weather_start", weather_start)
 	cfg.set_value("settings", "resume_games", emu.resume_games if emu != null else true)
+	cfg.set_value("settings", "cart_wash", cart_wash)
 	cfg.save(SETTINGS_FILE)
 
 

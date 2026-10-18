@@ -1,5 +1,5 @@
 {
- "version": 61,
+ "version": 62,
  "files": {
   "README.md": {
    "sha": "311ab11407092bf385c49e67d4f06b7df07abcba62b1c7021a048899c959261d",
@@ -36,6 +36,10 @@
   "bin/retro_host_linux": {
    "sha": "9d7e9a847dc6a2e30d79c4d9715c318905fb501a0b191bda10faead797c1ca6c",
    "size": 23184
+  },
+  "cart_art.gd": {
+   "sha": "e6a4b35c85f7becde478ad51ee4b9633965363cecd3a0ad32d375e25a9e96ea5",
+   "size": 14999
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -94,8 +98,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "866e36cac3ad46cfe9dca6a79c95dcabbe9f24a5c54e4f128c3af814d73d76a3",
-   "size": 124693
+   "sha": "f0468cbd4f364e83043a25650a9e03ba1a903675ccec2f56433888d3a252b7b0",
+   "size": 137424
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -118,8 +122,8 @@
    "size": 11217
   },
   "pc_player.gd": {
-   "sha": "11c47b8fbcdbaee2b2b15afee85e0d212dd6131f8c03a104e4c2c1604172c485",
-   "size": 31859
+   "sha": "e8514ee5828a35b28668f0a9210020598c1c2c632b6ebee2dccad7985d78775a",
+   "size": 32202
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -174,7 +178,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "2a62cf402cd3396aa00f55f892f4545f308f74d01c8caa0f2837b1982f821595",
+   "sha": "606b7d0891b4db74edb21c241c302f298bf6ca4a6158deca6b58c15c950ab5f2",
    "size": 3
   },
   "weather.gd": {
