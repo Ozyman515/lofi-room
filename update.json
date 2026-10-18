@@ -1,5 +1,5 @@
 {
- "version": 63,
+ "version": 64,
  "files": {
   "README.md": {
    "sha": "311ab11407092bf385c49e67d4f06b7df07abcba62b1c7021a048899c959261d",
@@ -98,8 +98,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "83e3910720f8db9cc9f12f2334c14556f8b8e4066eb314a2752763ab3c8b6214",
-   "size": 137536
+   "sha": "691992eaedfc65bbabf884dd7131507d63dda7e9a408a06e65b9214c5058ab94",
+   "size": 142101
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -170,15 +170,15 @@
    "size": 34291
   },
   "updater.gd": {
-   "sha": "a2acbf8868218704a6342e161404d534fa7edf1370289340703d33d8466607f6",
-   "size": 6111
+   "sha": "d6d70a5faee691c30d500ec8e81064b0d2ed6bbbd2aa198031edf907e84b9f31",
+   "size": 6310
   },
   "vcr.gd": {
    "sha": "5d1385a22f27d5ce935e0dc4a2f36501267281bcb4c30c41665c2351185a5b2a",
    "size": 39889
   },
   "version.txt": {
-   "sha": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+   "sha": "913f5d1da2feaf4deeccc9e55cbb350a20f12b3f507e87be85dbb77fdd3cb9bc",
    "size": 3
   },
   "weather.gd": {
