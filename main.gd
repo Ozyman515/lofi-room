@@ -1966,6 +1966,12 @@ func _build_arcade() -> void:
 	crt_mats.append(sm)
 	var scr := _place(q, Vector3(mid.x, mid.y, 0) + nrm * 0.0205, sm, root)
 	scr.basis = tb
+	# an invisible, unclickable "screen" so the zoom / fill-the-view buttons work on the arcade monitor like on the TV and PC
+	var arc_focus := ScreenUI.new()
+	arc_focus.screen_size = q.size
+	arc_focus.enabled = false
+	scr.add_child(arc_focus)
+	screens.append(arc_focus)
 	# marquee: a lit panel above the monitor
 	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9), root)
 	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
