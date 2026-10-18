@@ -198,10 +198,15 @@ func _build_ui() -> void:
 	var rrow := HBoxContainer.new()
 	rrow.add_theme_constant_override("separation", 8)
 	right.add_child(rrow)
+	var rl := Label.new()
+	rl.text = "Repeat"
+	rrow.add_child(rl)
 	_rep_track_btn = Button.new()
+	_rep_track_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rep_track_btn.pressed.connect(func() -> void: _set_repeat(0 if repeat_mode == 1 else 1))
 	rrow.add_child(_rep_track_btn)
 	_rep_folder_btn = Button.new()
+	_rep_folder_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rep_folder_btn.pressed.connect(func() -> void: _set_repeat(0 if repeat_mode == 2 else 2))
 	rrow.add_child(_rep_folder_btn)
 	_set_repeat(0)
@@ -1050,8 +1055,8 @@ func _next() -> void:
 
 func _set_repeat(m: int) -> void:
 	repeat_mode = m
-	_rep_track_btn.text = " [ REPEAT TRACK ] " if m == 1 else " Repeat track "
-	_rep_folder_btn.text = " [ REPEAT FOLDER ] " if m == 2 else " Repeat folder "
+	_rep_track_btn.text = "[ Track ]" if m == 1 else "Track"
+	_rep_folder_btn.text = "[ Folder ]" if m == 2 else "Folder"
 
 
 func _on_finished() -> void:
