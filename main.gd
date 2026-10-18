@@ -1967,6 +1967,7 @@ func _build_arcade() -> void:
 	sm.shader = load("res://shaders/crt.gdshader")
 	sm.set_shader_parameter("use_console", true)
 	sm.set_shader_parameter("console_file", true)
+	sm.set_shader_parameter("console_accurate", true)
 	sm.set_shader_parameter("crt_mode", crt_mode)
 	arcade_mat = sm
 	crt_mats.append(sm)

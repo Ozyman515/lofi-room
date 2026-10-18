@@ -16,6 +16,7 @@ uniform sampler2D ui_tex : filter_linear, repeat_disable;
 uniform bool use_ui = false;
 uniform float ui_gamma = 2.2;
 uniform bool use_console = false;  // the game console is switched on: it takes over the whole screen
+uniform bool console_accurate = false; // undo the room saturation boost and tone curve so a game shows its real colours (arcade)
 uniform bool console_file = false; // true when media/console.gif (.png...) exists, otherwise a built-in 8-bit scene plays
 uniform sampler2D console_tex : source_color, filter_nearest, repeat_disable;
 uniform float console_aspect = 1.3333;
@@ -218,6 +219,20 @@ vec3 console_scene(vec2 uv, float t) {
 	return pow(col, vec3(2.2));
 }
 
+// The room adds a saturation boost and a filmic tone curve over everything. These undo most of it for a game picture.
+float inv_tone(float d) {
+	if (d < 0.15) { return d * 0.87; }
+	if (d < 0.46) { return mix(0.13, 0.325, (d - 0.15) / 0.31); }
+	if (d < 0.84) { return mix(0.325, 0.65, (d - 0.46) / 0.38); }
+	return mix(0.65, 1.0, clamp((d - 0.84) / 0.16, 0.0, 1.0));
+}
+
+vec3 accurate_colour(vec3 c) {
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	c = mix(vec3(l), c, 0.8);
+	return vec3(inv_tone(c.r), inv_tone(c.g), inv_tone(c.b)) / 1.3;
+}
+
 // fill the screen, cropping the extra
 vec2 cover_uv(vec2 uv, float aspect) {
 	float k = aspect / screen_aspect;
@@ -262,6 +277,9 @@ void fragment() {
 				col = texture(console_tex, clamp(cu, 0.0, 1.0)).rgb * ins;
 			} else {
 				col = texture(console_tex, cover_uv(uc, console_aspect)).rgb;
+			}
+			if (console_accurate) {
+				col = accurate_colour(col);
 			}
 		} else {
 			col = console_scene(uc, t);

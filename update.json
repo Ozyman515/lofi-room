@@ -1,5 +1,5 @@
 {
- "version": 59,
+ "version": 60,
  "files": {
   "README.md": {
    "sha": "311ab11407092bf385c49e67d4f06b7df07abcba62b1c7021a048899c959261d",
@@ -94,8 +94,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "ca24b82b77a075a6ccc8e2b7dc04366f87f39527b9732c1532da071b6fa1fb66",
-   "size": 124486
+   "sha": "183618c09701d91dd8de5c994dde9e6d1207bd502bd696c74f935c285fc2c059",
+   "size": 124537
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -134,8 +134,8 @@
    "size": 1909
   },
   "shaders/crt.gdshader": {
-   "sha": "c9df0b801bdf187f7557c8b6763e745d30cc09039e98fc37a987d7db23fe075c",
-   "size": 12232
+   "sha": "ff02a179ea996bcc2814e5d004811bac67bcbb1881e0403051983cd032417fa4",
+   "size": 12968
   },
   "shaders/curtain.gdshader": {
    "sha": "ea92bc4a86af5cea6103f88b2319fd3834437e311588e1dfd79e8caf8e73a62d",
@@ -174,7 +174,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "be4ba010e48e7d5c7c60457e7f40538407a26f4ead94b392beff67a3a5546b8a",
+   "sha": "95cf32708a31caa478a0e9141103ac567d85e5186e697e7e0c81f75589999e31",
    "size": 3
   },
   "weather.gd": {
