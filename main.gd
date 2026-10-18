@@ -1870,6 +1870,13 @@ var _prefs_last := {}
 var weather_start := "random"          # "random" = a new random weather every visit, "remember" = the weather you left
 
 
+func set_resume_games(on: bool) -> void:
+	if emu != null:
+		emu.resume_games = on
+	_save_settings()
+	settings_changed.emit()
+
+
 func set_weather_start(s: String) -> void:
 	weather_start = "remember" if s == "remember" else "random"
 	_save_settings()
@@ -1926,6 +1933,7 @@ func _load_prefs() -> void:
 			for i in 3:
 				weather.set_level(i + 1, float(lv[i]))              # the kind of weather is still random, its strength is yours
 			weather.snap()
+		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		weather_start = "remember" if str(cfg.get_value("settings", "weather_start", "random")) == "remember" else "random"
 		if weather_start == "remember" and cfg.has_section_key("room", "weather_mode"):
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
@@ -1973,6 +1981,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "reticle_on", reticle_on)
 	cfg.set_value("settings", "reticle_color", reticle_color_idx)
 	cfg.set_value("settings", "weather_start", weather_start)
+	cfg.set_value("settings", "resume_games", emu.resume_games if emu != null else true)
 	cfg.save(SETTINGS_FILE)
 
 

@@ -1,9 +1,9 @@
 {
- "version": 40,
+ "version": 41,
  "files": {
   "README.md": {
-   "sha": "155e8c9585026814bc4c7c3fd7873938074305fb08235c1cd23729221731acf5",
-   "size": 13747
+   "sha": "58093e56f8724e6e3f9684b7d039c1991625468b2a48f794149442afb726bd4e",
+   "size": 14045
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -30,12 +30,12 @@
    "size": 155
   },
   "bin/retro_host.exe": {
-   "sha": "6d9f16edfb28ef4de2d6723a7cca7b2a927f080d7bbc6b7581af0792bc2fce2f",
-   "size": 12288
+   "sha": "f7d877137be99aa63320f36b6c39631e6b39bead4075132297995260cd6cee03",
+   "size": 12800
   },
   "bin/retro_host_linux": {
-   "sha": "9e3297b4bfd145861d575bd2e617bc50c2a6d3d2775b473d94a0f795c0c81186",
-   "size": 23064
+   "sha": "9d7e9a847dc6a2e30d79c4d9715c318905fb501a0b191bda10faead797c1ca6c",
+   "size": 23184
   },
   "cores/fceumm_libretro.dll": {
    "sha": "b0643e0fa2852a60cdb13b3de58905b1f27d19cdb3789e046c145ee6318d106a",
@@ -62,8 +62,8 @@
    "size": 2896968
   },
   "emu.gd": {
-   "sha": "f9825b297242744ff1c5fe5afcfc0354faf35ac213c845501fc82a6184bb430f",
-   "size": 17299
+   "sha": "8224ebd8014c5bea7d89b82cee265f9e80f078f2efd6b26d288f4ce7ca107881",
+   "size": 17830
   },
   "file_browser.gd": {
    "sha": "6e97fc563fe953bd6f93af4dac2611cac0f390e5d8431c6db3ff62baf5d85444",
@@ -78,8 +78,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "cb5efd102d52e0f2051136752f955a7b2b52df9e06945a81a8f544c2b227cea6",
-   "size": 107925
+   "sha": "baef8273067e127602a3f471c801d0a61b5cf65454560aa5cb9ecaa7d123900a",
+   "size": 108213
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -102,8 +102,8 @@
    "size": 11217
   },
   "pc_player.gd": {
-   "sha": "37aa02041ea4fa68cf8136dd44d3edb937b80ec3710fef0468b340f9d4a37f97",
-   "size": 25780
+   "sha": "e59bd4495772215d748090aaff0539d220edb13a171d0efe6ec3ce296f4da661",
+   "size": 25906
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -158,7 +158,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "673650f936cb3b0a2f93ce09d81be10748b1b203c19e8176b4eefc1964a0cf3a",
+   "sha": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1",
    "size": 3
   },
   "weather.gd": {

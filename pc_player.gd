@@ -31,6 +31,7 @@ var repeat_mode := 0                  # 0 off, 1 repeat the track, 2 repeat the 
 var _rep_track_btn: Button
 var _rep_folder_btn: Button
 var _st_weather_btn: Button
+var _st_resume_btn: Button
 var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
 var _lt_rows: VBoxContainer
@@ -391,13 +392,6 @@ func _build_settings_window() -> void:
 	close.text = " x "
 	close.pressed.connect(_toggle_settings)
 	head.add_child(close)
-	var title := Label.new()
-	title.text = "Aiming dot"
-	v.add_child(title)
-	var hint := Label.new()
-	hint.text = "A small dot in the middle of the view (desktop only)."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(hint)
 	_st_reticle_btn = Button.new()
 	_st_reticle_btn.custom_minimum_size = Vector2(0, 42)
 	_st_reticle_btn.pressed.connect(func() -> void: _main.set_reticle_on(not _main.reticle_on))
@@ -407,6 +401,10 @@ func _build_settings_window() -> void:
 	wst.pressed.connect(func() -> void: _main.set_weather_start("random" if _main.weather_start == "remember" else "remember"))
 	v.add_child(wst)
 	_st_weather_btn = wst
+	_st_resume_btn = Button.new()
+	_st_resume_btn.custom_minimum_size = Vector2(0, 42)
+	_st_resume_btn.pressed.connect(func() -> void: _main.set_resume_games(not _main.emu.resume_games))
+	v.add_child(_st_resume_btn)
 	var ct := Label.new()
 	ct.text = "Dot colour"
 	v.add_child(ct)
@@ -447,6 +445,8 @@ func _st_refresh() -> void:
 	if _st_reticle_btn == null:
 		return
 	_st_reticle_btn.text = "Aiming dot:  %s" % ("ON" if _main.reticle_on else "OFF")
+	if _st_resume_btn != null:
+		_st_resume_btn.text = "Games keep your place:  " + ("ON" if _main.emu.resume_games else "OFF")
 	if _st_weather_btn != null:
 		_st_weather_btn.text = "Weather at start:  " + ("THE LAST ONE" if _main.weather_start == "remember" else "RANDOM")
 	if _st_update_label != null:

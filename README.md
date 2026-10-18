@@ -127,3 +127,6 @@ Open it once in the Godot editor so it imports the images and shaders, then pres
 Godot's class cache, so a fresh copy runs without the "could not find type" errors.)
 
 _Update test: version 35 installed through the in-game updater._
+
+## Resume where you left off
+Games keep your place automatically: when you leave a game, switch the console or cart, or close the room, the exact position is saved and comes back next time you start that game (Settings > "Games keep your place" turns this off). Battery saves still work as usual.

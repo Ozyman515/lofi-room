@@ -61,6 +61,7 @@ var _prev_mask := 0
 var _sent_mask := -1
 var _rep_t := 0.0
 var _combo_t := 0.0
+var resume_games := true         # keep the place in each game (set from the Settings window)
 var _t_start := 0
 var _err_text := ""
 var _err_cd := 0.0
@@ -356,7 +357,8 @@ func _launch(rom_file: String) -> void:
 			break
 	if port == 0:
 		return _fail("Could not open a local port.")
-	_pid = OS.create_process(host, [str(port), core, rom, saves, base.path_join("cores"), carts_dir().path_join("emulator.log")])
+	var state_path := saves.path_join(rom_file + ".state") if resume_games else ""
+	_pid = OS.create_process(host, [str(port), core, rom, saves, base.path_join("cores"), carts_dir().path_join("emulator.log"), state_path, "1" if resume_games else "0"])
 	if _pid <= 0:
 		_server.stop()
 		return _fail("Could not start the emulator program.")
@@ -380,6 +382,12 @@ func _fail(text: String) -> void:
 func _flush_save() -> void:
 	if _peer != null and _peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 		_peer.put_data(PackedByteArray([83]))
+		_peer.put_data(PackedByteArray([84]))          # 'T': also remember exactly where the game is
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		_stop_host()                                    # closing the room: the game saves its place first
 
 
 func _stop_host() -> void:
