@@ -334,50 +334,33 @@ func _build_window() -> void:
 
 # ---------------------------------------------------------------- bed
 
+const BedModel := preload("res://bed_model.gd")
+const BED_POS := Vector3(-1.65, 0.0, -0.9)
+var bed_made := true                   # false after sleeping: the next morning the bed is a mess
+var bed_node: Node3D
+
+
+func _rebuild_bed() -> void:
+	if bed_node != null and is_instance_valid(bed_node):
+		bed_node.queue_free()
+	bed_node = BedModel.build(room, BED_POS, "made" if bed_made else "unmade")
+
+
+func _make_bed() -> void:
+	if bed_made:
+		return
+	bed_made = true
+	_rebuild_bed()
+	_save_prefs_tick()
+
+
 func _build_bed() -> void:
 	_bed_sleep_spot()
 	# if you drop a bed model at BED_ASSET it replaces the built-in bed (auto-scaled to fit)
 	if _try_asset(BED_ASSET, Vector3(-1.65, 0.0, -0.9), Vector2(1.68, 2.12), BED_EXTRA_YAW):
 		_build_nightstand()
 		return
-	var wood := _mat(Color(0.30, 0.12, 0.18), 0.6)
-	var sheet := _mat(Color(0.88, 0.45, 0.68), 0.9)
-	var duvet := _mat(Color(0.30, 0.34, 0.50), 0.95)
-	var duvet_fold := _mat(Color(0.58, 0.60, 0.78), 0.95)
-	var pillow_m := _mat(Color(0.95, 0.62, 0.80), 0.95)
-	var padded := _mat(Color(0.52, 0.22, 0.42), 0.9)
-	var cx := -1.65
-
-	# low platform frame on short legs, with a padded headboard
-	_box(Vector3(cx, 0.24, -0.9), Vector3(1.68, 0.16, 2.12), wood)
-	for lx in [-0.78, 0.78]:
-		for lz in [-0.96, 0.96]:
-			_box(Vector3(cx + lx, 0.08, -0.9 + lz), Vector3(0.08, 0.16, 0.08), wood)
-	_box(Vector3(cx, 0.55, -1.91), Vector3(1.68, 0.5, 0.08), wood)
-	_box(Vector3(cx, 0.55, -1.865), Vector3(1.5, 0.38, 0.05), padded)
-
-	# mattress with pink sheet
-	_box(Vector3(cx, 0.43, -0.9), Vector3(1.58, 0.22, 2.0), sheet)
-
-	# duvet: top, drapes over the sides and foot, and a folded cuff at the head end
-	_box(Vector3(cx, 0.585, -0.4), Vector3(1.66, 0.09, 1.3), duvet)
-	_box(Vector3(cx - 0.82, 0.45, -0.4), Vector3(0.04, 0.34, 1.3), duvet)
-	_box(Vector3(cx + 0.82, 0.45, -0.4), Vector3(0.04, 0.34, 1.3), duvet)
-	_box(Vector3(cx, 0.45, 0.245), Vector3(1.66, 0.34, 0.04), duvet)
-	var cuff := _cyl(Vector3(cx, 0.64, -1.05), 0.07, 1.66, duvet_fold)
-	cuff.rotation.z = PI / 2.0
-	# quilted puffs
-	for px in [-0.5, 0.0, 0.5]:
-		for pz in [-0.8, -0.4, 0.0]:
-			_sphere(Vector3(cx + px, 0.63, pz), 0.2, duvet, Vector3(1.1, 0.25, 1.0), null, 24)
-
-	# pillows
-	var p1 := _sphere(Vector3(cx - 0.4, 0.69, -1.62), 0.5, pillow_m, Vector3(0.62, 0.17, 0.40), null, 32)
-	p1.rotation.y = 0.1
-	var p2 := _sphere(Vector3(cx + 0.4, 0.69, -1.62), 0.5, pillow_m, Vector3(0.62, 0.17, 0.40), null, 32)
-	p2.rotation.y = -0.08
-	var p3 := _sphere(Vector3(cx - 0.05, 0.8, -1.5), 0.5, duvet_fold, Vector3(0.42, 0.16, 0.32), null, 32)
-	p3.rotation = Vector3(-0.4, 0.3, 0.0)
+	_rebuild_bed()
 
 	_build_nightstand()
 
@@ -1308,17 +1291,18 @@ var _sleep_text: Label3D
 
 
 func _bed_sleep_spot() -> void:
-	var slab := _box(Vector3(-1.65, 0.64, -0.55), Vector3(1.5, 0.16, 1.5), _mat(Color.WHITE), null)
+	# the Sleep prompt sits up by the pillows ...
+	var slab := _box(Vector3(-1.65, 0.63, -1.55), Vector3(1.5, 0.16, 0.7), _mat(Color.WHITE), null)
 	slab.visible = false
-	interactables.append({"node": slab, "half": Vector3(0.75, 0.08, 0.75), "egg_lock": true,
+	interactables.append({"node": slab, "half": Vector3(0.75, 0.08, 0.35), "egg_lock": true,
 		"when": func() -> bool: return not sleeping and updater != null and (updater.state == "available" or updater.state == "done"),
-		"label": _sleep_label, "cb": _go_to_sleep})
-
-
-func _sleep_label() -> String:
-	if updater.state == "available":
-		return "SLEEP  (installs update %d, you wake up in the new room)" % updater.remote_version
-	return "SLEEP  (wake up in the updated room)"
+		"label": "Nap", "cb": _go_to_sleep})
+	# ... and the make-the-bed prompt down by the foot, only while the bed is a mess
+	var foot := _box(Vector3(-1.65, 0.63, -0.45), Vector3(1.5, 0.16, 0.9), _mat(Color.WHITE), null)
+	foot.visible = false
+	interactables.append({"node": foot, "half": Vector3(0.75, 0.08, 0.45), "egg_lock": true,
+		"when": func() -> bool: return not bed_made and not sleeping,
+		"label": "If you want to change the world,\nstart off by making your bed, bud.", "cb": _make_bed})
 
 
 func _make_sleep_veil() -> void:
@@ -1340,7 +1324,7 @@ func _make_sleep_veil() -> void:
 	_sleep_veil.extra_cull_margin = 16.0
 	head.add_child(_sleep_veil)
 	_sleep_text = Label3D.new()
-	_sleep_text.text = "Sleeping..."
+	_sleep_text.text = "Napping..."
 	_sleep_text.font_size = 48
 	_sleep_text.pixel_size = 0.0008
 	_sleep_text.no_depth_test = true
@@ -1377,14 +1361,17 @@ func _go_to_sleep() -> void:
 		sleeping = false
 		updater.show_toast(updater.message if updater.state == "error" else "There was nothing to install.")
 		return
-	_sleep_text.text = "Waking up in the new room..."
+	_sleep_text.text = "Waking up from your nap in the new room..."
 	if emu != null:
 		emu._stop_host()                      # the running game saves its place first
+	bed_made = false                          # you slept in it, so the new room has an unmade bed
 	_save_prefs_tick()
 	pc.save_music_dir()
 	await get_tree().create_timer(0.9).timeout
 	if not _relaunch():
 		_sleep_text.text = "Could not restart the room"
+		bed_made = true
+		_save_prefs_tick()
 		await get_tree().create_timer(1.6).timeout
 		await _fade_veil(0.0, 1.0)
 		sleeping = false
@@ -2516,6 +2503,7 @@ func _prefs_now() -> Dictionary:
 	var d := {}
 	d["crt_mode"] = crt_mode
 	d["music_vol"] = snappedf(bank.master, 0.01)
+	d["bed_made"] = bed_made
 	d["repeat"] = pc.repeat_mode
 	d["tv_volume"] = vcr.tv_volume
 	d["curtain"] = snappedf(curtain_target, 0.01) if not egg_active else float(_prefs_last.get("curtain", 0.0))
@@ -2557,6 +2545,9 @@ func _load_prefs() -> void:
 	if cfg.load(SETTINGS_FILE) == OK and cfg.has_section("room"):
 		var g := func(k: String, def: Variant) -> Variant: return cfg.get_value("room", k, def)
 		pc._set_volume(clampf(float(g.call("music_vol", 0.7)), 0.0, 1.0))
+		bed_made = bool(g.call("bed_made", true))
+		if not bed_made:
+			_rebuild_bed()
 		pc._set_repeat(clampi(int(g.call("repeat", 0)), 0, 2))
 		vcr.tv_volume = clampi(int(g.call("tv_volume", vcr.tv_volume)), 0, 10)
 		set_crt_mode(int(g.call("crt_mode", 1)))

@@ -464,9 +464,62 @@ func _build_settings_window() -> void:
 			u.check())
 	v.add_child(_st_update_btn)
 	_main.updater.changed.connect(_st_refresh)
+	_main.updater.changed.connect(_on_updater_changed)
 	_main.settings_changed.connect(_st_refresh)
 	_st_refresh()
 	_build_controls_window()
+
+
+var _sleep_q: PanelContainer
+var _last_up_state := ""
+
+
+# When an update has just been installed from the PC, ask whether to sleep now (wake up in the new room).
+func _on_updater_changed() -> void:
+	var s: String = _main.updater.state
+	if s == "done" and _last_up_state == "downloading" and not _main.sleeping:
+		_show_sleep_q()
+	_last_up_state = s
+
+
+func _show_sleep_q() -> void:
+	if _sleep_q == null:
+		_sleep_q = PanelContainer.new()
+		_sleep_q.offset_left = 262.0
+		_sleep_q.offset_top = 190.0
+		_sleep_q.offset_right = 762.0
+		_sleep_q.offset_bottom = 370.0
+		ui.root.add_child(_sleep_q)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 14)
+		_sleep_q.add_child(v)
+		var t := Label.new()
+		t.text = "The update is installed."
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(t)
+		var q := Label.new()
+		q.text = "Take a Nap?"
+		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		q.add_theme_font_size_override("font_size", 26)
+		v.add_child(q)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 20)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.add_child(row)
+		var yes := Button.new()
+		yes.text = "  Yes  "
+		yes.custom_minimum_size = Vector2(150, 48)
+		yes.pressed.connect(func() -> void:
+			_sleep_q.visible = false
+			_main._go_to_sleep())
+		row.add_child(yes)
+		var no := Button.new()
+		no.text = "  No  "
+		no.custom_minimum_size = Vector2(150, 48)
+		no.pressed.connect(func() -> void: _sleep_q.visible = false)
+		row.add_child(no)
+	_sleep_q.visible = true
+	ui.root.move_child(_sleep_q, ui.root.get_child_count() - 1)
 
 
 func _st_refresh() -> void:

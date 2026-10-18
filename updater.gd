@@ -111,7 +111,7 @@ func _on_check_done(result: int, code: int, _h: PackedStringArray, body: PackedB
 		_state("current", "You are up to date (version %d)." % local_version)
 	else:
 		_state("available", "Update available: version %d (%d files)." % [remote_version, _total])
-		show_toast("Update available: version %d.  Sleep in the bed to install it and wake up in the new room (or use PC > Settings)." % remote_version, 14.0)
+		show_toast("Update available: version %d.  Take a nap in the bed to install it and wake up in the new room (or use PC > Settings)." % remote_version, 14.0)
 
 
 func show_toast(msg: String, secs: float = 8.0) -> void:
@@ -164,7 +164,7 @@ func install() -> void:
 		DirAccess.remove_absolute(src)
 	_todo.clear()
 	local_version = _read_version()
-	_state("done", "Updated to version %d. Sleep in the bed to wake up in the new room (or close and reopen)." % remote_version)
+	_state("done", "Updated to version %d. Take a nap in the bed to wake up in the new room (or close and reopen)." % remote_version)
 
 
 func _fail(m: String) -> void:
