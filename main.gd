@@ -181,6 +181,7 @@ func _ready() -> void:
 	_build_power()
 	_finish_cords()
 	_setup_player()
+	_load_prefs()
 
 
 # ---------------------------------------------------------------- helpers
@@ -1861,6 +1862,74 @@ func _cart_changed() -> void:
 	if emu != null:
 		emu.set_system(slot_cart if (slot_cart == "nes" or slot_cart == "snes" or slot_cart == "sgb") else "")
 	_apply_console()
+
+
+# ---- remembered between visits: volumes, speakers, lights, curtains, weather levels, music repeat, TV volume
+
+var _prefs_last := {}
+
+
+func _prefs_now() -> Dictionary:
+	var d := {}
+	d["music_vol"] = snappedf(bank.master, 0.01)
+	d["repeat"] = pc.repeat_mode
+	d["tv_volume"] = vcr.tv_volume
+	d["curtain"] = snappedf(curtain_target, 0.01) if not egg_active else float(_prefs_last.get("curtain", 0.0))
+	d["traffic_muted"] = weather.traffic_muted
+	d["weather_vol"] = snappedf(weather.volume, 0.01)
+	d["levels"] = [snappedf(weather.levels[1], 0.01), snappedf(weather.levels[2], 0.01), snappedf(weather.levels[3], 0.01)]
+	for i in bank.speakers.size():
+		d["spk_" + String(bank.speakers[i]["name"])] = bank.is_enabled(i)
+	for g in light_groups:
+		d["light_" + String(g["name"])] = bool(g["on"])
+	return d
+
+
+func _save_prefs_tick() -> void:
+	if egg_active or weather == null or bank == null:
+		return
+	var d := _prefs_now()
+	if d == _prefs_last:
+		return
+	_prefs_last = d
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_FILE)
+	for k in d:
+		cfg.set_value("room", k, d[k])
+	cfg.save(SETTINGS_FILE)
+
+
+func _load_prefs() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_FILE) == OK and cfg.has_section("room"):
+		var g := func(k: String, def: Variant) -> Variant: return cfg.get_value("room", k, def)
+		pc._set_volume(clampf(float(g.call("music_vol", 0.7)), 0.0, 1.0))
+		pc._set_repeat(clampi(int(g.call("repeat", 0)), 0, 2))
+		vcr.tv_volume = clampi(int(g.call("tv_volume", vcr.tv_volume)), 0, 10)
+		vcr._apply_volume()
+		weather.set_volume(float(g.call("weather_vol", weather.volume)))
+		pc._wx_vol.set_value_no_signal(weather.volume)
+		weather.traffic_muted = bool(g.call("traffic_muted", false))
+		var lv: Variant = g.call("levels", [])
+		if lv is Array and (lv as Array).size() == 3:
+			for i in 3:
+				weather.set_level(i + 1, float(lv[i]))              # the kind of weather is still random, its strength is yours
+			weather.snap()
+		for i in bank.speakers.size():
+			bank.set_enabled(i, bool(g.call("spk_" + String(bank.speakers[i]["name"]), true)))
+		for gi in light_groups.size():
+			set_light(gi, bool(g.call("light_" + String(light_groups[gi]["name"]), true)))
+		var cu := clampf(float(g.call("curtain", 0.0)), 0.0, 1.0)
+		curtain_amt = cu
+		curtain_target = cu
+		curtain_last_down = cu > 0.5
+		pc._wx_refresh()
+	_prefs_last = _prefs_now()
+	var tm := Timer.new()
+	tm.wait_time = 1.5
+	tm.autostart = true
+	tm.timeout.connect(_save_prefs_tick)
+	add_child(tm)
 
 
 # ---- settings (the PC has a Settings window): the dot in the middle of the view
