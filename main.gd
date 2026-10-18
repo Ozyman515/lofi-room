@@ -67,7 +67,7 @@ var tv_root: Node3D
 var console_root: Node3D
 var console_on := false
 var emu: Node                         # NES / SNES games (emu.gd)
-var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb" or "egg" (the secret one)
+var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen" or "egg" (the secret one)
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
 var drawer_node: Node3D               # the nightstand drawer
 var drawer_open := false
@@ -1636,8 +1636,8 @@ func _build_console() -> void:
 	for px in [-0.08, 0.08]:
 		_box(Vector3(px, 0.035, 0.141), Vector3(0.05, 0.03, 0.01), dark, root)        # controller ports
 	# two controllers on the rug
-	_controller(Vector3(-2.0, 0.022, 0.0 + LOUNGE_DZ), 0.3)
-	_controller(Vector3(-2.0, 0.022, 0.4 + LOUNGE_DZ), -0.25)
+	_controller(Vector3(-2.0, 0.022, 1.62), 0.3)
+	_controller(Vector3(-2.25, 0.022, 1.95), -0.25)
 	emu = Emu.new()
 	emu.name = "Emu"
 	add_child(emu)
@@ -1773,11 +1773,39 @@ func _sgb_cart_mesh() -> Node3D:
 	return n
 
 
+# A Genesis style cart: black shell, ridged top, a notch in the lower corner, and a dark label with a blue band.
+func _gen_cart_mesh() -> Node3D:
+	var n := Node3D.new()
+	room.add_child(n)
+	var blk := _mat(Color(0.07, 0.07, 0.085), 0.5)
+	var dark := _mat(Color(0.03, 0.03, 0.04), 0.7)
+	_box(Vector3.ZERO, Vector3(0.15, 0.11, 0.022), blk, n)
+	for i in 5:                                                                                           # ridges across the top
+		_box(Vector3(-0.045 + i * 0.0225, 0.0575, 0.0), Vector3(0.011, 0.004, 0.024), dark, n)
+	for sx in [-1.0, 1.0]:                                                                                # grip grooves on the sides
+		for i in 4:
+			_box(Vector3(sx * 0.0745, 0.02 - i * 0.017, 0.0), Vector3(0.004, 0.009, 0.0235), dark, n)
+	_box(Vector3(0, -0.052, 0), Vector3(0.12, 0.012, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)      # contacts
+	_box(Vector3(0, 0.008, 0.0125), Vector3(0.115, 0.07, 0.003), _mat(Color(0.12, 0.12, 0.16), 0.5), n)  # label
+	_box(Vector3(0, 0.0395, 0.0128), Vector3(0.115, 0.012, 0.0035), _mat(Color(0.1, 0.32, 0.78), 0.5), n)   # blue band
+	_box(Vector3(0, -0.0255, 0.0128), Vector3(0.115, 0.004, 0.0035), _mat(Color(0.85, 0.15, 0.2), 0.5), n)  # thin red line
+	var lb := Label3D.new()
+	lb.text = "GENESIS"
+	lb.font_size = 56
+	lb.pixel_size = 0.0007
+	lb.outline_size = 0
+	lb.modulate = Color(0.92, 0.92, 0.95)
+	lb.position = Vector3(0, 0.008, 0.0147)
+	n.add_child(lb)
+	return n
+
+
 func _build_carts() -> void:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)       # lying flat, label up
 	var nes := _cart_mesh(Color(0.56, 0.56, 0.60), Color(0.86, 0.22, 0.26), Color(0.12, 0.12, 0.14), "NES")
 	var snes := _cart_mesh(Color(0.70, 0.68, 0.76), Color(0.36, 0.30, 0.62), Color(0.88, 0.25, 0.55), "SNES")
 	var sgb := _sgb_cart_mesh()
+	var gen := _gen_cart_mesh()
 	var egg_c := _cart_mesh(Color(0.19, 0.18, 0.22), Color.BLACK, Color.BLACK, "")
 	var tv_top := 0.04 + TV_WIDTH * 0.72
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
@@ -1786,14 +1814,16 @@ func _build_carts() -> void:
 		"home": func() -> Transform3D: return tv_root.global_transform * Transform3D(Basis(Vector3.UP, 0.3) * lay, Vector3(0.52, tv_top + 0.011, 0.05))}
 	carts["sgb"] = {"node": sgb, "name": "SGB CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 1.36))}
+	carts["gen"] = {"node": gen, "name": "GENESIS CART", "busy": false,
+		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.02, 0.034, 1.32))}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
-	for id in ["nes", "snes", "sgb"]:
+	for id in ["nes", "snes", "sgb", "gen"]:
 		var n: Node3D = carts[id]["node"]
 		n.global_transform = (carts[id]["home"] as Callable).call()
 	egg_c.reparent(drawer_node, false)
 	egg_c.transform = Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))
-	for id in ["nes", "snes", "sgb", "egg"]:
+	for id in ["nes", "snes", "sgb", "gen", "egg"]:
 		interactables.append({"node": carts[id]["node"], "half": Vector3(0.085, 0.065, 0.03), "egg_lock": true,
 			"label": _cart_label.bind(id), "cb": _cart_click.bind(id)})
 
@@ -1860,7 +1890,7 @@ func _cart_changed() -> void:
 	konami_progress = 0
 	_close_controls()
 	if emu != null:
-		emu.set_system(slot_cart if (slot_cart == "nes" or slot_cart == "snes" or slot_cart == "sgb") else "")
+		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen"]) else "")
 	_apply_console()
 
 

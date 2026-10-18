@@ -1,9 +1,9 @@
 {
- "version": 43,
+ "version": 44,
  "files": {
   "README.md": {
-   "sha": "58093e56f8724e6e3f9684b7d039c1991625468b2a48f794149442afb726bd4e",
-   "size": 14045
+   "sha": "3e6c14cae626f326707827ba17dce1563741028e52f436a4dcfae811de96d7b4",
+   "size": 14250
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -45,6 +45,14 @@
    "sha": "ff0aa3f2e1550e7e5231fd0b175e2ad4e09046d5eab658e716cd81e79206fab2",
    "size": 4715456
   },
+  "cores/genesis_plus_gx_libretro.dll": {
+   "sha": "a858ff3c8a61bbe876b4bad8ea92314198732183d050aaa73a1ad5dac0bfcf20",
+   "size": 9193472
+  },
+  "cores/genesis_plus_gx_libretro.so": {
+   "sha": "98a0a7361cf17beaac2a8cd924b2dca1d4441bd109fee9525defe00401a2894d",
+   "size": 12628280
+  },
   "cores/mgba_libretro.dll": {
    "sha": "4441777a247aac7d5be25851892c1fef68c27d54420eecec10e98d488624d300",
    "size": 2689024
@@ -62,8 +70,8 @@
    "size": 2896968
   },
   "emu.gd": {
-   "sha": "224c6f0439db5d453cb304cd8c13eb50656d7b4c8f759cfe868dcf7d5c764479",
-   "size": 18053
+   "sha": "8bf4c3241dc1e634c60770608361038ea4f4fd4eb9c11abee718dc858f7d44e2",
+   "size": 18230
   },
   "file_browser.gd": {
    "sha": "6e97fc563fe953bd6f93af4dac2611cac0f390e5d8431c6db3ff62baf5d85444",
@@ -78,8 +86,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "4fd81fc3d5ddb8bfd36ecb777f0d3d25aef7934467de4996efc2b44081d1b027",
-   "size": 109055
+   "sha": "e56e55a8f775d8e5c9f66261280e9150a503730d410917193686c16c6019a823",
+   "size": 110717
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -158,7 +166,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "0e55092af0746630c98d1b2e0d960617c33f8ea7b55739fd18cb7cd5342a28ca",
+   "sha": "b1ce0aa6fdf3cf349d773243dab9fbbe09d30619f38b0c1e8977e28c4f0bc495",
    "size": 3
   },
   "weather.gd": {
