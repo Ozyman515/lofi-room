@@ -2456,6 +2456,7 @@ func _load_prefs() -> void:
 		curtain_amt = cu
 		curtain_target = cu
 		curtain_last_down = cu > 0.5
+		_update_curtain_mesh()          # the cloth itself has to follow, or it stays hidden while the room goes dark
 		pc._wx_refresh()
 	_prefs_last = _prefs_now()
 	var tm := Timer.new()
