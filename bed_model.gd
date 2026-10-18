@@ -183,13 +183,13 @@ static func _drape(root: Node3D, top_y: float, mat: Material, seed: int) -> Mesh
 	var n_drop := 18
 	var n_v := 64
 	var m := n_top + 1 + n_drop
-	var z0 := -0.12
-	var z1 := 0.98
-	var x_in := 0.46
+	var z0 := -0.22
+	var z1 := 1.00
+	var x_in := 0.71
 	var x_edge := -0.80
 	# fall of the cloth over the edge and the rail: (x, y relative to the mattress top)
 	var tbl := [Vector2(-0.808, -0.012), Vector2(-0.826, -0.06), Vector2(-0.832, -0.15), Vector2(-0.838, -0.25), Vector2(-0.852, -0.30), Vector2(-0.866, -0.35), Vector2(-0.89, -0.41)]
-	var folds := [[-0.12, 0.42, 0.26, 0.24], [0.10, 0.70, 0.20, 0.17], [-0.50, 0.18, 0.18, 0.14], [-0.28, 0.88, 0.22, 0.12], [0.24, 0.30, 0.15, 0.10], [-0.05, 0.12, 0.14, 0.09], [-0.58, 0.60, 0.16, 0.10]]
+	var folds := [[-0.12, 0.42, 0.31, 0.29], [0.10, 0.70, 0.24, 0.20], [-0.50, 0.18, 0.22, 0.17], [-0.28, 0.88, 0.26, 0.14], [0.24, 0.30, 0.18, 0.12], [-0.05, 0.08, 0.17, 0.11], [-0.58, 0.60, 0.19, 0.12], [0.45, 0.55, 0.20, 0.10]]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for j in n_v:
