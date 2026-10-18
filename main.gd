@@ -44,7 +44,7 @@ const BLOCKERS := [
 	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),    # CRT TV
 	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
 	Rect2(-2.75, 0.1 + LOUNGE_DZ, 0.4, 0.55),   # game console
-	Rect2(-0.65, 2.35, 0.8, 1.1),   # arcade cabinet (next to the door)
+	Rect2(1.4, 1.55, 1.2, 0.8),   # arcade cabinet (right wall, by the bookshelf)
 ]
 
 const WARM := Color(1.0, 0.62, 0.30)
@@ -1824,10 +1824,10 @@ func _gen_cart_mesh() -> Node3D:
 	return n
 
 
-# ---- the standing arcade cabinet (front wall, beside the door). Local axes: x = out from the wall, y = up, z = across the front.
-const CAB_POS := Vector3(-0.25, 0.0, FRONT_Z)       # against the front wall, just left of the door, facing into the room
+# ---- the standing arcade cabinet (right wall, beside the bookshelf). Local axes: x = out from the wall, y = up, z = across the front.
+const CAB_POS := Vector3(2.5, 0.0, 1.95)       # against the right wall, next to the bookshelf, facing into the room
 const CAB_W := 0.72
-const CAB_PROFILE := [Vector2(0, 0), Vector2(0.78, 0), Vector2(0.78, 0.82), Vector2(0.99, 0.82), Vector2(0.99, 0.90), Vector2(0.83, 0.90),
+const CAB_PROFILE := [Vector2(0, 0), Vector2(0.78, 0), Vector2(0.78, 0.82), Vector2(1.05, 0.82), Vector2(1.05, 0.90), Vector2(0.83, 0.90),
 	Vector2(0.83, 0.96), Vector2(0.64, 1.50), Vector2(0.71, 1.53), Vector2(0.71, 1.77), Vector2(0.50, 1.80), Vector2(0.0, 1.40)]
 const CAB_TILT := 0.3384        # the monitor leans back by atan(0.19 / 0.54)
 
@@ -1873,7 +1873,7 @@ func _rbox(pos: Vector3, size: Vector3, basis: Basis, mat: Material, parent: Nod
 func _build_arcade() -> void:
 	var root := Node3D.new()
 	root.position = CAB_POS
-	root.rotation.y = PI / 2.0                 # local +x (out from the wall) points along -z, into the room
+	root.rotation.y = PI                       # local +x (out from the wall) points along -x, into the room
 	room.add_child(root)
 	cab_root = root
 	var white := _mat(Color(0.88, 0.88, 0.90), 0.45)
@@ -1913,27 +1913,40 @@ func _build_arcade() -> void:
 	cl.rotation = Vector3(0, PI / 2.0, 0)
 	cl.position = Vector3(0.7815, 0.415, 0.0)
 	root.add_child(cl)
-	# the control panel: deck, front lip, two sticks, six buttons each, two start buttons
-	_box(Vector3(0.91, 0.885, 0), Vector3(0.16, 0.03, CAB_W - 0.07), deck_m, root)
-	_box(Vector3(0.9875, 0.86, 0), Vector3(0.0125, 0.08, CAB_W - 0.07), white, root)
-	_box(Vector3(0.9885, 0.896, 0), Vector3(0.012, 0.012, CAB_W - 0.07), green, root)
-	var plate := _box(Vector3(0.91, 0.9, 0), Vector3(0.15, 0.002, CAB_W - 0.12), _mat(Color(0.18, 0.28, 0.24), 0.3), root)
-	var stick_m := _mat(Color(0.85, 0.85, 0.88), 0.4)
-	for pl in [[-0.2, Color(0.15, 0.85, 0.3)], [0.2, Color(0.95, 0.35, 0.55)]]:
-		var zc: float = pl[0]
-		var ball := _mat(pl[1], 0.3)
-		_cyl(Vector3(0.90, 0.93, zc), 0.0055, 0.06, stick_m, root)
-		_sphere(Vector3(0.90, 0.968, zc), 0.0235, ball, Vector3.ONE, root, 14)
-		_cyl(Vector3(0.90, 0.903, zc), 0.032, 0.002, dark, root)
-		var bz_sign: float = 1.0 if zc < 0 else -1.0
-		var bcol: Color = Color(0.15, 0.85, 0.3) if zc < 0 else Color(0.95, 0.45, 0.15)
-		var bm := _mat(bcol, 0.3, 0.35)
+	# the control panel: a speckled grey deck like a classic fighting-game cabinet. Two black ball-top sticks, two rows of three
+	# buttons each (red, white, blue) and four start buttons in the middle.
+	var nimg := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	var nrng := RandomNumberGenerator.new()
+	nrng.seed = 11
+	for yy in 64:
+		for xx in 64:
+			var g := 0.58 + nrng.randf_range(-0.08, 0.08)
+			if nrng.randf() < 0.16:
+				g = 0.16 if nrng.randf() < 0.55 else 0.9
+			nimg.set_pixel(xx, yy, Color(g, g, g + 0.02))
+	var speck := StandardMaterial3D.new()
+	speck.albedo_texture = ImageTexture.create_from_image(nimg)
+	speck.uv1_scale = Vector3(5, 4, 1)
+	speck.roughness = 0.45
+	speck.disable_fog = true
+	_box(Vector3(0.94, 0.885, 0), Vector3(0.22, 0.03, CAB_W - 0.07), speck, root)
+	_box(Vector3(1.0435, 0.86, 0), Vector3(0.0125, 0.08, CAB_W - 0.07), white, root)
+	_box(Vector3(1.044, 0.896, 0), Vector3(0.012, 0.012, CAB_W - 0.07), dark, root)
+	var plate := _box(Vector3(0.94, 0.9005, 0), Vector3(0.2, 0.001, CAB_W - 0.09), speck, root)
+	var black_g := _mat(Color(0.04, 0.04, 0.05), 0.25)
+	var stick_m := _mat(Color(0.8, 0.8, 0.84), 0.35)
+	var btn_cols := [Color(0.92, 0.12, 0.10), Color(0.94, 0.94, 0.97), Color(0.12, 0.34, 0.95)]
+	for zc in [-0.235, 0.075]:
+		_cyl(Vector3(0.93, 0.9015, zc), 0.07, 0.002, black_g, root)                   # the round dish under the stick
+		_cyl(Vector3(0.93, 0.93, zc), 0.0065, 0.056, stick_m, root)
+		_sphere(Vector3(0.93, 0.972, zc), 0.029, black_g, Vector3(1, 1.05, 1), root, 16)
 		for r in 2:
 			for c in 3:
-				var bz: float = zc + bz_sign * (0.085 + c * 0.047) + (0.0 if r == 0 else bz_sign * 0.012)
-				_cyl(Vector3(0.925 + r * 0.045, 0.908, bz), 0.0185, 0.014, bm, root)
-	for sz2 in [-0.04, 0.04]:
-		_cyl(Vector3(0.855, 0.905, sz2), 0.012, 0.01, yellow, root)
+				var bm := _mat(btn_cols[c], 0.25, 0.3)
+				_cyl(Vector3(0.968 + r * 0.05 - 0.04, 0.911, zc + 0.115 + c * 0.058), 0.021, 0.018, bm, root)
+	var st_cols := [btn_cols[0], btn_cols[1], btn_cols[2], btn_cols[1]]
+	for i in 4:
+		_cyl(Vector3(0.87, 0.908, -0.075 + i * 0.05), 0.0155, 0.012, _mat(st_cols[i], 0.25, 0.3), root)
 	# the monitor: a leaning white board with a black glass and the live screen
 	var tb := Basis(Vector3(0, 0, 1), CAB_TILT) * Basis(Vector3.UP, PI / 2.0)
 	var a := Vector2(0.83, 0.96)
