@@ -94,6 +94,10 @@ func _on_check_done(result: int, code: int, _h: PackedStringArray, body: PackedB
 	_manifest = data["files"]
 	remote_version = int(data.get("version", 0))
 	_todo.clear()
+	if remote_version <= local_version:
+		_total = 0
+		_state("current", "You are up to date (version %d)." % local_version)       # never go back to an older list
+		return
 	var root := _root()
 	for p in _manifest:
 		var path := str(p)
