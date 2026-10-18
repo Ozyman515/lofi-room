@@ -44,7 +44,7 @@ const BLOCKERS := [
 	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),    # CRT TV
 	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
 	Rect2(-2.75, 0.1 + LOUNGE_DZ, 0.4, 0.55),   # game console
-	Rect2(-4.0, 0.35, 1.15, 0.9),   # arcade cabinet
+	Rect2(-0.65, 2.35, 0.8, 1.1),   # arcade cabinet (next to the door)
 ]
 
 const WARM := Color(1.0, 0.62, 0.30)
@@ -1824,8 +1824,8 @@ func _gen_cart_mesh() -> Node3D:
 	return n
 
 
-# ---- the standing arcade cabinet (left wall). Local axes: x = out from the wall, y = up, z = across the front.
-const CAB_POS := Vector3(-3.9, 0.0, 0.8)
+# ---- the standing arcade cabinet (front wall, beside the door). Local axes: x = out from the wall, y = up, z = across the front.
+const CAB_POS := Vector3(-0.25, 0.0, FRONT_Z)       # against the front wall, just left of the door, facing into the room
 const CAB_W := 0.72
 const CAB_PROFILE := [Vector2(0, 0), Vector2(0.78, 0), Vector2(0.78, 0.82), Vector2(0.99, 0.82), Vector2(0.99, 0.90), Vector2(0.83, 0.90),
 	Vector2(0.83, 0.96), Vector2(0.64, 1.50), Vector2(0.71, 1.53), Vector2(0.71, 1.77), Vector2(0.50, 1.80), Vector2(0.0, 1.40)]
@@ -1873,6 +1873,7 @@ func _rbox(pos: Vector3, size: Vector3, basis: Basis, mat: Material, parent: Nod
 func _build_arcade() -> void:
 	var root := Node3D.new()
 	root.position = CAB_POS
+	root.rotation.y = PI / 2.0                 # local +x (out from the wall) points along -z, into the room
 	room.add_child(root)
 	cab_root = root
 	var white := _mat(Color(0.88, 0.88, 0.90), 0.45)
@@ -2051,7 +2052,7 @@ func _build_carts() -> void:
 	carts["gen"] = {"node": gen, "name": "GENESIS CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.02, 0.034, 1.32))}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 1.1) * lay, Vector3(-2.72, 0.034, 0.52))}
+		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 1.1) * lay, Vector3(-0.5, 0.034, 2.0))}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
 	for id in ["nes", "snes", "sgb", "gen", "neo"]:
