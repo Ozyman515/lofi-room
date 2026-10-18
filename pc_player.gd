@@ -51,7 +51,7 @@ var _wx_buttons: Array[Button] = []
 var _wx_cur_btn: Button
 var _music_was_playing := false
 var _wx_traffic_btn: Button
-var _wx_cur_slider: HSlider
+var _wx_cur_slider: VSlider
 var _cur_drag := false
 var _wx_vol: HSlider
 var _wx_int: HSlider
@@ -315,7 +315,7 @@ func _process(delta: float) -> void:
 	_ct_tick(delta)
 	if _wx_window != null and _wx_window.visible and _main != null:
 		if not _cur_drag:
-			_wx_cur_slider.set_value_no_signal(_main.curtain_amt)      # follows the real curtain, even when a wall switch moves it
+			_wx_cur_slider.set_value_no_signal(1.0 - _main.curtain_amt)      # follows the real curtain, even when a wall switch moves it
 		_wx_cur_btn.text = _cur_btn_text()
 	_clock_t -= delta
 	if _clock_t <= 0.0:
@@ -804,9 +804,13 @@ func setup_weather(weather: Node, main: Node) -> void:
 	_wx_window.offset_bottom = 500.0
 	_wx_window.visible = false
 	ui.root.add_child(_wx_window)
+	var outer := HBoxContainer.new()
+	outer.add_theme_constant_override("separation", 14)
+	_wx_window.add_child(outer)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	_wx_window.add_child(v)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_child(v)
 	var head := HBoxContainer.new()
 	v.add_child(head)
 	var t := Label.new()
@@ -869,34 +873,38 @@ func setup_weather(weather: Node, main: Node) -> void:
 	_wx_traffic_btn.custom_minimum_size = Vector2(0, 40)
 	_wx_traffic_btn.pressed.connect(_toggle_traffic)
 	v.add_child(_wx_traffic_btn)
+	# curtains live in their own column on the right: the slider runs up and down like the curtain itself
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", 6)
+	cv.custom_minimum_size = Vector2(170, 0)
+	outer.add_child(cv)
 	var cl := Label.new()
-	cl.text = "Blackout curtains (button or wall switch: press again to stop):"
-	cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(cl)
-	var crow := HBoxContainer.new()
-	crow.add_theme_constant_override("separation", 10)
-	v.add_child(crow)
+	cl.text = "Curtains"
+	cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(cl)
 	var cl1 := Label.new()
 	cl1.text = "UP"
-	cl1.custom_minimum_size = Vector2(40, 0)
-	crow.add_child(cl1)
-	_wx_cur_slider = HSlider.new()
+	cl1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(cl1)
+	_wx_cur_slider = VSlider.new()
 	_wx_cur_slider.min_value = 0.0
 	_wx_cur_slider.max_value = 1.0
 	_wx_cur_slider.step = 0.01
-	_wx_cur_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_wx_cur_slider.custom_minimum_size = Vector2(0, 32)
+	_wx_cur_slider.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_wx_cur_slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_wx_cur_slider.custom_minimum_size = Vector2(40, 0)
 	_wx_cur_slider.value_changed.connect(_on_curtain_slider)
 	_wx_cur_slider.drag_started.connect(func(): _cur_drag = true)
 	_wx_cur_slider.drag_ended.connect(func(_c: bool): _cur_drag = false)
-	crow.add_child(_wx_cur_slider)
+	cv.add_child(_wx_cur_slider)
 	var cl2 := Label.new()
 	cl2.text = "DOWN"
-	crow.add_child(cl2)
+	cl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(cl2)
 	_wx_cur_btn = Button.new()
 	_wx_cur_btn.custom_minimum_size = Vector2(0, 44)
 	_wx_cur_btn.pressed.connect(_toggle_curtains)
-	v.add_child(_wx_cur_btn)
+	cv.add_child(_wx_cur_btn)
 	_wx_refresh()
 	_build_lights_window()
 	_build_settings_window()
@@ -912,7 +920,7 @@ func _set_weather(i: int) -> void:
 
 
 func _on_curtain_slider(val: float) -> void:
-	_main.set_curtain(val)
+	_main.set_curtain(1.0 - val)       # the slider's top is 'up' = open
 
 
 func _cur_btn_text() -> String:
@@ -949,7 +957,7 @@ func _wx_refresh() -> void:
 		_wx_int_lo.text = _weather.LEVEL_LABELS[m][0]
 		_wx_int_hi.text = _weather.LEVEL_LABELS[m][1]
 		_wx_int.set_value_no_signal(_weather.get_level(m))
-	_wx_cur_slider.set_value_no_signal(_main.curtain_amt)
+	_wx_cur_slider.set_value_no_signal(1.0 - _main.curtain_amt)
 	_wx_cur_btn.text = _cur_btn_text()
 	_wx_traffic_btn.text = "City traffic: MUTED  (click to turn on)" if _weather.traffic_muted else "City traffic: ON  (click to mute)"
 

@@ -65,4 +65,16 @@ static func make() -> Theme:
 	t.set_stylebox("grabber_area_highlight", "HSlider", fill)
 	t.set_icon("grabber", "HSlider", _dot(30, Color(1.0, 0.85, 0.95)))
 	t.set_icon("grabber_highlight", "HSlider", _dot(30, Color(1, 1, 1)))
+	# vertical slider (the curtains): same look, sideways rail
+	var vrail := _box(Color(0.25, 0.10, 0.35), Color(0, 0, 0, 0), 5, 0)
+	vrail.content_margin_left = 5.0
+	vrail.content_margin_right = 5.0
+	var vfill := _box(pink, Color(0, 0, 0, 0), 5, 0)
+	vfill.content_margin_left = 5.0
+	vfill.content_margin_right = 5.0
+	t.set_stylebox("slider", "VSlider", vrail)
+	t.set_stylebox("grabber_area", "VSlider", vfill)
+	t.set_stylebox("grabber_area_highlight", "VSlider", vfill)
+	t.set_icon("grabber", "VSlider", _dot(30, Color(1.0, 0.85, 0.95)))
+	t.set_icon("grabber_highlight", "VSlider", _dot(30, Color(1, 1, 1)))
 	return t

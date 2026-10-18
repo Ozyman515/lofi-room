@@ -1012,7 +1012,7 @@ func _process(delta: float) -> void:
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
 			_cancel_leave()          # walked away or waited too long: the sign goes
 	if reticle != null:
-		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not game_mode and not _aim_at_playing_tv()
+		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not game_mode and not _aim_at_playing_tv() and not (hover_screen != null and hover_screen.cursor_allowed)
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
 	_update_held_pad(delta)
 	if emu != null:
