@@ -76,6 +76,9 @@ var carts: Dictionary = {}            # id -> {node, name, home (Callable return
 var drawer_node: Node3D               # the nightstand drawer
 var drawer_open := false
 var drawer_busy := false
+var leave_prompt := false             # the "Leave the room?" sign at the door is showing
+var leave_t := 0.0
+var leave_panel: Node3D
 var game_mode := false                # holding a controller: it drives the game and you cannot walk
 var pad_nodes: Array[Node3D] = []     # the controllers lying on the rug
 var held_pad_idx := -1
@@ -997,6 +1000,10 @@ func _aim_at_playing_tv() -> bool:
 
 func _process(delta: float) -> void:
 	pad_hint_t = maxf(0.0, pad_hint_t - delta)
+	if leave_prompt:
+		leave_t -= delta
+		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
+			_cancel_leave()          # walked away or waited too long: the sign goes
 	if reticle != null:
 		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not _aim_at_playing_tv()
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
@@ -1224,6 +1231,67 @@ func _build_door() -> void:
 	_box(Vector3(x + 0.36, 1.0, fz - 0.05), Vector3(0.05, 0.16, 0.012), brass)    # handle plate
 	_sphere(Vector3(x + 0.36, 1.0, fz - 0.065), 0.032, brass)
 	_box(Vector3(x, 0.008, fz - 0.025), Vector3(0.92, 0.012, 0.04), _mat(WARM, 0.5, 2.0))  # light under the door
+	# pointing at the door offers to leave; a small "Are you sure?" sign then asks before the game closes
+	var slab := _box(Vector3(x, 1.05, fz - 0.02), Vector3(0.94, 2.1, 0.04), wood)
+	slab.visible = false
+	interactables.append({"node": slab, "half": Vector3(0.47, 1.05, 0.06), "when": func() -> bool: return not leave_prompt,
+		"label": func() -> String: return "LEAVE", "cb": _ask_leave})
+	leave_panel = Node3D.new()
+	leave_panel.position = Vector3(x, 1.5, fz - 0.45)
+	leave_panel.visible = false
+	room.add_child(leave_panel)
+	var sign_m := _mat(Color(0.12, 0.05, 0.16), 0.5)
+	_box(Vector3(0, 0, 0), Vector3(0.72, 0.36, 0.02), sign_m, leave_panel)
+	var tl := Label3D.new()
+	tl.text = "Leave the room?"
+	tl.font_size = 64
+	tl.pixel_size = 0.0007
+	tl.modulate = Color(1.0, 0.9, 0.95)
+	tl.outline_size = 0
+	tl.rotation = Vector3(0, PI, 0)
+	tl.position = Vector3(0, 0.1, -0.012)
+	leave_panel.add_child(tl)
+	# the player faces +z, so their left is +x: STAY on the left, LEAVE on the right
+	var stay_m := _mat(Color(0.20, 0.55, 0.35), 0.5)
+	var leave_m := _mat(Color(0.75, 0.22, 0.30), 0.5)
+	var stay_b := _box(Vector3(0.17, -0.07, -0.01), Vector3(0.28, 0.12, 0.02), stay_m, leave_panel)
+	var leave_b := _box(Vector3(-0.17, -0.07, -0.01), Vector3(0.28, 0.12, 0.02), leave_m, leave_panel)
+	for lb in [[stay_b, "STAY", 0.17], [leave_b, "LEAVE", -0.17]]:
+		var l := Label3D.new()
+		l.text = lb[1]
+		l.font_size = 48
+		l.pixel_size = 0.0007
+		l.modulate = Color(1, 1, 1)
+		l.outline_size = 0
+		l.rotation = Vector3(0, PI, 0)
+		l.position = Vector3(float(lb[2]), -0.07, -0.024)
+		leave_panel.add_child(l)
+	interactables.append({"node": stay_b, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
+		"label": func() -> String: return "STAY", "cb": _cancel_leave})
+	interactables.append({"node": leave_b, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
+		"label": func() -> String: return "YES, LEAVE", "cb": _do_leave})
+
+
+func _ask_leave() -> void:
+	if egg_active:
+		return
+	leave_prompt = true
+	leave_t = 15.0
+	leave_panel.visible = true
+
+
+func _cancel_leave() -> void:
+	leave_prompt = false
+	leave_panel.visible = false
+
+
+func _do_leave() -> void:
+	leave_prompt = false
+	leave_panel.visible = false
+	if emu != null:
+		emu._stop_host()                      # the running game saves its place first
+	_save_prefs_tick()
+	get_tree().quit()
 
 
 # ---------------------------------------------------------------- sitting (chair + beanbag)
@@ -2902,6 +2970,8 @@ func _update_pointer(delta: float) -> void:
 				sc_pos = h["pos"]
 				it_hit = {}
 		for it in interactables:
+			if it.has("when") and not bool((it["when"] as Callable).call()):
+				continue
 			var t := _ray_box(o, d, it["node"], it["half"])
 			if t >= 0.0 and t < best:
 				best = t
