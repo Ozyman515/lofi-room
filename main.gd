@@ -170,6 +170,9 @@ func _ready() -> void:
 	updater = Updater.new()
 	updater.name = "Updater"
 	add_child(updater)
+	updater.changed.connect(func() -> void:
+		if updater.state == "done":
+			updated_this_session = true)
 	room = Node3D.new()
 	room.name = "Room"
 	add_child(room)
@@ -336,6 +339,7 @@ func _build_window() -> void:
 
 const BedModel := preload("res://bed_model.gd")
 const BED_POS := Vector3(-1.65, 0.0, -0.9)
+var updated_this_session := false      # an update was installed and the player has not napped yet: the easter egg stays locked
 var bed_made := true                   # false after sleeping: the next morning the bed is a mess
 var bed_node: Node3D
 
@@ -1152,7 +1156,10 @@ func _konami_feed(sym: String) -> bool:
 		if konami_progress >= KONAMI.size():
 			konami_progress = 0
 			konami_t = 0.0
-			egg.start()
+			if updated_this_session:                  # the running room is out of date until you nap: the egg stays locked
+				updater.show_toast("Something feels off after that update... take a nap in the bed first.", 6.0)
+			else:
+				egg.start()
 		return true
 	konami_progress = 1 if sym == "U" else 0
 	konami_t = 2.5 if konami_progress > 0 else 0.0
@@ -1316,7 +1323,7 @@ func _bed_sleep_spot() -> void:
 	# ... and the make-the-bed prompt down by the foot, only while the bed is a mess
 	var foot := _box(Vector3(-1.65, 0.63, -0.45), Vector3(1.5, 0.16, 0.9), _mat(Color.WHITE), null)
 	foot.visible = false
-	interactables.append({"node": foot, "half": Vector3(0.75, 0.08, 0.45), "egg_lock": true,
+	interactables.append({"node": foot, "half": Vector3(0.75, 0.08, 0.45),         # never locked, not even during the easter egg
 		"when": func() -> bool: return not bed_made and not sleeping,
 		"label": "If you want to change the world,\nstart off by making your bed, bud.", "cb": _make_bed})
 
@@ -1980,7 +1987,7 @@ func _on_emu_screen(t: Texture2D) -> void:
 	if tv_mat != null and slot_cart != "egg":
 		tv_mat.set_shader_parameter("console_tex", t)
 		_console_fit(t)
-	if arcade_mat != null:
+	if arcade_mat != null and not egg_active:
 		arcade_mat.set_shader_parameter("console_tex", t)
 
 

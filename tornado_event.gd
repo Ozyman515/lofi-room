@@ -4,6 +4,7 @@ extends Node3D
 ## emergency alert and the whole street panics (honks, sirens, screams). Then everything goes back to how it was.
 
 const VCR := preload("res://vcr.gd")
+const GifPlayer := preload("res://gif_player.gd")
 
 const DURATION := 30.0
 const Z := -22.0                  # the tornado is in front of the city, behind the window
@@ -66,6 +67,10 @@ var _rumble_pl: AudioStreamPlayer
 var _horn_t := 0.0
 var _scream_t := 0.0
 var _siren_t := 0.0
+var _arc_gif: Node                    # decodes media/sharknado.gif for the arcade monitor
+var _arc_on := false
+var _arc_t := 0.0
+var _arc_i := 0
 
 
 func setup(m: Node3D) -> void:
@@ -77,6 +82,9 @@ func setup(m: Node3D) -> void:
 	_build_items()
 	_build_alerts()
 	_build_players()
+	_arc_gif = GifPlayer.new()
+	add_child(_arc_gif)
+	_arc_gif.setup(ShaderMaterial.new(), "res://media/sharknado", "console")      # a throw-away material: only the decoded frames are used
 	_thread = Thread.new()
 	_thread.start(_generate_audio)         # the sounds are made in the background so the game never hitches
 
@@ -892,6 +900,7 @@ func start() -> void:
 	_tone_pl.stream = _bank["tone_long"]
 	_tone_pl.play()
 	_rumble_pl.play()
+	_arcade_show(true)
 	visible = true
 
 
@@ -911,6 +920,7 @@ func _finish() -> void:
 	if not _weather_back:
 		weather.end_event()
 	main.egg_active = false
+	_arcade_show(false)
 	main.pc.set_alert_lock(false)
 	if not _was_monitor_on:
 		main._set_monitor(false)
@@ -925,9 +935,46 @@ func _finish() -> void:
 		main.vcr._tv_paused = false
 
 
+# The arcade monitor plays a looping sharknado picture while the event runs.
+func _arcade_show(on: bool) -> void:
+	_arc_on = false
+	if not on:
+		return                                # main._apply_console() puts the arcade screen back
+	if main.arcade_mat == null or _arc_gif == null or _arc_gif.frames.is_empty():
+		return
+	_arc_on = true
+	_arc_i = 0
+	_arc_t = 0.0
+	var m: ShaderMaterial = main.arcade_mat
+	m.set_shader_parameter("console_tex", _arc_gif.frames[0])
+	m.set_shader_parameter("console_aspect", 1.3333)
+	m.set_shader_parameter("console_contain", false)
+	m.set_shader_parameter("console_file", true)
+	m.set_shader_parameter("use_console", true)
+	m.set_shader_parameter("tv_power", 1.0)
+	main.arcade_light.light_energy = 0.7
+
+
+func _arcade_step(delta: float) -> void:
+	var fr: Array = _arc_gif.frames
+	var dl: Array = _arc_gif.delays
+	if fr.size() < 2:
+		return
+	_arc_t += delta
+	var moved := false
+	while _arc_t >= float(dl[_arc_i]):
+		_arc_t -= float(dl[_arc_i])
+		_arc_i = (_arc_i + 1) % fr.size()
+		moved = true
+	if moved:
+		(main.arcade_mat as ShaderMaterial).set_shader_parameter("console_tex", fr[_arc_i])
+
+
 func _process(delta: float) -> void:
 	if not active:
 		return
+	if _arc_on:
+		_arcade_step(delta)
 	_t += delta
 	_clock += delta
 	# the tornado crosses the window from right to left
