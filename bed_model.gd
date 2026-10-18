@@ -164,24 +164,80 @@ static func _covers(root: Node3D, state: String, top_y: float, m_len: float, m_z
 		# the top sheet folded back over it, with a soft rounded fold
 		_rbox(root, Vector3(0, top + 0.012, z0 - 0.09), Vector3(m_wid + 0.15, 0.11, 0.30), cuff, 0.05, 12)
 		return
-	# unmade: covers dragged crooked and half off, crumpled, with the sheet showing
-	var body := _rbox(root, Vector3(0.10, top_y + 0.04, 0.32), Vector3(1.52, 0.09, 1.30), cloth, 0.04, 30, 0.045, 2.4, 3)
-	body.rotation.y = -0.14
-	# a heavy drape falling off the left side near the foot
-	var drape := _rbox(root, Vector3(-m_wid * 0.5 - 0.06, top_y - 0.17, 0.30), Vector3(0.05, 0.42, 1.05), cloth, 0.02, 30, 0.06, 4.0, 5)
-	drape.rotation.z = 0.16
-	# and the foot end hanging down unevenly
-	var fdrape := _rbox(root, Vector3(0.25, top_y - 0.17, foot_z + 0.06), Vector3(0.95, 0.40, 0.05), cloth, 0.02, 30, 0.05, 4.0, 9)
-	fdrape.rotation.x = -0.12
-	# bunched up roll across the foot
-	var roll := _rbox(root, Vector3(-0.05, top_y + 0.085, foot_z - 0.20), Vector3(1.20, 0.13, 0.26), cloth, 0.06, 24, 0.05, 3.4, 8)
-	roll.rotation.y = 0.18
-	# a rumpled hump toward the head where it got kicked
-	var hump := _rbox(root, Vector3(-0.38, top_y + 0.07, -0.20), Vector3(0.62, 0.14, 0.50), cloth, 0.06, 20, 0.05, 3.2, 11)
-	hump.rotation.y = 0.5
-	# the folded top sheet pulled out and twisted on the right
-	var tw := _rbox(root, Vector3(0.50, top_y + 0.035, -0.28), Vector3(0.70, 0.07, 0.36), cuff, 0.03, 16, 0.025, 4.0, 13)
-	tw.rotation.y = -0.45
+	# unmade: one crumpled duvet bunched up on the left half, a corner flopped over the side,
+	# the rest of the mattress left bare
+	var drape_m := _fabric_mat(DUVET, 0.96)
+	drape_m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_drape(root, top_y, drape_m, 4)
+
+
+# One continuous cloth lying on the mattress and falling over its left edge. Every cross-section
+# starts flat on the mattress (so nothing floats), is wrinkled by noise and folds, and the cloth
+# is pinned to the mattress along its inner edge and at both ends.
+static func _drape(root: Node3D, top_y: float, mat: Material, seed: int) -> MeshInstance3D:
+	var nz := FastNoiseLite.new()
+	nz.seed = seed
+	nz.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	nz.frequency = 1.0
+	var n_top := 44
+	var n_drop := 18
+	var n_v := 64
+	var m := n_top + 1 + n_drop
+	var z0 := -0.12
+	var z1 := 0.98
+	var x_in := 0.46
+	var x_edge := -0.80
+	# fall of the cloth over the edge and the rail: (x, y relative to the mattress top)
+	var tbl := [Vector2(-0.808, -0.012), Vector2(-0.826, -0.06), Vector2(-0.832, -0.15), Vector2(-0.838, -0.25), Vector2(-0.852, -0.30), Vector2(-0.866, -0.35), Vector2(-0.89, -0.41)]
+	var folds := [[-0.12, 0.42, 0.26, 0.24], [0.10, 0.70, 0.20, 0.17], [-0.50, 0.18, 0.18, 0.14], [-0.28, 0.88, 0.22, 0.12], [0.24, 0.30, 0.15, 0.10], [-0.05, 0.12, 0.14, 0.09], [-0.58, 0.60, 0.16, 0.10]]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in n_v:
+		var tv := float(j) / (n_v - 1)
+		var zr := lerpf(z0, z1, tv)
+		var e := smoothstep(0.0, 0.26, tv) * (1.0 - smoothstep(0.74, 1.0, tv))
+		var drop := clampf(e * (0.45 + 0.7 * (nz.get_noise_2d(zr * 2.6, 5.0) * 0.5 + 0.5)), 0.0, 1.0)
+		var xi := x_in - 0.30 * (nz.get_noise_2d(zr * 1.7, 3.0) * 0.5 + 0.5)
+		var bulge := 0.035 * (nz.get_noise_2d(zr * 5.0, 9.0) * 0.5 + 0.5)
+		for i in n_top + 1:
+			var u := float(i) / n_top
+			var x := lerpf(xi, x_edge, u)
+			var z := lerpf(z0 + 0.26 * (nz.get_noise_2d(x * 2.2, 1.0) * 0.5 + 0.5), z1 - 0.14 * (nz.get_noise_2d(x * 2.2, 7.0) * 0.5 + 0.5), tv)
+			var w: float = 0.0
+			for f in folds:
+				var d2: float = (x - float(f[0])) * (x - float(f[0])) + (z - float(f[1])) * (z - float(f[1]))
+				w += float(f[3]) * exp(-d2 / (float(f[2]) * float(f[2])))
+			var n1 := nz.get_noise_2d(x * 2.4, z * 2.4)
+			w += pow(1.0 - absf(n1), 2.0) * 0.05
+			w += (nz.get_noise_2d(x * 5.0 + 20.0, z * 5.0) * 0.5 + 0.5) * 0.012
+			w *= smoothstep(0.0, 0.40, u) * clampf(e + 0.0, 0.0, 1.0)
+			w *= 1.0 - 0.7 * smoothstep(0.85, 1.0, u)
+			st.set_uv(Vector2(x, z))
+			st.add_vertex(Vector3(x, top_y + 0.005 + w, z))
+		for k in range(1, n_drop + 1):
+			var pos := float(k) / n_drop * (tbl.size() - 1)
+			var a := int(floor(pos))
+			var b := mini(a + 1, tbl.size() - 1)
+			var pt: Vector2 = (tbl[a] as Vector2).lerp(tbl[b] as Vector2, pos - a)
+			var xx := x_edge + (pt.x - x_edge) * drop - bulge * drop * (float(k) / n_drop) - 0.01 * nz.get_noise_2d(zr * 7.0, k * 0.7) * drop
+			var yy := top_y + 0.005 + pt.y * drop
+			st.set_uv(Vector2(xx, zr))
+			st.add_vertex(Vector3(xx, maxf(yy, 0.06), lerpf(z0 + 0.26 * (nz.get_noise_2d(x_edge * 2.2, 1.0) * 0.5 + 0.5), z1 - 0.14 * (nz.get_noise_2d(x_edge * 2.2, 7.0) * 0.5 + 0.5), tv)))
+	for j in n_v - 1:
+		for i in m - 1:
+			var a := j * m + i
+			st.add_index(a)
+			st.add_index(a + m)
+			st.add_index(a + 1)
+			st.add_index(a + 1)
+			st.add_index(a + m)
+			st.add_index(a + m + 1)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	root.add_child(mi)
+	return mi
 
 
 static func _fabric_mat(c: Color, rough: float) -> StandardMaterial3D:
