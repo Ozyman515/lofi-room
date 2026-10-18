@@ -122,15 +122,24 @@ func install() -> void:
 	var staged: Array = []
 	for path in _todo.duplicate():
 		var dest: String = _stage_dir.path_join(path.replace("/", "__"))
-		_http.download_file = dest
-		var err := _http.request(base + path.uri_encode().replace("%2F", "/"))
-		if err != OK:
-			return _fail("Download failed: " + path)
-		var res: Array = await _http.request_completed
-		if int(res[0]) != HTTPRequest.RESULT_SUCCESS or int(res[1]) != 200:
-			return _fail("Download failed: " + path)
-		if FileAccess.get_sha256(dest) != str(_manifest[path]["sha"]):
-			return _fail("A downloaded file did not check out: " + path)
+		var url := base + path.uri_encode().replace("%2F", "/")
+		var want := str(_manifest[path]["sha"])
+		var ok := false
+		for attempt in 2:
+			# the web cache can hand out an older copy for a few minutes, so ask for this exact file version
+			var q := "?h=" + want.substr(0, 12) + ("" if attempt == 0 else "&t=%d" % Time.get_ticks_msec())
+			_http.download_file = dest
+			var err := _http.request(url + q)
+			if err != OK:
+				return _fail("Download failed: " + path)
+			var res: Array = await _http.request_completed
+			if int(res[0]) != HTTPRequest.RESULT_SUCCESS or int(res[1]) != 200:
+				return _fail("Download failed: " + path)
+			if FileAccess.get_sha256(dest) == want:
+				ok = true
+				break
+		if not ok:
+			return _fail("A downloaded file did not check out: " + path + " (the web cache may be behind - try again in a few minutes)")
 		staged.append(path)
 		_state("downloading", "Downloading %d / %d ..." % [staged.size(), _total])
 	_http.download_file = ""
