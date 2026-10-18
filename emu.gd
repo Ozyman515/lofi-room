@@ -368,6 +368,8 @@ func _launch(rom_file: String) -> void:
 	if port == 0:
 		return _fail("Could not open a local port.")
 	var state_path := saves.path_join(rom_file + ".state") if resume_games else ""
+	if win and system == "neo":
+		rom = rom.replace("/", "\\")          # FBNeo finds the game folder by looking for a backslash on Windows
 	_pid = OS.create_process(host, [str(port), core, rom, saves, base.path_join("cores"), carts_dir().path_join("emulator.log"), state_path, "1" if resume_games else "0"])
 	if _pid <= 0:
 		_server.stop()
