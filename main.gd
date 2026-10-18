@@ -1099,6 +1099,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_toggle_sit()
 		elif event.keycode == KEY_V:
 			_cycle_view()
+		elif event.keycode == KEY_M:
+			if game_mode and emu != null:
+				emu.to_menu()          # back to the game list without taking the cart out
 		elif event.keycode == KEY_Q:
 			if not egg_active and not game_mode:
 				vcr.cycle_aspect()
@@ -2938,6 +2941,8 @@ func _update_pointer(delta: float) -> void:
 		hint_label.visible = true
 	elif game_mode and pad_hint_t > 0.0:
 		hint_label.text = "CONTROLLER:  %s  =  PUT IT DOWN" % ("GRIP" if xr_active else "E")
+		if emu != null and emu.state != Emu.State.MENU:
+			hint_label.text += "\n" + ("HOLD START + SELECT  =  GAME LIST" if xr_active else "M  =  GAME LIST")
 		hint_label.scale = Vector3.ONE * 0.45
 		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.3, 0.0)
 		hint_label.visible = true

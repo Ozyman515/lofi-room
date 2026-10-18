@@ -11,5 +11,5 @@ Put your own game files here, one folder per console:
 
 Battery saves are written to the saves folder next to roms.
 In the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.
-Hold START + SELECT for a second to go back to the game list.
+Hold START + SELECT for a second (or press M on the desktop) to go back to the game list.
 If something does not start, look at emulator.log in this folder.

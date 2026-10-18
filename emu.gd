@@ -283,6 +283,13 @@ func is_running() -> bool:
 	return state == State.RUNNING
 
 
+# back to the game list (the same as holding START + SELECT); the game saves its place first
+func to_menu() -> void:
+	if state == State.RUNNING or state == State.STARTING or state == State.ERROR:
+		_stop_host()
+		_enter_idle_or_menu()
+
+
 func uses_texture() -> bool:
 	return system != ""
 
@@ -466,7 +473,7 @@ func _process_running(delta: float) -> void:
 	# hold START + SELECT: back to the game list
 	if pad_held and (_prev_mask & (B_START | B_SELECT)) == (B_START | B_SELECT):
 		_combo_t += delta
-		if _combo_t > 1.0:
+		if _combo_t > 0.7:
 			_combo_t = 0.0
 			_stop_host()
 			_enter_idle_or_menu()
