@@ -338,6 +338,8 @@ func _build_window() -> void:
 # ---------------------------------------------------------------- bed
 
 const BedModel := preload("res://bed_model.gd")
+const Incense := preload("res://incense.gd")
+var incense: Node3D
 const BED_POS := Vector3(-1.65, 0.0, -0.9)
 var updated_this_session := false      # an update was installed and the player has not napped yet: the easter egg stays locked
 var bed_made := true                   # false after sleeping: the next morning the bed is a mess
@@ -3001,6 +3003,8 @@ func _build_dresser() -> void:
 		_box(Vector3(-3.335, dy, -1.2), Vector3(0.01, 0.17, 0.96), inset)
 		_sphere(Vector3(-3.325, dy, -1.2), 0.016, brass, Vector3.ONE, null, 8)
 	_plant(Vector3(-3.6, 0.76, -1.45), 0.6)
+	incense = Incense.new()
+	incense.setup(self, Vector3(-3.6, 0.76, -0.95))      # a stick of incense on the dresser, under the speakers
 
 
 # ---------------------------------------------------------------- power: outlets, strips, cords
