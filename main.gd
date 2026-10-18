@@ -334,6 +334,7 @@ func _build_window() -> void:
 # ---------------------------------------------------------------- bed
 
 func _build_bed() -> void:
+	_bed_sleep_spot()
 	# if you drop a bed model at BED_ASSET it replaces the built-in bed (auto-scaled to fit)
 	if _try_asset(BED_ASSET, Vector3(-1.65, 0.0, -0.9), Vector2(1.68, 2.12), BED_EXTRA_YAW):
 		_build_nightstand()
@@ -1292,6 +1293,124 @@ func _do_leave() -> void:
 		emu._stop_host()                      # the running game saves its place first
 	_save_prefs_tick()
 	get_tree().quit()
+
+
+# ---------------------------------------------------------------- sleep: the bed installs a waiting update and wakes you in the new room
+
+var sleeping := false
+var dry_relaunch := false             # tests: print the restart command instead of running it
+var relaunch_extra := PackedStringArray()   # tests: extra start-up flags for the new copy
+var _sleep_veil: MeshInstance3D
+var _sleep_mat: StandardMaterial3D
+var _sleep_text: Label3D
+
+
+func _bed_sleep_spot() -> void:
+	var slab := _box(Vector3(-1.65, 0.64, -0.55), Vector3(1.5, 0.16, 1.5), _mat(Color.WHITE), null)
+	slab.visible = false
+	interactables.append({"node": slab, "half": Vector3(0.75, 0.08, 0.75), "egg_lock": true,
+		"when": func() -> bool: return not sleeping and updater != null and (updater.state == "available" or updater.state == "done"),
+		"label": _sleep_label, "cb": _go_to_sleep})
+
+
+func _sleep_label() -> String:
+	if updater.state == "available":
+		return "SLEEP  (installs update %d, you wake up in the new room)" % updater.remote_version
+	return "SLEEP  (wake up in the updated room)"
+
+
+func _make_sleep_veil() -> void:
+	if _sleep_veil != null and is_instance_valid(_sleep_veil):
+		_sleep_veil.queue_free()
+	var sm := SphereMesh.new()
+	sm.radius = 0.4
+	sm.height = 0.8
+	_sleep_mat = StandardMaterial3D.new()
+	_sleep_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_sleep_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_sleep_mat.cull_mode = BaseMaterial3D.CULL_FRONT          # we see the inside of the ball around the head
+	_sleep_mat.no_depth_test = true
+	_sleep_mat.render_priority = 100
+	_sleep_mat.albedo_color = Color(0.02, 0.0, 0.06, 0.0)
+	_sleep_veil = MeshInstance3D.new()
+	_sleep_veil.mesh = sm
+	_sleep_veil.material_override = _sleep_mat
+	_sleep_veil.extra_cull_margin = 16.0
+	head.add_child(_sleep_veil)
+	_sleep_text = Label3D.new()
+	_sleep_text.text = "Sleeping..."
+	_sleep_text.font_size = 48
+	_sleep_text.pixel_size = 0.0008
+	_sleep_text.no_depth_test = true
+	_sleep_text.render_priority = 101
+	_sleep_text.modulate = Color(0.95, 0.85, 1.0, 0.0)
+	_sleep_text.position = Vector3(0, 0, -0.3)
+	_sleep_veil.add_child(_sleep_text)
+
+
+func _fade_veil(to: float, secs: float) -> void:
+	var tw := create_tween()
+	tw.tween_method(func(a: float) -> void:
+		_sleep_mat.albedo_color.a = a
+		_sleep_text.modulate.a = a, _sleep_mat.albedo_color.a, to, secs)
+	await tw.finished
+
+
+func _go_to_sleep() -> void:
+	if sleeping or egg_active or updater == null:
+		return
+	if updater.state != "available" and updater.state != "done":
+		return
+	sleeping = true
+	_make_sleep_veil()
+	await _fade_veil(1.0, 1.4)
+	if updater.state == "available":
+		updater.install()
+		while updater.busy():
+			await updater.changed
+	if updater.state != "done":
+		_sleep_text.text = "Could not install the update"
+		await get_tree().create_timer(1.6).timeout
+		await _fade_veil(0.0, 1.0)
+		sleeping = false
+		updater.show_toast(updater.message if updater.state == "error" else "There was nothing to install.")
+		return
+	_sleep_text.text = "Waking up in the new room..."
+	if emu != null:
+		emu._stop_host()                      # the running game saves its place first
+	_save_prefs_tick()
+	await get_tree().create_timer(0.9).timeout
+	if not _relaunch():
+		_sleep_text.text = "Could not restart the room"
+		await get_tree().create_timer(1.6).timeout
+		await _fade_veil(0.0, 1.0)
+		sleeping = false
+		updater.show_toast("The update is installed. Close the room and open it again to use it.")
+
+
+# Starts a fresh copy of the room (same display / VR options) and closes this one.
+func _relaunch() -> bool:
+	var args := PackedStringArray()
+	if FileAccess.file_exists("res://project.godot"):
+		args.append_array(["--path", ProjectSettings.globalize_path("res://")])
+	var drv := ""
+	if RenderingServer.has_method("get_current_rendering_driver_name"):          # newer Godot versions only
+		drv = str(RenderingServer.call("get_current_rendering_driver_name"))
+	if drv != "":
+		args.append_array(["--rendering-driver", drv])                # the same graphics driver this run is using (Godot hides its own start-up flags from scripts)
+	var wm := DisplayServer.window_get_mode()
+	if wm == DisplayServer.WINDOW_MODE_FULLSCREEN or wm == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		args.append("--fullscreen")
+	args.append_array(relaunch_extra)
+	if dry_relaunch:
+		print("RELAUNCH ", OS.get_executable_path(), " ", args)
+		return false
+	var pid := OS.create_process(OS.get_executable_path(), args)
+	if pid <= 0:
+		return false
+	print("RELAUNCH pid ", pid)
+	get_tree().quit()
+	return true
 
 
 # ---------------------------------------------------------------- sitting (chair + beanbag)
