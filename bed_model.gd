@@ -88,8 +88,7 @@ static func build(parent: Node3D, pos: Vector3 = Vector3.ZERO) -> Node3D:
 	var top_y := m_y + m_h * 0.5
 	var pz := m_z - m_len * 0.5 + 0.30
 	for sx in [-1.0, 1.0]:
-		var p := _rbox(root, Vector3(sx * 0.415, top_y + 0.095, pz), Vector3(0.70, 0.15, 0.48), pillow, 0.06, 12)
-		p.rotation = Vector3(-0.22, -sx * 0.05, sx * 0.02)
+		_rbox(root, Vector3(sx * 0.415, top_y + 0.055, pz), Vector3(0.70, 0.15, 0.48), pillow, 0.06, 12)
 	return root
 
 
