@@ -11,9 +11,12 @@ const WOOD := Color(0.66, 0.43, 0.24)
 const COVER := Color(0.74, 0.71, 0.65)
 const PILLOW := Color(0.30, 0.31, 0.34)
 const SHEET := Color(0.36, 0.37, 0.40)
+const DUVET := Color(0.27, 0.33, 0.43)       # dusty blue duvet
+const CUFF := Color(0.84, 0.82, 0.77)        # folded-back top sheet
 
 
-static func build(parent: Node3D, pos: Vector3 = Vector3.ZERO) -> Node3D:
+# state: "made" (neat covers), "unmade" (rumpled covers) or "bare" (just the mattress)
+static func build(parent: Node3D, pos: Vector3 = Vector3.ZERO, state: String = "made") -> Node3D:
 	var root := Node3D.new()
 	root.name = "Bed"
 	root.position = pos
@@ -84,11 +87,15 @@ static func build(parent: Node3D, pos: Vector3 = Vector3.ZERO) -> Node3D:
 	# the cover is laid over it again past the pillow line so the sheet reads as a folded edge
 	_rbox(root, Vector3(0, m_y + m_h * 0.5 - 0.012, m_z - m_len * 0.5 + s_len + 0.012), Vector3(m_wid + 0.004, 0.028, 0.05), cover, 0.012, 6)
 
-	# --- pillows, leaning on the headboard
+	# --- pillows
 	var top_y := m_y + m_h * 0.5
-	var pz := m_z - m_len * 0.5 + 0.30
+	var pz := m_z - m_len * 0.5 + 0.27
 	for sx in [-1.0, 1.0]:
-		_rbox(root, Vector3(sx * 0.415, top_y + 0.055, pz), Vector3(0.70, 0.15, 0.48), pillow, 0.06, 12)
+		var pl := _rbox(root, Vector3(sx * 0.415, top_y + 0.055, pz), Vector3(0.70, 0.15, 0.48), pillow, 0.06, 12)
+		if state == "unmade":
+			pl.position += Vector3(-sx * 0.05 + (0.03 if sx > 0.0 else -0.02), 0.0, 0.03 if sx < 0.0 else -0.02)
+			pl.rotation.y = 0.32 * sx
+	_covers(root, state, top_y, m_len, m_z, m_wid, rail_top)
 	return root
 
 
@@ -118,17 +125,17 @@ static func _wood_mat() -> StandardMaterial3D:
 	return m
 
 
-static func _quilt_mat() -> StandardMaterial3D:
+static func _quilt_mat(base: Color = COVER) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	var s := 128
 	var img := Image.create(s, s, false, Image.FORMAT_RGB8)
-	img.fill(COVER)
+	img.fill(base)
 	for i in s:
 		for k in [0, 1]:
 			# thin stitched lines on a grid, a little darker with a soft shadow beside them
 			for w in range(-1, 3):
 				var a: float = 0.0 if w == 0 or w == 1 else 0.5
-				var col := COVER.darkened(0.20 if a == 0.0 else 0.08)
+				var col := base.darkened(0.20 if a == 0.0 else 0.08)
 				var px := clampi(k * (s / 2) + w + 1, 0, s - 1)
 				img.set_pixel(px, i, col)
 				img.set_pixel(i, px, col)
@@ -138,6 +145,43 @@ static func _quilt_mat() -> StandardMaterial3D:
 	m.uv1_scale = Vector3(7, 7, 1)
 	m.roughness = 0.97
 	return m
+
+
+static func _covers(root: Node3D, state: String, top_y: float, m_len: float, m_z: float, m_wid: float, rail_top: float) -> void:
+	if state == "bare":
+		return
+	var duvet := _quilt_mat(DUVET)
+	var cuff := _fabric_mat(CUFF, 0.95)
+	var cloth := _fabric_mat(DUVET, 0.96)
+	var foot_z := m_z + m_len * 0.5
+	if state == "made":
+		# duvet pulled straight up to the pillow line, hanging evenly over both sides and the foot
+		var z0 := -0.20
+		var z1 := foot_z + 0.10
+		var bottom := rail_top - 0.16
+		var top := top_y + 0.045
+		_rbox(root, Vector3(0, (top + bottom) * 0.5, (z0 + z1) * 0.5), Vector3(m_wid + 0.14, top - bottom, z1 - z0), duvet, 0.04, 12)
+		# the top sheet folded back over it, with a soft rounded fold
+		_rbox(root, Vector3(0, top + 0.012, z0 - 0.09), Vector3(m_wid + 0.15, 0.11, 0.30), cuff, 0.05, 12)
+		return
+	# unmade: covers dragged crooked and half off, crumpled, with the sheet showing
+	var body := _rbox(root, Vector3(0.10, top_y + 0.04, 0.32), Vector3(1.52, 0.09, 1.30), cloth, 0.04, 30, 0.045, 2.4, 3)
+	body.rotation.y = -0.14
+	# a heavy drape falling off the left side near the foot
+	var drape := _rbox(root, Vector3(-m_wid * 0.5 - 0.06, top_y - 0.17, 0.30), Vector3(0.05, 0.42, 1.05), cloth, 0.02, 30, 0.06, 4.0, 5)
+	drape.rotation.z = 0.16
+	# and the foot end hanging down unevenly
+	var fdrape := _rbox(root, Vector3(0.25, top_y - 0.17, foot_z + 0.06), Vector3(0.95, 0.40, 0.05), cloth, 0.02, 30, 0.05, 4.0, 9)
+	fdrape.rotation.x = -0.12
+	# bunched up roll across the foot
+	var roll := _rbox(root, Vector3(-0.05, top_y + 0.085, foot_z - 0.20), Vector3(1.20, 0.13, 0.26), cloth, 0.06, 24, 0.05, 3.4, 8)
+	roll.rotation.y = 0.18
+	# a rumpled hump toward the head where it got kicked
+	var hump := _rbox(root, Vector3(-0.38, top_y + 0.07, -0.20), Vector3(0.62, 0.14, 0.50), cloth, 0.06, 20, 0.05, 3.2, 11)
+	hump.rotation.y = 0.5
+	# the folded top sheet pulled out and twisted on the right
+	var tw := _rbox(root, Vector3(0.50, top_y + 0.035, -0.28), Vector3(0.70, 0.07, 0.36), cuff, 0.03, 16, 0.025, 4.0, 13)
+	tw.rotation.y = -0.45
 
 
 static func _fabric_mat(c: Color, rough: float) -> StandardMaterial3D:
@@ -150,22 +194,25 @@ static func _fabric_mat(c: Color, rough: float) -> StandardMaterial3D:
 # ---------------------------------------------------------------- geometry
 
 # Rounded box. UVs are in metres/scale on the dominant axis plane, with u along the longer side.
-static func _rbox(parent: Node3D, pos: Vector3, size: Vector3, mat: Material, radius: float = 0.0, seg: int = 4) -> MeshInstance3D:
+static func _rbox(parent: Node3D, pos: Vector3, size: Vector3, mat: Material, radius: float = 0.0, seg: int = 4, amp: float = 0.0, freq: float = 3.0, seed: int = 1) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	mi.mesh = _rbox_mesh(size, radius, seg)
+	mi.mesh = _rbox_mesh(size, radius, seg, amp, freq, seed)
 	mi.material_override = mat
 	mi.position = pos
 	parent.add_child(mi)
 	return mi
 
 
-static func _rbox_mesh(size: Vector3, radius: float, seg: int) -> ArrayMesh:
+static func _rbox_mesh(size: Vector3, radius: float, seg: int, amp: float = 0.0, freq: float = 3.0, seed: int = 1) -> ArrayMesh:
 	var h := size * 0.5
 	var r := minf(radius, minf(h.x, minf(h.y, h.z)) * 0.99)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n := maxi(seg, 1) if r > 0.0 else 1
 	var uv_scale := 0.5
+	var nz := FastNoiseLite.new()
+	nz.seed = seed
+	nz.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	for axis in 3:
 		for dirs in [-1.0, 1.0]:
 			var a1 := (axis + 1) % 3
@@ -192,6 +239,8 @@ static func _rbox_mesh(size: Vector3, radius: float, seg: int) -> ArrayMesh:
 						else:
 							nrm = Vector3.ZERO
 							nrm[axis] = dirs
+						if amp > 0.0:
+							full += nrm * nz.get_noise_3d(full.x * freq * 8.0, full.y * freq * 8.0, full.z * freq * 8.0) * amp
 						quad.append(full)
 						norms.append(nrm)
 						# planar uv on the two remaining axes, u along the longer one
@@ -210,9 +259,13 @@ static func _rbox_mesh(size: Vector3, radius: float, seg: int) -> ArrayMesh:
 					else:
 						order = [0, 2, 1, 0, 3, 2]
 					for k in order:
-						st.set_normal(norms[k])
-						st.set_uv(uvs[k])
+						if amp <= 0.0:
+							st.set_normal(norms[k])
+							st.set_uv(uvs[k])
 						st.add_vertex(quad[k])
+	if amp > 0.0:
+		st.index()
+		st.generate_normals()
 	return st.commit()
 
 
