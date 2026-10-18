@@ -9,10 +9,12 @@ signal screen_changed(tex: Texture2D)
 
 enum State { IDLE, MENU, STARTING, RUNNING, ERROR }
 
+const NEO_BIOS := ["neogeo.zip", "aes.zip", "neocdz.zip", "neocd.zip", "irrmaze.zip"]   # system files, not games
 const SYSTEMS := {
 	"nes": {"title": "NES", "core": "fceumm_libretro", "ext": ["nes", "fds", "unf", "unif"]},
 	"snes": {"title": "SNES", "core": "snes9x2010_libretro", "ext": ["sfc", "smc", "swc", "fig"]},
 	"sgb": {"title": "SGB", "core": "mgba_libretro", "ext": ["gb", "gbc", "gba", "sgb"]},
+	"neo": {"title": "NEO GEO", "core": "fbneo_neogeo_libretro", "ext": ["zip", "7z"]},
 	"gen": {"title": "GENESIS", "core": "genesis_plus_gx_libretro", "ext": ["md", "gen", "smd", "bin", "sms", "gg", "sg"]},
 }
 # libretro joypad bits
@@ -105,7 +107,7 @@ func _ensure_dirs() -> void:
 	if not FileAccess.file_exists(readme):
 		var f := FileAccess.open(readme, FileAccess.WRITE)
 		if f != null:
-			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
+			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
 
 
 # ---------------------------------------------------------------- the text screen (menu, messages)
@@ -227,7 +229,7 @@ func _scan_roms() -> void:
 	var dir := carts_dir().path_join(system).path_join("roms")
 	var exts: Array = SYSTEMS[system]["ext"]
 	for f in DirAccess.get_files_at(dir):
-		if f.get_extension().to_lower() in exts:
+		if f.get_extension().to_lower() in exts and not (system == "neo" and f.to_lower() in NEO_BIOS):
 			_roms.append(f)
 	_roms.sort_custom(func(a, b): return String(a).naturalnocasecmp_to(String(b)) < 0)
 	_sel = clampi(_sel, 0, maxi(_roms.size() - 1, 0))
@@ -236,7 +238,7 @@ func _scan_roms() -> void:
 
 # ---------------------------------------------------------------- called by the room
 
-# "" = no cart, "nes", "snes", "sgb", "gen". Anything else (the secret cart) is not ours.
+# "" = no cart, "nes", "snes", "sgb", "gen", "neo". Anything else (the secret cart) is not ours.
 func set_system(sys: String) -> void:
 	if sys == system:
 		return

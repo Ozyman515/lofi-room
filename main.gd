@@ -44,6 +44,7 @@ const BLOCKERS := [
 	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),    # CRT TV
 	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
 	Rect2(-2.75, 0.1 + LOUNGE_DZ, 0.4, 0.55),   # game console
+	Rect2(-4.0, 0.35, 1.15, 0.9),   # arcade cabinet
 ]
 
 const WARM := Color(1.0, 0.62, 0.30)
@@ -66,8 +67,11 @@ var cur_seat := -1
 var tv_root: Node3D
 var console_root: Node3D
 var console_on := false
+var cab_root: Node3D                  # the standing arcade cabinet on the left wall
+var arcade_mat: ShaderMaterial
+var arcade_light: OmniLight3D
 var emu: Node                         # NES / SNES games (emu.gd)
-var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen" or "egg" (the secret one)
+var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo" or "egg" (the secret one)
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
 var drawer_node: Node3D               # the nightstand drawer
 var drawer_open := false
@@ -101,6 +105,9 @@ var _stick_dir := ""
 var console_knob: MeshInstance3D
 var console_led_m: StandardMaterial3D
 var tv_mat: ShaderMaterial
+var crt_mats: Array[ShaderMaterial] = []   # every screen that uses the CRT shader (TV, arcade)
+var crt_mode := 1                       # 0 clean picture, 1 old TV, 2 stronger CRT
+const CRT_NAMES := ["CLEAN", "OLD TV", "STRONG CRT"]
 var tv_screen_ui: ScreenUI
 var ctrl_exits: Array[Vector3] = []
 var cord_paths: Array = []
@@ -995,7 +1002,7 @@ func _process(delta: float) -> void:
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
 	_update_held_pad(delta)
 	if emu != null:
-		emu.set_volume(float(vcr.tv_volume) / 10.0 if vcr.tv_on else 0.0)
+		emu.set_volume(float(vcr.tv_volume) / 10.0 if (vcr.tv_on or slot_cart == "neo") else 0.0)
 		if game_mode:
 			_pad_tick(delta)
 			if not xr_active and not Input.get_connected_joypads().is_empty():
@@ -1456,6 +1463,7 @@ func _build_tv() -> void:
 	_place(screen, Vector3(sx, cy, fd / 2.0 + 0.006), sm, root)
 	_attach_media(sm, "res://media/tv")
 	tv_mat = sm
+	crt_mats.append(sm)
 	var tv_ui := ScreenUI.new()
 	tv_ui.position = Vector3(sx, cy, fd / 2.0 + 0.006)
 	root.add_child(tv_ui)
@@ -1472,9 +1480,16 @@ func _build_tv() -> void:
 	interactables.append_array(vcr.buttons)
 	# control panel on the right: knobs, speaker slits
 	var px := w / 2.0 - 0.15
+	var ch_knob_m := _mat(Color(0.78, 0.72, 0.80), 0.4)
 	for ky in [cy + 0.28, cy + 0.12]:
-		var k := _cyl(Vector3(px, ky, fz + 0.012), 0.045, 0.03, knob, root)
+		var is_ch: bool = ky > cy + 0.2
+		var k := _cyl(Vector3(px, ky, fz + 0.012), 0.045, 0.03, ch_knob_m if is_ch else knob, root)
 		k.rotation.x = PI / 2.0
+		if is_ch:
+			_box(Vector3(px, ky + 0.02, fz + 0.03), Vector3(0.006, 0.026, 0.004), _mat(Color(0.15, 0.12, 0.18), 0.6), root)   # pointer mark
+			interactables.append({"node": k, "half": Vector3(0.055, 0.055, 0.05),
+				"label": func() -> String: return "CHANNEL  [%s]" % CRT_NAMES[crt_mode],
+				"cb": func() -> void: set_crt_mode((crt_mode + 1) % 3), "hover": _glow_hover(ch_knob_m)})
 	for i in 8:
 		_box(Vector3(px, cy - 0.05 - i * 0.035, fz), Vector3(0.16, 0.012, 0.01), lip, root)
 	# AV jacks, lower right
@@ -1502,7 +1517,7 @@ func _build_tv() -> void:
 	interactables.append({"node": vu, "half": Vector3(0.04, 0.03, 0.04),
 		"label": _tv_label.bind("vol_up"),
 		"cb": vcr.volume_up, "hover": _glow_hover(vu_m)})
-	for lab in [["PWR", cy + 0.45, 0.0], ["VOL  -  +", cy + 0.035, 0.0]]:
+	for lab in [["PWR", cy + 0.45, 0.0], ["VOL  -  +", cy + 0.035, 0.0], ["CH", cy + 0.34, 0.0]]:
 		var l3 := Label3D.new()
 		l3.text = lab[0]
 		l3.font_size = 28
@@ -1642,6 +1657,7 @@ func _build_console() -> void:
 	emu.name = "Emu"
 	add_child(emu)
 	emu.screen_changed.connect(_on_emu_screen)
+	_build_arcade()
 	_build_carts()
 	_apply_console()
 
@@ -1651,7 +1667,7 @@ func _console_label() -> String:
 
 
 func toggle_console() -> void:
-	if egg_active:
+	if egg_active or slot_cart == "neo":
 		return
 	console_on = not console_on
 	vcr.external_hold = console_on
@@ -1668,8 +1684,14 @@ func toggle_console() -> void:
 func _apply_console() -> void:
 	if tv_mat == null:
 		return
-	tv_mat.set_shader_parameter("use_console", console_on)
-	if ctl_open and (not console_on or slot_cart == "egg"):
+	var arcade_in := slot_cart == "neo"
+	tv_mat.set_shader_parameter("use_console", console_on and not arcade_in)
+	if arcade_mat != null:
+		arcade_mat.set_shader_parameter("console_tex", emu.tex if emu != null else null)
+		arcade_mat.set_shader_parameter("use_console", arcade_in)
+		arcade_mat.set_shader_parameter("tv_power", 1.0 if arcade_in else 0.0)
+		arcade_light.light_energy = 0.7 if arcade_in else 0.0
+	if ctl_open and (not (console_on or arcade_in) or slot_cart == "egg"):
 		_close_controls()
 	var from_emu := slot_cart != "egg"           # the secret cart plays the built-in scene, the others the emulator / its menu
 	tv_mat.set_shader_parameter("console_file", from_emu)
@@ -1679,7 +1701,7 @@ func _apply_console() -> void:
 	else:
 		_console_fit(null)
 	if emu != null:
-		emu.set_power(console_on and vcr.tv_on)
+		emu.set_power(arcade_in or (console_on and vcr.tv_on))
 	if tv_screen_ui != null:
 		tv_screen_ui.enabled = vcr.tv_on and not console_on
 		if console_on:
@@ -1696,6 +1718,8 @@ func _on_emu_screen(t: Texture2D) -> void:
 	if tv_mat != null and slot_cart != "egg":
 		tv_mat.set_shader_parameter("console_tex", t)
 		_console_fit(t)
+	if arcade_mat != null:
+		arcade_mat.set_shader_parameter("console_tex", t)
 
 
 # NES / SNES fill the 4:3 glass; the handheld picture keeps its own shape (black bars at the sides or top).
@@ -1800,12 +1824,222 @@ func _gen_cart_mesh() -> Node3D:
 	return n
 
 
+# ---- the standing arcade cabinet (left wall). Local axes: x = out from the wall, y = up, z = across the front.
+const CAB_POS := Vector3(-3.9, 0.0, 0.8)
+const CAB_W := 0.72
+const CAB_PROFILE := [Vector2(0, 0), Vector2(0.78, 0), Vector2(0.78, 0.82), Vector2(0.99, 0.82), Vector2(0.99, 0.90), Vector2(0.83, 0.90),
+	Vector2(0.83, 0.96), Vector2(0.64, 1.50), Vector2(0.71, 1.53), Vector2(0.71, 1.77), Vector2(0.50, 1.80), Vector2(0.0, 1.40)]
+const CAB_TILT := 0.3384        # the monitor leans back by atan(0.19 / 0.54)
+
+
+# A flat shape (u, y points) pushed out between z0 and z1, drawn from both sides.
+func _extrude_poly(pts: Array, z0: float, z1: float, mat: Material, parent: Node3D) -> MeshInstance3D:
+	var p2 := PackedVector2Array()
+	for p in pts:
+		p2.append(p)
+	var idx := Geometry2D.triangulate_polygon(p2)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for cap in [[z1, Vector3(0, 0, 1)], [z0, Vector3(0, 0, -1)]]:
+		st.set_normal(cap[1])
+		for i in idx:
+			st.add_vertex(Vector3(p2[i].x, p2[i].y, cap[0]))
+	var n := p2.size()
+	for i in n:
+		var a := p2[i]
+		var b := p2[(i + 1) % n]
+		var e := (b - a).normalized()
+		var nrm := Vector3(e.y, -e.x, 0.0)        # outward for a counter-clockwise outline
+		st.set_normal(nrm)
+		for v in [Vector3(a.x, a.y, z0), Vector3(b.x, b.y, z0), Vector3(b.x, b.y, z1), Vector3(a.x, a.y, z0), Vector3(b.x, b.y, z1), Vector3(a.x, a.y, z1)]:
+			st.add_vertex(v)
+	var mesh := st.commit()
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	var cm := mat.duplicate() as BaseMaterial3D
+	cm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mi.material_override = cm
+	parent.add_child(mi)
+	return mi
+
+
+# A box with its own rotation (used for the leaning monitor board, the roof and so on).
+func _rbox(pos: Vector3, size: Vector3, basis: Basis, mat: Material, parent: Node3D) -> MeshInstance3D:
+	var b := _box(pos, size, mat, parent)
+	b.basis = basis
+	return b
+
+
+func _build_arcade() -> void:
+	var root := Node3D.new()
+	root.position = CAB_POS
+	room.add_child(root)
+	cab_root = root
+	var white := _mat(Color(0.88, 0.88, 0.90), 0.45)
+	var green := _mat(Color(0.14, 0.74, 0.30), 0.45)
+	var deck_m := _mat(Color(0.10, 0.16, 0.14), 0.35)
+	var grey := _mat(Color(0.52, 0.54, 0.56), 0.5)
+	var dark := _mat(Color(0.04, 0.04, 0.05), 0.6)
+	var yellow := _mat(Color(0.98, 0.82, 0.15), 0.4, 1.2)
+	var hw := CAB_W / 2.0
+	# the two side panels (the cabinet's silhouette), and a green stripe along the monitor edge on each
+	_extrude_poly(CAB_PROFILE, -hw, -hw + 0.035, white, root)
+	_extrude_poly(CAB_PROFILE, hw - 0.035, hw, white, root)
+	for sz in [-1.0, 1.0]:
+		var zz: float = sz * hw
+		_extrude_poly([Vector2(0.86, 0.95), Vector2(0.66, 1.505), Vector2(0.70, 1.52), Vector2(0.90, 0.965)], zz - 0.0015 if sz > 0 else zz - 0.0035, zz + 0.0035 if sz > 0 else zz + 0.0015, green, root)
+		_extrude_poly([Vector2(0.60, 1.79), Vector2(0.71, 1.765), Vector2(0.71, 1.735), Vector2(0.52, 1.765)], zz - 0.0015 if sz > 0 else zz - 0.0035, zz + 0.0035 if sz > 0 else zz + 0.0015, green, root)
+	# lower front: kick plate, the front panel with coin doors and the cart slot
+	_box(Vector3(0.755, 0.06, 0), Vector3(0.05, 0.12, CAB_W - 0.07), grey, root)
+	var fw := CAB_W - 0.07
+	_box(Vector3(0.7675, 0.28, 0), Vector3(0.025, 0.32, fw), white, root)                    # front panel, with an open cart bay in it
+	_box(Vector3(0.7675, 0.71, 0), Vector3(0.025, 0.22, fw), white, root)
+	for bz in [-1.0, 1.0]:
+		_box(Vector3(0.7675, 0.52, bz * 0.215), Vector3(0.025, 0.16, 0.22), white, root)
+	_box(Vector3(0.7545, 0.52, 0), Vector3(0.002, 0.17, 0.215), _mat(Color(0.015, 0.015, 0.02), 0.8), root)   # back of the bay
+	_box(Vector3(0.7665, 0.435, 0), Vector3(0.025, 0.004, 0.215), _mat(Color(0.015, 0.015, 0.02), 0.8), root)  # its dark floor edge
+	for cz in [-0.21, 0.21]:
+		_box(Vector3(0.7815, 0.40, cz), Vector3(0.006, 0.20, 0.13), grey, root)                       # coin door plate
+		_box(Vector3(0.785, 0.46, cz), Vector3(0.004, 0.05, 0.012), dark, root)                       # coin slot
+		_box(Vector3(0.785, 0.36, cz), Vector3(0.004, 0.025, 0.05), yellow, root)                     # "coin" light
+	_box(Vector3(0.7815, 0.22, 0.0), Vector3(0.004, 0.18, 0.30), grey, root)                          # cash door
+	_box(Vector3(0.784, 0.22, 0.0), Vector3(0.003, 0.012, 0.05), dark, root)                          # its lock
+	var cl := Label3D.new()
+	cl.text = "CART BAY"
+	cl.font_size = 22
+	cl.pixel_size = 0.0007
+	cl.modulate = Color(0.25, 0.28, 0.3)
+	cl.rotation = Vector3(0, PI / 2.0, 0)
+	cl.position = Vector3(0.7815, 0.415, 0.0)
+	root.add_child(cl)
+	# the control panel: deck, front lip, two sticks, six buttons each, two start buttons
+	_box(Vector3(0.91, 0.885, 0), Vector3(0.16, 0.03, CAB_W - 0.07), deck_m, root)
+	_box(Vector3(0.9875, 0.86, 0), Vector3(0.0125, 0.08, CAB_W - 0.07), white, root)
+	_box(Vector3(0.9885, 0.896, 0), Vector3(0.012, 0.012, CAB_W - 0.07), green, root)
+	var plate := _box(Vector3(0.91, 0.9, 0), Vector3(0.15, 0.002, CAB_W - 0.12), _mat(Color(0.18, 0.28, 0.24), 0.3), root)
+	var stick_m := _mat(Color(0.85, 0.85, 0.88), 0.4)
+	for pl in [[-0.2, Color(0.15, 0.85, 0.3)], [0.2, Color(0.95, 0.35, 0.55)]]:
+		var zc: float = pl[0]
+		var ball := _mat(pl[1], 0.3)
+		_cyl(Vector3(0.90, 0.93, zc), 0.0055, 0.06, stick_m, root)
+		_sphere(Vector3(0.90, 0.968, zc), 0.0235, ball, Vector3.ONE, root, 14)
+		_cyl(Vector3(0.90, 0.903, zc), 0.032, 0.002, dark, root)
+		var bz_sign: float = 1.0 if zc < 0 else -1.0
+		var bcol: Color = Color(0.15, 0.85, 0.3) if zc < 0 else Color(0.95, 0.45, 0.15)
+		var bm := _mat(bcol, 0.3, 0.35)
+		for r in 2:
+			for c in 3:
+				var bz: float = zc + bz_sign * (0.085 + c * 0.047) + (0.0 if r == 0 else bz_sign * 0.012)
+				_cyl(Vector3(0.925 + r * 0.045, 0.908, bz), 0.0185, 0.014, bm, root)
+	for sz2 in [-0.04, 0.04]:
+		_cyl(Vector3(0.855, 0.905, sz2), 0.012, 0.01, yellow, root)
+	# the monitor: a leaning white board with a black glass and the live screen
+	var tb := Basis(Vector3(0, 0, 1), CAB_TILT) * Basis(Vector3.UP, PI / 2.0)
+	var a := Vector2(0.83, 0.96)
+	var b2 := Vector2(0.64, 1.50)
+	var mid := (a + b2) * 0.5
+	var nrm := Vector3(cos(CAB_TILT), sin(CAB_TILT), 0.0)
+	_rbox(Vector3(mid.x, mid.y, 0) + nrm * 0.004, Vector3(CAB_W - 0.07, 0.585, 0.03), tb, white, root)
+	_rbox(Vector3(mid.x, mid.y, 0) + nrm * 0.0185, Vector3(0.64, 0.50, 0.003), tb, dark, root)
+	var q := QuadMesh.new()
+	q.size = Vector2(0.58, 0.435)
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/crt.gdshader")
+	sm.set_shader_parameter("use_console", true)
+	sm.set_shader_parameter("console_file", true)
+	sm.set_shader_parameter("crt_mode", crt_mode)
+	arcade_mat = sm
+	crt_mats.append(sm)
+	var scr := _place(q, Vector3(mid.x, mid.y, 0) + nrm * 0.0205, sm, root)
+	scr.basis = tb
+	# marquee: a lit panel above the monitor
+	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9), root)
+	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
+	_box(Vector3(0.7145, 1.56, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
+	for lt in [["NEO ARCADE", 1.665, 70], ["INSERT COIN", 1.60, 18]]:
+		var ml := Label3D.new()
+		ml.text = lt[0]
+		ml.font_size = lt[2] if lt[2] > 20 else 40
+		ml.pixel_size = 0.0014 if lt[2] > 20 else 0.001
+		ml.outline_size = 0
+		ml.modulate = Color(0.08, 0.45, 0.2) if lt[2] > 20 else Color(0.35, 0.38, 0.4)
+		ml.rotation = Vector3(0, PI / 2.0, 0)
+		ml.position = Vector3(0.7165, lt[1], 0)
+		root.add_child(ml)
+	# the step from the monitor up to the marquee, the roof, and the sloped back
+	_box(Vector3(0.675, 1.515, 0), Vector3(0.08, 0.04, CAB_W - 0.07), white, root)
+	var rf := Vector2(0.50, 1.80) - Vector2(0.71, 1.77)
+	_rbox(Vector3(0.605, 1.785, 0), Vector3(CAB_W - 0.07, 0.03, 0.23), Basis(Vector3(0, 0, 1), atan2(rf.y, rf.x) + PI) * Basis(Vector3.UP, PI / 2.0), white, root)
+	var bk := Vector2(0.0, 1.40) - Vector2(0.50, 1.80)
+	_rbox(Vector3(0.25, 1.60, 0), Vector3(CAB_W - 0.07, 0.03, 0.64), Basis(Vector3(0, 0, 1), atan2(bk.y, bk.x) + PI) * Basis(Vector3.UP, PI / 2.0), white, root)
+	_box(Vector3(0.2, 0.7, 0), Vector3(0.4, 1.4, CAB_W - 0.07), white, root)       # filler so the inside never shows
+	# a little glow on the floor and the player from the screen
+	arcade_light = OmniLight3D.new()
+	arcade_light.position = Vector3(1.05, 1.25, 0)
+	arcade_light.light_color = Color(0.6, 0.85, 1.0)
+	arcade_light.light_energy = 0.0
+	arcade_light.omni_range = 2.2
+	root.add_child(arcade_light)
+	# interaction: the arcade controls (stick and buttons)
+	interactables.append({"node": plate, "half": Vector3(0.12, 0.05, 0.36), "egg_lock": true,
+		"label": _arcade_label, "cb": _pick_arcade})
+
+
+func _arcade_label() -> String:
+	if slot_cart != "neo":
+		return "ARCADE CONTROLS  (insert the Neo Geo cart first)"
+	return "PLAY  (arcade controls)"
+
+
+func _pick_arcade() -> void:
+	if game_mode or slot_cart != "neo":
+		return
+	game_mode = true
+	held_pad_idx = -1
+	_pad_stick_prev = false
+	pad_hint_t = 8.0
+	if emu != null:
+		emu.set_pad(true)
+
+
+# A Neo Geo style cart: big black shell, a yellow label with a red band.
+func _neo_cart_mesh() -> Node3D:
+	var n := Node3D.new()
+	room.add_child(n)
+	var blk := _mat(Color(0.08, 0.08, 0.10), 0.5)
+	var dark := _mat(Color(0.03, 0.03, 0.04), 0.7)
+	_box(Vector3.ZERO, Vector3(0.17, 0.12, 0.022), blk, n)
+	for i in 6:
+		_box(Vector3(-0.055 + i * 0.022, 0.0615, 0.0), Vector3(0.011, 0.004, 0.024), dark, n)
+	_box(Vector3(0, -0.057, 0), Vector3(0.13, 0.012, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)
+	_box(Vector3(0, 0.006, 0.0125), Vector3(0.14, 0.078, 0.003), _mat(Color(0.95, 0.80, 0.18), 0.5), n)
+	_box(Vector3(0, -0.026, 0.0128), Vector3(0.14, 0.014, 0.0035), _mat(Color(0.78, 0.1, 0.12), 0.5), n)
+	var lb := Label3D.new()
+	lb.text = "NEO GEO"
+	lb.font_size = 44
+	lb.pixel_size = 0.0008
+	lb.outline_size = 0
+	lb.modulate = Color(0.1, 0.06, 0.06)
+	lb.position = Vector3(0, 0.017, 0.0148)
+	n.add_child(lb)
+	var lb2 := Label3D.new()
+	lb2.text = "MVS"
+	lb2.font_size = 40
+	lb2.pixel_size = 0.0008
+	lb2.outline_size = 0
+	lb2.modulate = Color(0.1, 0.06, 0.06)
+	lb2.position = Vector3(0, -0.012, 0.0148)
+	n.add_child(lb2)
+	return n
+
+
 func _build_carts() -> void:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)       # lying flat, label up
 	var nes := _cart_mesh(Color(0.56, 0.56, 0.60), Color(0.86, 0.22, 0.26), Color(0.12, 0.12, 0.14), "NES")
 	var snes := _cart_mesh(Color(0.70, 0.68, 0.76), Color(0.36, 0.30, 0.62), Color(0.88, 0.25, 0.55), "SNES")
 	var sgb := _sgb_cart_mesh()
 	var gen := _gen_cart_mesh()
+	var neo := _neo_cart_mesh()
 	var egg_c := _cart_mesh(Color(0.19, 0.18, 0.22), Color.BLACK, Color.BLACK, "")
 	var tv_top := 0.04 + TV_WIDTH * 0.72
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
@@ -1816,14 +2050,16 @@ func _build_carts() -> void:
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 1.36))}
 	carts["gen"] = {"node": gen, "name": "GENESIS CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.02, 0.034, 1.32))}
+	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
+		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 1.1) * lay, Vector3(-2.72, 0.034, 0.52))}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
-	for id in ["nes", "snes", "sgb", "gen"]:
+	for id in ["nes", "snes", "sgb", "gen", "neo"]:
 		var n: Node3D = carts[id]["node"]
 		n.global_transform = (carts[id]["home"] as Callable).call()
 	egg_c.reparent(drawer_node, false)
 	egg_c.transform = Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))
-	for id in ["nes", "snes", "sgb", "gen", "egg"]:
+	for id in ["nes", "snes", "sgb", "gen", "neo", "egg"]:
 		interactables.append({"node": carts[id]["node"], "half": Vector3(0.085, 0.065, 0.03), "egg_lock": true,
 			"label": _cart_label.bind(id), "cb": _cart_click.bind(id)})
 
@@ -1869,7 +2105,10 @@ func _insert_cart(id: String) -> void:
 	var n: Node3D = carts[id]["node"]
 	if n.get_parent() != room:
 		n.reparent(room, true)
-	_fly_cart(id, console_root.global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0.09, -0.03)))
+	if id == "neo":
+		_fly_cart(id, cab_root.global_transform * Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.768, 0.52, 0.0)))   # upright in the cart bay, label out
+	else:
+		_fly_cart(id, console_root.global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0.09, -0.03)))
 	_cart_changed()
 
 
@@ -1890,7 +2129,7 @@ func _cart_changed() -> void:
 	konami_progress = 0
 	_close_controls()
 	if emu != null:
-		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen"]) else "")
+		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen", "neo"]) else "")
 	_apply_console()
 
 
@@ -1913,8 +2152,15 @@ func set_weather_start(s: String) -> void:
 	settings_changed.emit()
 
 
+func set_crt_mode(v: int) -> void:
+	crt_mode = clampi(v, 0, 2)
+	for cm in crt_mats:
+		cm.set_shader_parameter("crt_mode", crt_mode)
+
+
 func _prefs_now() -> Dictionary:
 	var d := {}
+	d["crt_mode"] = crt_mode
 	d["music_vol"] = snappedf(bank.master, 0.01)
 	d["repeat"] = pc.repeat_mode
 	d["tv_volume"] = vcr.tv_volume
@@ -1954,6 +2200,7 @@ func _load_prefs() -> void:
 		pc._set_volume(clampf(float(g.call("music_vol", 0.7)), 0.0, 1.0))
 		pc._set_repeat(clampi(int(g.call("repeat", 0)), 0, 2))
 		vcr.tv_volume = clampi(int(g.call("tv_volume", vcr.tv_volume)), 0, 10)
+		set_crt_mode(int(g.call("crt_mode", 1)))
 		vcr._apply_volume()
 		weather.set_volume(float(g.call("weather_vol", weather.volume)))
 		pc._wx_vol.set_value_no_signal(weather.volume)
@@ -2118,7 +2365,7 @@ func _pad_tick(delta: float) -> void:
 	elif ctl_open:
 		_controls_tick(nav | (mapped & Emu.B_A), delta)
 		emu.set_buttons(0)
-	elif sel_edge != 0 and console_on and slot_cart != "egg":
+	elif sel_edge != 0 and (console_on or slot_cart == "neo") and slot_cart != "egg":
 		_open_controls(nav)
 		emu.set_buttons(0)
 	else:

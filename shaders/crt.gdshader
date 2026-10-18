@@ -20,6 +20,7 @@ uniform bool console_file = false; // true when media/console.gif (.png...) exis
 uniform sampler2D console_tex : source_color, filter_nearest, repeat_disable;
 uniform float console_aspect = 1.3333;
 uniform bool console_contain = false;   // keep the picture's own shape, black bars around it (handheld games)
+uniform int crt_mode = 1;          // 0 = clean picture (flat, no scanlines), 1 = old TV, 2 = stronger CRT
 uniform float tv_power = 1.0;      // 1 = on, 0 = off; in between plays the old CRT switch-off squash
 
 const int GC[7] = int[7](14, 17, 16, 16, 16, 17, 14);   // C
@@ -244,7 +245,8 @@ vec2 contain_uv(vec2 uv, float aspect) {
 void fragment() {
 	vec2 c = UV * 2.0 - 1.0;
 	vec2 raw = c;
-	c *= 1.0 + 0.08 * dot(c, c);                 // curved glass
+	float bulge = crt_mode == 0 ? 0.0 : (crt_mode == 2 ? 0.14 : 0.08);
+	c *= 1.0 + bulge * dot(c, c);                // curved glass
 	vec2 u = c * 0.5 + 0.5;
 	float inside = step(0.0, u.x) * step(u.x, 1.0) * step(0.0, u.y) * step(u.y, 1.0);
 	vec2 uc = clamp(u, 0.0, 1.0);
@@ -301,12 +303,22 @@ void fragment() {
 		col = pow(ui.rgb, vec3(ui_gamma)) + col * (1.0 - ui.a);
 	}
 
-	// scanlines, slow rolling bar, flicker, noise, vignette
-	col *= 0.90 + 0.10 * sin(u.y * 300.0);
-	col += 0.04 * smoothstep(0.08, 0.0, abs(fract(u.y - t * 0.10) - 0.5) - 0.42);
-	col *= 0.97 + 0.03 * sin(t * 40.0);
-	col += (hash(u * 500.0 + t) - 0.5) * noise_amt;
-	col *= 1.0 - 0.40 * dot(c, c) * 0.5;
+	// scanlines, slow rolling bar, flicker, noise, vignette (all gone in the clean mode)
+	if (crt_mode == 1) {
+		col *= 0.90 + 0.10 * sin(u.y * 300.0);
+		col += 0.04 * smoothstep(0.08, 0.0, abs(fract(u.y - t * 0.10) - 0.5) - 0.42);
+		col *= 0.97 + 0.03 * sin(t * 40.0);
+		col += (hash(u * 500.0 + t) - 0.5) * noise_amt;
+		col *= 1.0 - 0.40 * dot(c, c) * 0.5;
+	} else if (crt_mode == 2) {
+		col *= 0.78 + 0.22 * sin(u.y * 480.0);
+		float tri = mod(floor(u.x * 960.0), 3.0);                     // faint red / green / blue stripes
+		col *= vec3(tri < 1.0 ? 1.0 : 0.86, (tri >= 1.0 && tri < 2.0) ? 1.0 : 0.86, tri >= 2.0 ? 1.0 : 0.86) * 1.08;
+		col += 0.06 * smoothstep(0.10, 0.0, abs(fract(u.y - t * 0.10) - 0.5) - 0.40);
+		col *= 0.95 + 0.05 * sin(t * 40.0);
+		col += (hash(u * 500.0 + t) - 0.5) * noise_amt * 1.6;
+		col *= 1.0 - 0.75 * dot(c, c) * 0.5;
+	}
 
 	// switch-off / switch-on: picture squashes to a bright line, then a dot
 	float hh = clamp((tv_power - 0.35) / 0.65, 0.0, 1.0);
