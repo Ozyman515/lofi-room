@@ -1,5 +1,5 @@
 {
- "version": 56,
+ "version": 57,
  "files": {
   "README.md": {
    "sha": "4cc32c3594a8cfbf7699fbe924dfe68be6286165d417b6b84a9c443178b13aea",
@@ -38,7 +38,7 @@
    "size": 23184
   },
   "cores/fbneo_neogeo_libretro.dll": {
-   "sha": "09236b235454b6b4ab14b53e7288e59267b38a6a197682ea9503645b96937ac2",
+   "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
    "size": 7804416
   },
   "cores/fbneo_neogeo_libretro.so": {
@@ -174,7 +174,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "2a57042a43991d2ca310938e6802d7283954e38c825a548c4bee89c45238b43b",
+   "sha": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
    "size": 3
   },
   "weather.gd": {
