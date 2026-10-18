@@ -1,5 +1,5 @@
 {
- "version": 47,
+ "version": 48,
  "files": {
   "README.md": {
    "sha": "4cc32c3594a8cfbf7699fbe924dfe68be6286165d417b6b84a9c443178b13aea",
@@ -94,8 +94,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "ec1884983d8bd97b8e5a248866a2d77c37963d4e758f2582b1cea8c27357a998",
-   "size": 123279
+   "sha": "34847acb95f39fb9c27a68f3a5cb49c871c00f4ed9b8c2ae45ec54d8edb1180e",
+   "size": 123317
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -174,7 +174,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "e3667f7d8c030260bf49046f955ec9bebdb9a4cb8a66b812fd498ded5431a821",
+   "sha": "654ee9da442fa353f59f11beb688fc7f76c8de62a6c18b2a181fdde2a27cc3ef",
    "size": 3
   },
   "weather.gd": {

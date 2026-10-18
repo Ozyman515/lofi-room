@@ -2052,7 +2052,7 @@ func _build_carts() -> void:
 	carts["gen"] = {"node": gen, "name": "GENESIS CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.02, 0.034, 1.32))}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 1.1) * lay, Vector3(-0.5, 0.034, 2.0))}
+		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.12), Vector3(2.21, 1.025, 0.55))}   # standing on the bookshelf
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
 	for id in ["nes", "snes", "sgb", "gen", "neo"]:
