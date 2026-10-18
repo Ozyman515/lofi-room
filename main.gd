@@ -1936,17 +1936,17 @@ func _build_arcade() -> void:
 	var black_g := _mat(Color(0.04, 0.04, 0.05), 0.25)
 	var stick_m := _mat(Color(0.8, 0.8, 0.84), 0.35)
 	var btn_cols := [Color(0.92, 0.12, 0.10), Color(0.94, 0.94, 0.97), Color(0.12, 0.34, 0.95)]
-	for zc in [-0.235, 0.075]:
-		_cyl(Vector3(0.93, 0.9015, zc), 0.07, 0.002, black_g, root)                   # the round dish under the stick
-		_cyl(Vector3(0.93, 0.93, zc), 0.0065, 0.056, stick_m, root)
-		_sphere(Vector3(0.93, 0.972, zc), 0.029, black_g, Vector3(1, 1.05, 1), root, 16)
+	for zc in [0.285, -0.055]:   # local +z is the player's left, so each stick sits left of its buttons
+		_cyl(Vector3(0.935, 0.9015, zc), 0.05, 0.002, black_g, root)                  # the round dish under the stick
+		_cyl(Vector3(0.935, 0.93, zc), 0.0065, 0.056, stick_m, root)
+		_sphere(Vector3(0.935, 0.972, zc), 0.027, black_g, Vector3(1, 1.05, 1), root, 16)
 		for r in 2:
 			for c in 3:
 				var bm := _mat(btn_cols[c], 0.25, 0.3)
-				_cyl(Vector3(0.968 + r * 0.05 - 0.04, 0.911, zc + 0.115 + c * 0.058), 0.021, 0.018, bm, root)
+				_cyl(Vector3(0.925 + r * 0.058, 0.911, zc - 0.092 - c * 0.06), 0.0195, 0.018, bm, root)
 	var st_cols := [btn_cols[0], btn_cols[1], btn_cols[2], btn_cols[1]]
 	for i in 4:
-		_cyl(Vector3(0.87, 0.908, -0.075 + i * 0.05), 0.0155, 0.012, _mat(st_cols[i], 0.25, 0.3), root)
+		_cyl(Vector3(0.855, 0.908, 0.045 - i * 0.04 + 0.0), 0.0155, 0.012, _mat(st_cols[i], 0.25, 0.3), root)
 	# the monitor: a leaning white board with a black glass and the live screen
 	var tb := Basis(Vector3(0, 0, 1), CAB_TILT) * Basis(Vector3.UP, PI / 2.0)
 	var a := Vector2(0.83, 0.96)
