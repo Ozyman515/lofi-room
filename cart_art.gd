@@ -288,30 +288,28 @@ static func egg_label() -> ImageTexture:
 	var im := _img(56, 92)
 	for yy in 92:
 		for xx in 56:
-			var d := Vector2(xx - 28, yy - 40).length() / 40.0
+			var d := Vector2(xx - 28, yy - 46).length() / 48.0
 			im.set_pixel(xx, yy, Color(1.0, 0.86, 0.38).lerp(Color(0.80, 0.55, 0.12), clampf(d, 0.0, 1.0)))
-	for sp in [Vector2(8, 10), Vector2(46, 14), Vector2(10, 58), Vector2(47, 60), Vector2(28, 6)]:
+	for sp in [Vector2(8, 12), Vector2(46, 18), Vector2(10, 72), Vector2(47, 76), Vector2(28, 8), Vector2(9, 44), Vector2(47, 46)]:
 		_rect(im, int(sp.x) - 2, int(sp.y), 5, 1, Color(1, 0.97, 0.8))
 		_rect(im, int(sp.x), int(sp.y) - 2, 1, 5, Color(1, 0.97, 0.8))
 	var blue := Color(0.2, 0.45, 0.95)
 	var green := Color(0.18, 0.78, 0.46)
 	var outline := Color(0.30, 0.16, 0.08)
-	_ellipse(im, 28, 42, 18.5, 25, outline)
-	_ellipse(im, 28, 42, 17, 23.5, blue)
-	# green zigzag bands, clipped to the egg
-	for yy in range(14, 68):
+	var cy := 46.0
+	_ellipse(im, 28, cy, 20, 28, outline)
+	_ellipse(im, 28, cy, 18.5, 26.5, blue)
+	for yy in range(int(cy - 28), int(cy + 28)):                                   # green zigzag bands, clipped to the egg
 		for xx in range(8, 49):
-			var dx := (xx + 0.5 - 28) / 17.0
-			var dy := (yy + 0.5 - 42) / 23.5
+			var dx := (xx + 0.5 - 28) / 18.5
+			var dy := (yy + 0.5 - cy) / 26.5
 			if dx * dx + dy * dy > 1.0:
 				continue
-			var z := absi((xx % 8) - 4)                                           # zigzag
-			var band := int(floor((yy + z - 16) / 9.0))
-			if band % 2 == 0 and yy > 18 and yy < 62:
+			var z := absi((xx % 8) - 4)
+			var band := int(floor((yy + z - (cy - 26.0)) / 10.0))
+			if band % 2 == 1 and yy > cy - 21 and yy < cy + 21:
 				im.set_pixel(xx, yy, green)
-	for dp in [Vector2(28, 26), Vector2(18, 33), Vector2(38, 33), Vector2(28, 49), Vector2(18, 56), Vector2(38, 56)]:
+	for dp in [Vector2(28, cy - 17), Vector2(17, cy - 8), Vector2(39, cy - 8), Vector2(28, cy + 8), Vector2(17, cy + 17), Vector2(39, cy + 17)]:
 		_rect(im, int(dp.x) - 1, int(dp.y) - 1, 3, 3, Color(1.0, 0.95, 0.8))
-	_ellipse(im, 20, 24, 3, 5, Color(1, 1, 1, 1).lerp(blue, 0.35))               # shine
-	_rect(im, 0, 74, 56, 18, Color(0.30, 0.18, 0.04))
-	_rect(im, 0, 74, 56, 1, Color(1.0, 0.9, 0.5))
+	_ellipse(im, 19, cy - 18, 3, 5, Color(1, 1, 1, 1).lerp(blue, 0.35))             # shine
 	return tex(im)

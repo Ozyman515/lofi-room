@@ -1900,6 +1900,14 @@ func _cart_text(text: String, fsize: int, psize: float, col: Color, pos: Vector3
 	return lb
 
 
+# A lofi wash over the plastic: every cart body leans toward the room's magenta.
+const CART_WASH := Color(0.86, 0.30, 0.58)
+
+
+func _wash(c: Color, k: float = 0.38) -> Color:
+	return c.lerp(CART_WASH, k)
+
+
 func _cart_node(bottom: float, depth: float) -> Node3D:
 	var n := Node3D.new()
 	room.add_child(n)
@@ -1911,7 +1919,7 @@ func _cart_node(bottom: float, depth: float) -> Node3D:
 # NES: grey, tall, a ribbed column beside a label set into the right of the face, a triangle mark near the bottom.
 func _nes_cart_mesh(egg: bool = false) -> Node3D:
 	var n := _cart_node(0.09, 0.04)
-	var gc := Color(0.19, 0.18, 0.22) if egg else Color(0.60, 0.60, 0.62)
+	var gc := _wash(Color(0.19, 0.18, 0.22), 0.30) if egg else _wash(Color(0.60, 0.60, 0.62))
 	var body := _mat(gc, 0.55)
 	var dark := _mat(gc.darkened(0.32), 0.7)
 	var light := _mat(gc.lightened(0.07), 0.5)
@@ -1926,15 +1934,15 @@ func _nes_cart_mesh(egg: bool = false) -> Node3D:
 	var lab_tex := CartArt.egg_label() if egg else CartArt.nes_label()
 	_label_quad(lab_tex, Vector2(0.0686, 0.1123), Vector3(0.019, 0.0269, t / 2.0 + 0.0008), n)
 	_extrude_poly([Vector2(-0.0155, -0.0369), Vector2(-0.0015, -0.0519), Vector2(0.0125, -0.0369)], t / 2.0 - 0.0004, t / 2.0 + 0.0006, dark, n)   # the triangle
-	_cart_text("EASTER EGG" if egg else "NES", 20 if egg else 52, 0.0005 if egg else 0.0006, Color(1.0, 0.93, 0.8) if egg else Color(0.98, 0.92, 0.98),
-		Vector3(0.019, -0.0192, t / 2.0 + 0.0014), n)
+	if not egg:
+		_cart_text("NES", 52, 0.0006, Color(0.98, 0.92, 0.98), Vector3(0.019, -0.0192, t / 2.0 + 0.0014), n)
 	return n
 
 
 # SNES: wide and short, ribbed shoulders, a raised middle with the label, a recessed panel at the bottom and two screws.
 func _snes_cart_mesh() -> Node3D:
 	var n := _cart_node(0.049, 0.04)
-	var gc := Color(0.73, 0.72, 0.78)
+	var gc := _wash(Color(0.73, 0.72, 0.78))
 	var body := _mat(gc, 0.55)
 	var dark := _mat(gc.darkened(0.30), 0.7)
 	var t := 0.022
@@ -1958,7 +1966,7 @@ func _snes_cart_mesh() -> Node3D:
 # Super GB: taller grey body, ridged sides, a raised top block, four screws, a lavender label.
 func _sgb_cart_mesh() -> Node3D:
 	var n := _cart_node(0.0605, 0.035)
-	var gc := Color(0.66, 0.65, 0.64)
+	var gc := _wash(Color(0.66, 0.65, 0.64))
 	var body := _mat(gc, 0.55)
 	var dark := _mat(Color(0.22, 0.22, 0.24), 0.7)
 	_box(Vector3(0, 0.005, 0), Vector3(0.15, 0.12, 0.022), body, n)
@@ -1984,7 +1992,7 @@ func _sgb_cart_mesh() -> Node3D:
 # Sega style: black shell, thick grippy side pillars, a flat middle with the label, a grid panel and a name plate under it.
 func _gen_cart_mesh() -> Node3D:
 	var n := _cart_node(0.059, 0.022)
-	var blk := _mat(Color(0.07, 0.07, 0.085), 0.5)
+	var blk := _mat(_wash(Color(0.07, 0.07, 0.085), 0.28), 0.5)
 	var dark := _mat(Color(0.03, 0.03, 0.04), 0.7)
 	_extrude_poly([Vector2(-0.056, -0.051), Vector2(0.056, -0.051), Vector2(0.056, 0.051), Vector2(-0.056, 0.051)], -0.010, 0.010, blk, n)
 	for sx in [-1.0, 1.0]:                                                                                       # side pillars, rounded at the top
@@ -2208,8 +2216,8 @@ func _pick_arcade() -> void:
 # Neo Geo: a big black block, stepped shoulders, fins across the lower part and a small label up top with blue stripes beside it.
 func _neo_cart_mesh() -> Node3D:
 	var n := _cart_node(0.0975, 0.0)
-	var blk := _mat(Color(0.105, 0.105, 0.12), 0.5)
-	var fin := _mat(Color(0.12, 0.12, 0.14), 0.5)
+	var blk := _mat(_wash(Color(0.105, 0.105, 0.12), 0.28), 0.5)
+	var fin := _mat(_wash(Color(0.12, 0.12, 0.14), 0.36), 0.5)
 	var dark := _mat(Color(0.02, 0.02, 0.03), 0.7)
 	var t := 0.032
 	_extrude_poly([Vector2(-0.125, -0.0925), Vector2(0.125, -0.0925), Vector2(0.125, 0.073), Vector2(0.108, 0.073), Vector2(0.108, 0.0925),
