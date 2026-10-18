@@ -1072,6 +1072,9 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if xr_active:
 		return
+	if pc != null and pc.ct_wants_key(event):
+		get_viewport().set_input_as_handled()
+		return
 	if ctl_open and ctl_listen != "" and ctl_dev == "key" and event is InputEventKey and event.pressed and not event.echo:
 		get_viewport().set_input_as_handled()
 		if event.keycode == KEY_ESCAPE:

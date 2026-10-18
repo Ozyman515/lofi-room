@@ -34,6 +34,16 @@ var _st_weather_btn: Button
 var _st_resume_btn: Button
 var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
+var _ct_window: PanelContainer
+var _ct_dev := "key"
+var _ct_listen := ""
+var _ct_listen_t := 0.0
+var _ct_base := {}
+var _ct_dev_btn: Button
+var _ct_swap_ab: Button
+var _ct_swap_xy: Button
+var _ct_btns := {}
+var _ct_note: Label
 var _lt_rows: VBoxContainer
 var _wx_window: PanelContainer
 var _wx_buttons: Array[Button] = []
@@ -295,6 +305,7 @@ func refresh_speakers() -> void:
 
 
 func _process(delta: float) -> void:
+	_ct_tick(delta)
 	if _wx_window != null and _wx_window.visible and _main != null:
 		if not _cur_drag:
 			_wx_cur_slider.set_value_no_signal(_main.curtain_amt)      # follows the real curtain, even when a wall switch moves it
@@ -332,6 +343,9 @@ func _wx_hide() -> void:
 		_lt_window.visible = false
 	if _st_window != null:
 		_st_window.visible = false
+	if _ct_window != null:
+		_ct_window.visible = false
+		_ct_listen = ""
 
 
 func _toggle_weather() -> void:
@@ -358,6 +372,9 @@ func _toggle_lights() -> void:
 
 func _toggle_settings() -> void:
 	_st_window.visible = not _st_window.visible
+	if _ct_window != null:
+		_ct_window.visible = false
+		_ct_listen = ""
 	if _st_window.visible:
 		_window.visible = false
 		_spk_window.visible = false
@@ -388,6 +405,10 @@ func _build_settings_window() -> void:
 	t.text = "Settings"
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
+	var ctl_btn := Button.new()
+	ctl_btn.text = "  Controls...  "
+	ctl_btn.pressed.connect(_open_controls_window)
+	head.add_child(ctl_btn)
 	var close := Button.new()
 	close.text = " x "
 	close.pressed.connect(_toggle_settings)
@@ -439,6 +460,7 @@ func _build_settings_window() -> void:
 	_main.updater.changed.connect(_st_refresh)
 	_main.settings_changed.connect(_st_refresh)
 	_st_refresh()
+	_build_controls_window()
 
 
 func _st_refresh() -> void:
@@ -457,6 +479,165 @@ func _st_refresh() -> void:
 	for i in _st_color_btns.size():
 		var sel: bool = i == _main.reticle_color_idx
 		_st_color_btns[i].text = ("[ %s ]" if sel else "%s") % String(_main.RETICLE_COLORS[i][0])
+
+
+# ---- controller inputs (Settings > Controls...): the same bindings the TV consoles and the arcade cabinet use
+
+func _ct_devices() -> Array:
+	return ["vr"] if _main.xr_active else ["key", "pad"]
+
+
+func _open_controls_window() -> void:
+	_st_window.visible = false
+	_ct_window.visible = true
+	var d := _ct_devices()
+	if not d.has(_ct_dev):
+		_ct_dev = d[0]
+	_ct_listen = ""
+	_ct_refresh()
+
+
+func _close_controls_window() -> void:
+	_ct_listen = ""
+	_ct_window.visible = false
+	_st_window.visible = true
+	_st_refresh()
+
+
+func _build_controls_window() -> void:
+	_ct_window = PanelContainer.new()
+	_ct_window.offset_left = 150.0
+	_ct_window.offset_top = 6.0
+	_ct_window.offset_right = 874.0
+	_ct_window.offset_bottom = 545.0
+	_ct_window.visible = false
+	ui.root.add_child(_ct_window)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_ct_window.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var t := Label.new()
+	t.text = "Controls"
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var back := Button.new()
+	back.text = "  Back  "
+	back.pressed.connect(_close_controls_window)
+	head.add_child(back)
+	_ct_note = Label.new()
+	_ct_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ct_note.add_theme_font_size_override("font_size", 17)
+	v.add_child(_ct_note)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	v.add_child(row)
+	_ct_dev_btn = Button.new()
+	_ct_dev_btn.custom_minimum_size = Vector2(0, 36)
+	_ct_dev_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ct_dev_btn.pressed.connect(func() -> void:
+		var d := _ct_devices()
+		_ct_dev = d[(d.find(_ct_dev) + 1) % d.size()]
+		_ct_listen = ""
+		_ct_refresh())
+	row.add_child(_ct_dev_btn)
+	_ct_swap_ab = Button.new()
+	_ct_swap_ab.custom_minimum_size = Vector2(0, 36)
+	_ct_swap_ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ct_swap_ab.pressed.connect(func() -> void:
+		_main.padmap.swap_pair(_ct_dev, "a", "b")
+		_ct_refresh())
+	row.add_child(_ct_swap_ab)
+	_ct_swap_xy = Button.new()
+	_ct_swap_xy.custom_minimum_size = Vector2(0, 36)
+	_ct_swap_xy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ct_swap_xy.pressed.connect(func() -> void:
+		_main.padmap.swap_pair(_ct_dev, "x", "y")
+		_ct_refresh())
+	row.add_child(_ct_swap_xy)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 6)
+	v.add_child(grid)
+	for a in ["a", "b", "x", "y", "l", "r", "start", "select", "up", "down", "left", "right"]:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(0, 36)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(_ct_start_listen.bind(a))
+		grid.add_child(b)
+		_ct_btns[a] = b
+	var rst := Button.new()
+	rst.custom_minimum_size = Vector2(0, 36)
+	rst.text = "Reset this device to the defaults"
+	rst.pressed.connect(func() -> void:
+		_main.padmap.reset(_ct_dev)
+		_ct_listen = ""
+		_ct_refresh())
+	v.add_child(rst)
+
+
+func _ct_start_listen(action: String) -> void:
+	_ct_listen = action
+	_ct_listen_t = 8.0
+	_ct_base = {}
+	if _ct_dev != "key":
+		var lh: Node = _main.left_hand if _main.xr_active else null
+		var rh: Node = _main.right_hand if _main.xr_active else null
+		_ct_base = _main.padmap.held(_ct_dev, lh, rh)
+	_ct_refresh()
+
+
+func _ct_refresh() -> void:
+	if _ct_window == null:
+		return
+	var pm = _main.padmap
+	var dev_names := {"pad": "GAMEPAD", "key": "KEYBOARD", "vr": "VR CONTROLLERS"}
+	_ct_dev_btn.text = "Device:  " + String(dev_names[_ct_dev])
+	_ct_swap_ab.text = "A and B:  " + ("SWAPPED" if pm.is_swapped(_ct_dev, "a", "b") else "normal")
+	_ct_swap_xy.text = "X and Y:  " + ("SWAPPED" if pm.is_swapped(_ct_dev, "x", "y") else "normal")
+	for a in _ct_btns.keys():
+		var val: String = "press a key..." if (_ct_listen == a and _ct_dev == "key") else ("press a button..." if _ct_listen == a else pm.name_of(pm.maps[_ct_dev][a]))
+		_ct_btns[a].text = "%s  =  %s" % [String(pm.LABELS[a]), val]
+	if _ct_listen != "":
+		_ct_note.text = "Press the %s you want for %s.  Esc cancels." % ["key" if _ct_dev == "key" else "button", String(pm.LABELS[_ct_listen])]
+	elif _ct_dev == "pad" and not pm.has_gamepad():
+		_ct_note.text = "No gamepad is connected. Plug one in to change its buttons."
+	else:
+		_ct_note.text = "Used by the TV consoles and the arcade. Click one, then press the new key. (Arcade: SELECT = coin, START = start.)"
+
+
+# main.gd hands key presses here first; true means the press was used for a new binding
+func ct_wants_key(event: InputEvent) -> bool:
+	if _ct_window == null or not _ct_window.visible or _ct_listen == "" or _ct_dev != "key":
+		return false
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return false
+	if event.keycode == KEY_ESCAPE:
+		_ct_listen = ""
+	else:
+		_main.padmap.assign("key", _ct_listen, "k:%d" % int(event.physical_keycode))
+		_ct_listen = ""
+	_ct_refresh()
+	return true
+
+
+func _ct_tick(delta: float) -> void:
+	if _ct_listen == "":
+		return
+	_ct_listen_t -= delta
+	if _ct_dev != "key":
+		var lh: Node = _main.left_hand if _main.xr_active else null
+		var rh: Node = _main.right_hand if _main.xr_active else null
+		var got: String = _main.padmap.poll(_ct_dev, lh, rh, _ct_base)
+		if got != "":
+			_main.padmap.assign(_ct_dev, _ct_listen, got)
+			_ct_listen = ""
+			_ct_refresh()
+			return
+	if _ct_listen_t <= 0.0:
+		_ct_listen = ""
+		_ct_refresh()
 
 
 # ---- lights window (lamps, lantern, fairy lights, ceiling strip)
