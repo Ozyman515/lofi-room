@@ -8,6 +8,7 @@ const CFG := "user://lofi_room.cfg"
 var extensions: PackedStringArray = PackedStringArray()
 var settings_key := "browser"
 var current_dir := ""
+var default_dir := ""        # the folder it opens in; only a different folder is remembered
 var _path_label: Label
 var _list: ItemList
 var _entries: Array = []     # [{"path": String, "dir": bool}]
@@ -16,6 +17,7 @@ var _entries: Array = []     # [{"path": String, "dir": bool}]
 func setup(exts: PackedStringArray, key: String, shortcuts: Array, start_dir: String) -> void:
 	extensions = exts
 	settings_key = key
+	default_dir = start_dir
 	add_theme_constant_override("separation", 8)
 
 	var bar := HBoxContainer.new()
@@ -139,10 +141,25 @@ func _on_item_clicked(index: int, _pos: Vector2, button: int) -> void:
 		file_chosen.emit(str(e["path"]))
 
 
+func _same(a: String, b: String) -> bool:
+	return a.simplify_path().trim_suffix("/").to_lower() == b.simplify_path().trim_suffix("/").to_lower()
+
+
+# Remember the folder for next time, but only when it is not the default one.
+func save_dir() -> void:
+	_save_dir()
+
+
 func _save_dir() -> void:
 	if current_dir == "":
 		return
 	var cfg := ConfigFile.new()
 	cfg.load(CFG)
-	cfg.set_value("dirs", settings_key, current_dir)
+	if default_dir != "" and _same(current_dir, default_dir):
+		if cfg.has_section_key("dirs", settings_key):
+			cfg.erase_section_key("dirs", settings_key)
+		else:
+			return
+	else:
+		cfg.set_value("dirs", settings_key, current_dir)
 	cfg.save(CFG)

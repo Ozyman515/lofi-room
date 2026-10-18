@@ -142,8 +142,9 @@ func _build_ui() -> void:
 	_browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_browser.size_flags_stretch_ratio = 1.5
 	body.add_child(_browser)
-	var music_dir := OS.get_system_dir(OS.SYSTEM_DIR_MUSIC)
-	_browser.setup(PackedStringArray(AUDIO_EXTS), "music", [["Music", music_dir], ["Downloads", OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)]], music_dir)
+	var room_songs := default_music_dir()
+	_browser.setup(PackedStringArray(AUDIO_EXTS), "music_loc", [["Room songs", room_songs], ["Music", OS.get_system_dir(OS.SYSTEM_DIR_MUSIC)],
+		["Downloads", OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)]], room_songs)
 	_browser.file_chosen.connect(_on_file_chosen)
 
 	var right := VBoxContainer.new()
@@ -893,6 +894,41 @@ func _wx_refresh() -> void:
 	_wx_cur_slider.set_value_no_signal(_main.curtain_amt)
 	_wx_cur_btn.text = _cur_btn_text()
 	_wx_traffic_btn.text = "City traffic: MUTED  (click to turn on)" if _weather.traffic_muted else "City traffic: ON  (click to mute)"
+
+
+# The room's own songs live in the "music" folder next to the game; the music player opens there.
+static func default_music_dir() -> String:
+	var d := ProjectSettings.globalize_path("res://music") if FileAccess.file_exists("res://project.godot") else OS.get_executable_path().get_base_dir().path_join("music")
+	if not DirAccess.dir_exists_absolute(d):
+		DirAccess.make_dir_recursive_absolute(d)
+	return d
+
+
+# At start-up: a random song from the room's folder (nothing happens if the folder is empty).
+func play_random_default() -> void:
+	var da := DirAccess.open(default_music_dir())
+	if da == null:
+		return
+	var found: Array[String] = []
+	da.list_dir_begin()
+	var f := da.get_next()
+	while f != "":
+		if not da.current_is_dir() and AUDIO_EXTS.has(f.get_extension().to_lower()):
+			found.append(default_music_dir().path_join(f))
+		f = da.get_next()
+	da.list_dir_end()
+	if found.is_empty():
+		return
+	found.sort_custom(func(a: String, b: String) -> bool: return a.naturalnocasecmp_to(b) < 0)
+	playlist.clear()
+	for s in found:
+		playlist.append(s)
+	_play_index(randi() % playlist.size())
+
+
+func save_music_dir() -> void:
+	if _browser != null:
+		_browser.save_dir()
 
 
 func _on_file_chosen(path: String) -> void:

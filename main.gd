@@ -192,6 +192,7 @@ func _ready() -> void:
 	_finish_cords()
 	_setup_player()
 	_load_prefs()
+	pc.play_random_default()
 
 
 # ---------------------------------------------------------------- helpers
@@ -1292,6 +1293,7 @@ func _do_leave() -> void:
 	if emu != null:
 		emu._stop_host()                      # the running game saves its place first
 	_save_prefs_tick()
+	pc.save_music_dir()
 	get_tree().quit()
 
 
@@ -1379,6 +1381,7 @@ func _go_to_sleep() -> void:
 	if emu != null:
 		emu._stop_host()                      # the running game saves its place first
 	_save_prefs_tick()
+	pc.save_music_dir()
 	await get_tree().create_timer(0.9).timeout
 	if not _relaunch():
 		_sleep_text.text = "Could not restart the room"
@@ -2528,6 +2531,11 @@ func _prefs_now() -> Dictionary:
 	for g in light_groups:
 		d["light_" + String(g["name"])] = bool(g["on"])
 	return d
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and pc != null:
+		pc.save_music_dir()                     # closing the window keeps the music folder you were in
 
 
 func _save_prefs_tick() -> void:
