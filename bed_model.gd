@@ -189,7 +189,7 @@ static func _drape(root: Node3D, top_y: float, mat: Material, seed: int) -> Mesh
 	var x_edge := -0.80
 	# fall of the cloth over the edge and the rail: (x, y relative to the mattress top)
 	var tbl := [Vector2(-0.808, -0.012), Vector2(-0.826, -0.06), Vector2(-0.832, -0.15), Vector2(-0.838, -0.25), Vector2(-0.852, -0.30), Vector2(-0.866, -0.35), Vector2(-0.89, -0.41)]
-	var folds := [[-0.12, 0.42, 0.31, 0.13], [0.10, 0.70, 0.24, 0.09], [-0.50, 0.18, 0.22, 0.08], [-0.28, 0.88, 0.26, 0.07], [0.24, 0.30, 0.18, 0.06], [-0.05, 0.08, 0.17, 0.05], [-0.58, 0.60, 0.19, 0.06], [0.45, 0.55, 0.20, 0.05]]
+	var folds := [[-0.12, 0.42, 0.31, 0.065], [0.10, 0.70, 0.24, 0.045], [-0.50, 0.18, 0.22, 0.04], [-0.28, 0.88, 0.26, 0.035], [0.24, 0.30, 0.18, 0.03], [-0.05, 0.08, 0.17, 0.025], [-0.58, 0.60, 0.19, 0.03], [0.45, 0.55, 0.20, 0.025]]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for j in n_v:
@@ -208,8 +208,8 @@ static func _drape(root: Node3D, top_y: float, mat: Material, seed: int) -> Mesh
 				var d2: float = (x - float(f[0])) * (x - float(f[0])) + (z - float(f[1])) * (z - float(f[1]))
 				w += float(f[3]) * exp(-d2 / (float(f[2]) * float(f[2])))
 			var n1 := nz.get_noise_2d(x * 2.4, z * 2.4)
-			w += pow(1.0 - absf(n1), 2.0) * 0.05
-			w += (nz.get_noise_2d(x * 5.0 + 20.0, z * 5.0) * 0.5 + 0.5) * 0.012
+			w += pow(1.0 - absf(n1), 2.0) * 0.025
+			w += (nz.get_noise_2d(x * 5.0 + 20.0, z * 5.0) * 0.5 + 0.5) * 0.006
 			w *= smoothstep(0.0, 0.40, u) * clampf(e + 0.0, 0.0, 1.0)
 			w *= 1.0 - 0.7 * smoothstep(0.85, 1.0, u)
 			st.set_uv(Vector2(x, z))
