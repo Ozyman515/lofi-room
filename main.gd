@@ -1702,7 +1702,7 @@ func _on_emu_screen(t: Texture2D) -> void:
 func _console_fit(t: Texture2D) -> void:
 	if tv_mat == null:
 		return
-	var handheld := slot_cart == "sgb" and t != null and t.get_height() > 0
+	var handheld := t != null and t.get_height() > 0 and (slot_cart == "sgb" or (slot_cart == "gen" and t.get_width() <= 160))   # Game Gear is 160 wide
 	tv_mat.set_shader_parameter("console_contain", handheld)
 	tv_mat.set_shader_parameter("console_aspect", float(t.get_width()) / float(t.get_height()) if handheld else 1.3333)
 

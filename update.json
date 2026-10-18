@@ -1,9 +1,9 @@
 {
- "version": 44,
+ "version": 45,
  "files": {
   "README.md": {
-   "sha": "3e6c14cae626f326707827ba17dce1563741028e52f436a4dcfae811de96d7b4",
-   "size": 14250
+   "sha": "a6188baaf68b873dc0c14d0a6f251c1a7ca787eb7a2d0c2ab1f46cd92f1a19aa",
+   "size": 14300
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -70,8 +70,8 @@
    "size": 2896968
   },
   "emu.gd": {
-   "sha": "8bf4c3241dc1e634c60770608361038ea4f4fd4eb9c11abee718dc858f7d44e2",
-   "size": 18230
+   "sha": "2593237bb196f635f12d7d7dc12bfcbfe74f19cf1feb5a8feb903d64f4351a8a",
+   "size": 18296
   },
   "file_browser.gd": {
    "sha": "6e97fc563fe953bd6f93af4dac2611cac0f390e5d8431c6db3ff62baf5d85444",
@@ -86,8 +86,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "e56e55a8f775d8e5c9f66261280e9150a503730d410917193686c16c6019a823",
-   "size": 110717
+   "sha": "dabf1380eb9c0e4859db4e0c2c5e42e8373eeb0adec988a3388925ef7bfbc093",
+   "size": 110794
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -166,7 +166,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "b1ce0aa6fdf3cf349d773243dab9fbbe09d30619f38b0c1e8977e28c4f0bc495",
+   "sha": "420002158111bff8adb3347d84029e480f45e60e1869b454b6adac3345f9f7d4",
    "size": 3
   },
   "weather.gd": {
