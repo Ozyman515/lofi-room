@@ -122,12 +122,12 @@ func install() -> void:
 	var staged: Array = []
 	for path in _todo.duplicate():
 		var dest: String = _stage_dir.path_join(path.replace("/", "__"))
-		var url := base + path.uri_encode().replace("%2F", "/")
-		var want := str(_manifest[path]["sha"])
+		var url: String = base + String(path).uri_encode().replace("%2F", "/")
+		var want: String = str(_manifest[path]["sha"])
 		var ok := false
 		for attempt in 2:
 			# the web cache can hand out an older copy for a few minutes, so ask for this exact file version
-			var q := "?h=" + want.substr(0, 12) + ("" if attempt == 0 else "&t=%d" % Time.get_ticks_msec())
+			var q: String = "?h=" + want.substr(0, 12) + ("" if attempt == 0 else "&t=%d" % Time.get_ticks_msec())
 			_http.download_file = dest
 			var err := _http.request(url + q)
 			if err != OK:
