@@ -1867,6 +1867,13 @@ func _cart_changed() -> void:
 # ---- remembered between visits: volumes, speakers, lights, curtains, weather levels, music repeat, TV volume
 
 var _prefs_last := {}
+var weather_start := "random"          # "random" = a new random weather every visit, "remember" = the weather you left
+
+
+func set_weather_start(s: String) -> void:
+	weather_start = "remember" if s == "remember" else "random"
+	_save_settings()
+	settings_changed.emit()
 
 
 func _prefs_now() -> Dictionary:
@@ -1875,6 +1882,10 @@ func _prefs_now() -> Dictionary:
 	d["repeat"] = pc.repeat_mode
 	d["tv_volume"] = vcr.tv_volume
 	d["curtain"] = snappedf(curtain_target, 0.01) if not egg_active else float(_prefs_last.get("curtain", 0.0))
+	if not weather.locked:
+		d["weather_mode"] = weather.mode
+	elif _prefs_last.has("weather_mode"):
+		d["weather_mode"] = _prefs_last["weather_mode"]
 	d["traffic_muted"] = weather.traffic_muted
 	d["weather_vol"] = snappedf(weather.volume, 0.01)
 	d["levels"] = [snappedf(weather.levels[1], 0.01), snappedf(weather.levels[2], 0.01), snappedf(weather.levels[3], 0.01)]
@@ -1914,6 +1925,10 @@ func _load_prefs() -> void:
 		if lv is Array and (lv as Array).size() == 3:
 			for i in 3:
 				weather.set_level(i + 1, float(lv[i]))              # the kind of weather is still random, its strength is yours
+			weather.snap()
+		weather_start = "remember" if str(cfg.get_value("settings", "weather_start", "random")) == "remember" else "random"
+		if weather_start == "remember" and cfg.has_section_key("room", "weather_mode"):
+			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
 			weather.snap()
 		for i in bank.speakers.size():
 			bank.set_enabled(i, bool(g.call("spk_" + String(bank.speakers[i]["name"]), true)))
@@ -1957,6 +1972,7 @@ func _save_settings() -> void:
 	cfg.load(SETTINGS_FILE)
 	cfg.set_value("settings", "reticle_on", reticle_on)
 	cfg.set_value("settings", "reticle_color", reticle_color_idx)
+	cfg.set_value("settings", "weather_start", weather_start)
 	cfg.save(SETTINGS_FILE)
 
 

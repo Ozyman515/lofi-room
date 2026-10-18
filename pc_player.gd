@@ -30,6 +30,7 @@ var _st_update_btn: Button
 var repeat_mode := 0                  # 0 off, 1 repeat the track, 2 repeat the folder
 var _rep_track_btn: Button
 var _rep_folder_btn: Button
+var _st_weather_btn: Button
 var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
 var _lt_rows: VBoxContainer
@@ -372,7 +373,7 @@ func _build_settings_window() -> void:
 	_bar_row.move_child(btn, 4)
 	_st_window = PanelContainer.new()
 	_st_window.offset_left = 150.0
-	_st_window.offset_top = 40.0
+	_st_window.offset_top = 6.0
 	_st_window.offset_right = 874.0
 	_st_window.offset_bottom = 545.0
 	_st_window.visible = false
@@ -394,13 +395,18 @@ func _build_settings_window() -> void:
 	title.text = "Aiming dot"
 	v.add_child(title)
 	var hint := Label.new()
-	hint.text = "A small dot in the middle of the view (desktop only; in VR the laser does this)."
+	hint.text = "A small dot in the middle of the view (desktop only)."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
 	_st_reticle_btn = Button.new()
 	_st_reticle_btn.custom_minimum_size = Vector2(0, 42)
 	_st_reticle_btn.pressed.connect(func() -> void: _main.set_reticle_on(not _main.reticle_on))
 	v.add_child(_st_reticle_btn)
+	var wst := Button.new()
+	wst.custom_minimum_size = Vector2(0, 42)
+	wst.pressed.connect(func() -> void: _main.set_weather_start("random" if _main.weather_start == "remember" else "remember"))
+	v.add_child(wst)
+	_st_weather_btn = wst
 	var ct := Label.new()
 	ct.text = "Dot colour"
 	v.add_child(ct)
@@ -441,6 +447,8 @@ func _st_refresh() -> void:
 	if _st_reticle_btn == null:
 		return
 	_st_reticle_btn.text = "Aiming dot:  %s" % ("ON" if _main.reticle_on else "OFF")
+	if _st_weather_btn != null:
+		_st_weather_btn.text = "Weather at start:  " + ("THE LAST ONE" if _main.weather_start == "remember" else "RANDOM")
 	if _st_update_label != null:
 		var u: Node = _main.updater
 		_st_update_label.text = "This is version %d.  %s" % [u.local_version, u.message]
