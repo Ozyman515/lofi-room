@@ -959,8 +959,19 @@ func _setup_player() -> void:
 
 
 # True while the TV is really showing a video or a running game and the view is pointed at the glass.
+var arcade_focus: ScreenUI
+
+
+func _arcade_playing() -> bool:
+	return slot_cart == "neo" and emu != null and emu.state == Emu.State.RUNNING and not ctl_open
+
+
 func _aim_at_playing_tv() -> bool:
-	if tv_screen_ui == null or desktop_cam == null or not vcr.tv_on:
+	if desktop_cam == null:
+		return false
+	if arcade_focus != null and _arcade_playing() and _aim_hits(arcade_focus):
+		return true                 # a game is running on the arcade monitor: no dot over it
+	if tv_screen_ui == null or not vcr.tv_on:
 		return false
 	var playing := false
 	if console_on:
@@ -969,7 +980,12 @@ func _aim_at_playing_tv() -> bool:
 		playing = vcr.state == vcr.State.PLAYING and not vcr._paused_flag
 	if not playing:
 		return false
-	var xf := tv_screen_ui.global_transform
+	return _aim_hits(tv_screen_ui)
+
+
+# true when the desktop view is looking at this screen
+func _aim_hits(ui: ScreenUI) -> bool:
+	var xf := ui.global_transform
 	var n := xf.basis.z.normalized()
 	var o := desktop_cam.global_position
 	var d := -desktop_cam.global_transform.basis.z
@@ -980,7 +996,7 @@ func _aim_at_playing_tv() -> bool:
 	if t < 0.0 or t > 12.0:
 		return false
 	var l := xf.affine_inverse() * (o + d * t)
-	return absf(l.x) <= tv_screen_ui.screen_size.x * 0.5 and absf(l.y) <= tv_screen_ui.screen_size.y * 0.5
+	return absf(l.x) <= ui.screen_size.x * 0.5 and absf(l.y) <= ui.screen_size.y * 0.5
 
 
 func _process(delta: float) -> void:
@@ -990,7 +1006,7 @@ func _process(delta: float) -> void:
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
 			_cancel_leave()          # walked away or waited too long: the sign goes
 	if reticle != null:
-		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not _aim_at_playing_tv()
+		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not game_mode and not _aim_at_playing_tv()
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
 	_update_held_pad(delta)
 	if emu != null:
@@ -1295,7 +1311,7 @@ func _bed_sleep_spot() -> void:
 	var slab := _box(Vector3(-1.65, 0.63, -1.55), Vector3(1.5, 0.16, 0.7), _mat(Color.WHITE), null)
 	slab.visible = false
 	interactables.append({"node": slab, "half": Vector3(0.75, 0.08, 0.35), "egg_lock": true,
-		"when": func() -> bool: return not sleeping and updater != null and (updater.state == "available" or updater.state == "done"),
+		"when": func() -> bool: return not sleeping and updater != null and not updater.busy(),
 		"label": "Nap", "cb": _go_to_sleep})
 	# ... and the make-the-bed prompt down by the foot, only while the bed is a mess
 	var foot := _box(Vector3(-1.65, 0.63, -0.45), Vector3(1.5, 0.16, 0.9), _mat(Color.WHITE), null)
@@ -1343,25 +1359,23 @@ func _fade_veil(to: float, secs: float) -> void:
 
 
 func _go_to_sleep() -> void:
-	if sleeping or egg_active or updater == null:
-		return
-	if updater.state != "available" and updater.state != "done":
+	if sleeping or egg_active or updater == null or updater.busy():
 		return
 	sleeping = true
 	_make_sleep_veil()
 	await _fade_veil(1.0, 1.4)
-	if updater.state == "available":
+	if updater.state == "available":            # a waiting update installs while you nap
 		updater.install()
 		while updater.busy():
 			await updater.changed
-	if updater.state != "done":
-		_sleep_text.text = "Could not install the update"
-		await get_tree().create_timer(1.6).timeout
-		await _fade_veil(0.0, 1.0)
-		sleeping = false
-		updater.show_toast(updater.message if updater.state == "error" else "There was nothing to install.")
-		return
-	_sleep_text.text = "Waking up from your nap in the new room..."
+		if updater.state != "done":
+			_sleep_text.text = "Could not install the update"
+			await get_tree().create_timer(1.6).timeout
+			await _fade_veil(0.0, 1.0)
+			sleeping = false
+			updater.show_toast(updater.message if updater.state == "error" else "There was nothing to install.")
+			return
+	_sleep_text.text = "Waking up from your nap in the new room..." if updater.state == "done" else "Waking up from your nap..."
 	if emu != null:
 		emu._stop_host()                      # the running game saves its place first
 	bed_made = false                          # you slept in it, so the new room has an unmade bed
@@ -2296,6 +2310,7 @@ func _build_arcade() -> void:
 	arc_focus.enabled = false
 	scr.add_child(arc_focus)
 	screens.append(arc_focus)
+	arcade_focus = arc_focus
 	# marquee: a lit panel above the monitor
 	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9), root)
 	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
