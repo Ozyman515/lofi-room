@@ -1690,40 +1690,91 @@ func _plot(img: Image, x: int, y: int, alpha: float) -> void:
 
 # ---------------------------------------------------------------- game console (cartridge based)
 
+# The console is modelled on the unreleased Nintendo PlayStation prototype: a tan lower layer with two controller ports,
+# a cream upper layer with a disc tray, eject / reset buttons and a little display, and a cover over the cartridge slot.
+const CON_W := 0.36
+const CON_D := 0.38
+const CON_LOW := 0.067          # top of the tan lower layer
+const CON_TOP := 0.11           # top of the cream upper layer
+const CON_SLOT_Z := -0.115      # where cartridges stand in the slot
+
+
 func _build_console() -> void:
 	var root := Node3D.new()
 	console_root = root
-	root.position = Vector3(-2.55, 0.022, 0.35 + LOUNGE_DZ)
+	root.position = Vector3(-2.60, 0.022, 0.35 + LOUNGE_DZ)
 	root.rotation.y = PI / 2.0          # local +z faces +x (toward the beanbag)
 	room.add_child(root)
-	var body := _mat(Color(0.64, 0.60, 0.70), 0.5)
-	var dark := _mat(Color(0.20, 0.16, 0.26), 0.5)
-	var mag := _mat(Color(0.88, 0.25, 0.55), 0.5)
-	var cyan := _mat(Color(0.20, 0.80, 0.85), 0.5)
-	_box(Vector3(0, 0.0375, 0), Vector3(0.42, 0.075, 0.28), body, root)
-	_box(Vector3(0, 0.06, 0.141), Vector3(0.42, 0.012, 0.01), mag, root)              # front accent stripe
-	_box(Vector3(0, 0.0755, -0.03), Vector3(0.2, 0.008, 0.09), dark, root)            # cartridge slot
-	_box(Vector3(-0.15, 0.081, 0.1), Vector3(0.05, 0.012, 0.02), dark, root)          # power slider track
-	var knob_m := _mat(Color(0.88, 0.25, 0.55), 0.4)
-	console_knob = _box(Vector3(-0.162, 0.089, 0.1), Vector3(0.02, 0.012, 0.024), knob_m, root)   # slides right = ON
-	interactables.append({"node": console_knob, "half": Vector3(0.045, 0.03, 0.035),
+	var cream := _mat(Color(0.91, 0.89, 0.85), 0.5)
+	var cream_hi := _mat(Color(0.95, 0.93, 0.90), 0.45)
+	var tan := _mat(Color(0.93, 0.86, 0.62), 0.55)
+	var tan_dk := _mat(Color(0.84, 0.77, 0.54), 0.6)
+	var grey := _mat(Color(0.60, 0.60, 0.58), 0.5)
+	var olive := _mat(Color(0.66, 0.60, 0.38), 0.5)
+	var dark := _mat(Color(0.10, 0.10, 0.12), 0.6)
+	var seam := _mat(Color(0.50, 0.48, 0.45), 0.7)
+	var hw := CON_W / 2.0
+	var hd := CON_D / 2.0
+	var fz := hd + 0.0                                  # front of the upper layer
+	var fl := hd - 0.005                                # front of the (slightly inset) lower layer
+	_box(Vector3(0, CON_LOW / 2.0, 0), Vector3(CON_W - 0.01, CON_LOW, CON_D - 0.01), tan, root)
+	_box(Vector3(0, CON_LOW + 0.0015, 0), Vector3(CON_W - 0.006, 0.003, CON_D - 0.006), seam, root)
+	var up_h := CON_TOP - CON_LOW - 0.003
+	_box(Vector3(0, CON_LOW + 0.003 + up_h / 2.0, 0), Vector3(CON_W, up_h, CON_D), cream, root)
+	# ---- lower front: a pill-shaped panel with the two controller ports, a headphone jack and a level slider
+	_box(Vector3(0.046, 0.03, fl + 0.0008), Vector3(0.20, 0.036, 0.0016), tan_dk, root)
+	for ex in [-0.1, 0.1]:
+		var cap := _cyl(Vector3(0.046 + ex, 0.03, fl + 0.0008), 0.018, 0.0016, tan_dk, root)
+		cap.rotation.x = PI / 2.0
+	for px in [-0.004, 0.094]:
+		_box(Vector3(px, 0.03, fl + 0.0014), Vector3(0.064, 0.024, 0.0014), cream, root)
+		_box(Vector3(px - 0.0165, 0.03, fl + 0.0024), Vector3(0.025, 0.012, 0.0014), dark, root)
+		_box(Vector3(px + 0.0155, 0.03, fl + 0.0024), Vector3(0.03, 0.012, 0.0014), dark, root)
+		for k in 3:
+			_box(Vector3(px - 0.0225 + k * 0.0065, 0.03, fl + 0.0032), Vector3(0.0036, 0.006, 0.001), cream, root)
+		for k in 4:
+			_box(Vector3(px + 0.0045 + k * 0.0065, 0.03, fl + 0.0032), Vector3(0.0036, 0.006, 0.001), cream, root)
+	var jack := _cyl(Vector3(-0.128, 0.034, fl + 0.0015), 0.0085, 0.003, grey, root)
+	jack.rotation.x = PI / 2.0
+	var jack_in := _cyl(Vector3(-0.128, 0.034, fl + 0.0032), 0.0042, 0.003, dark, root)
+	jack_in.rotation.x = PI / 2.0
+	_box(Vector3(-0.097, 0.034, fl + 0.0015), Vector3(0.017, 0.006, 0.003), dark, root)                      # level slider track
+	_box(Vector3(-0.0975, 0.034, fl + 0.0032), Vector3(0.004, 0.011, 0.0025), grey, root)
+	# ---- upper front: the disc tray with its tab and eject key, and the power switch
+	_box(Vector3(0.0164, 0.067, fz + 0.0006), Vector3(0.259, 0.026, 0.0016), grey, root)
+	_box(Vector3(-0.092, 0.067, fz + 0.0016), Vector3(0.044, 0.026, 0.0016), _mat(Color(0.52, 0.52, 0.50), 0.6), root)  # the tab on the left
+	_box(Vector3(0.0275, 0.067, fz + 0.0016), Vector3(0.212, 0.020, 0.0014), _mat(Color(0.56, 0.56, 0.54), 0.5), root)   # the disc slot door
+	_cart_text("COMPACT DISC", 22, 0.0004, Color(0.2, 0.2, 0.22), Vector3(0.015, 0.067, fz + 0.0030), root)
+	_box(Vector3(0.1595, 0.067, fz + 0.0014), Vector3(0.024, 0.026, 0.003), olive, root)                       # eject key
+	var knob_m := _mat(Color(0.88, 0.80, 0.55), 0.45)
+	console_knob = _box(Vector3(-0.157, 0.081, fz + 0.005), Vector3(0.028, 0.018, 0.011), knob_m, root)      # the power switch: slides right = ON
+	interactables.append({"node": console_knob, "half": Vector3(0.04, 0.03, 0.04),
 		"label": _console_label, "egg_lock": true, "cb": toggle_console, "hover": _glow_hover(knob_m)})
-	var pl := Label3D.new()
-	pl.text = "POWER"
-	pl.font_size = 28
-	pl.pixel_size = 0.0006
-	pl.modulate = Color(0.15, 0.1, 0.2)
-	pl.rotation.x = -PI / 2.0
-	pl.position = Vector3(-0.15, 0.0815, 0.125)
-	root.add_child(pl)
-	var b1 := _cyl(Vector3(0.12, 0.08, 0.1), 0.012, 0.01, mag, root)
-	var b2 := _cyl(Vector3(0.16, 0.08, 0.1), 0.012, 0.01, cyan, root)
-	b1.rotation.x = 0.0
-	b2.rotation.x = 0.0
-	console_led_m = _mat(Color(0.3, 0.05, 0.05), 0.5, 0.5)
-	_sphere(Vector3(-0.1, 0.079, 0.115), 0.006, console_led_m, Vector3.ONE, root, 8)  # power LED
-	for px in [-0.08, 0.08]:
-		_box(Vector3(px, 0.035, 0.141), Vector3(0.05, 0.03, 0.01), dark, root)        # controller ports
+	_cart_text("POWER", 20, 0.0004, Color(0.3, 0.26, 0.2), Vector3(-0.157, 0.0645, fz + 0.0014), root)
+	# ---- the top: eject and reset buttons, the little display with its row of keys, and the cover over the cartridge slot
+	_cyl(Vector3(-0.152, CON_TOP + 0.002, 0.137), 0.028, 0.004, tan, root)
+	_cyl(Vector3(-0.078, CON_TOP + 0.002, 0.099), 0.018, 0.004, tan, root)
+	console_led_m = _mat(Color(0.12, 0.16, 0.14), 0.4, 0.5)
+	_box(Vector3(0.115, CON_TOP + 0.001, 0.115), Vector3(0.07, 0.0025, 0.031), dark, root)
+	_box(Vector3(0.115, CON_TOP + 0.0022, 0.115), Vector3(0.062, 0.0025, 0.024), console_led_m, root)         # the display
+	for cx in [0.1, 0.133]:
+		for cz in [0.142, 0.157, 0.172]:
+			_box(Vector3(cx, CON_TOP + 0.0015, cz), Vector3(0.028, 0.003, 0.009), tan, root)
+	_box(Vector3(0, CON_TOP + 0.0008, CON_SLOT_Z), Vector3(0.30, 0.0016, 0.15), _mat(Color(0.74, 0.72, 0.68), 0.6), root)   # the bay under the cover
+	_box(Vector3(0, CON_TOP + 0.002, CON_SLOT_Z), Vector3(0.17, 0.002, 0.03), dark, root)                    # the cartridge slot itself
+	_cart_text("LOFI", 40, 0.0004, Color(0.45, 0.43, 0.42), Vector3(0.0, CON_TOP + 0.0012, 0.0), root).rotation.x = -PI / 2.0
+	console_lid = Node3D.new()
+	console_lid.position = Vector3(0, CON_TOP, -hd + 0.0)           # hinged along the back edge
+	root.add_child(console_lid)
+	_box(Vector3(0, 0.006, 0.075), Vector3(0.30, 0.012, 0.15), cream_hi, console_lid)
+	_box(Vector3(0, 0.0125, 0.075), Vector3(0.27, 0.002, 0.12), cream, console_lid)
+	_box(Vector3(0, 0.0125, 0.138), Vector3(0.10, 0.0025, 0.012), tan_dk, console_lid)                         # finger dip
+	# ---- the back: a plate with the video sockets
+	_box(Vector3(-0.02, 0.05, -hd + 0.0015), Vector3(0.22, 0.04, 0.003), dark, root)
+	for i in 3:
+		var jk := _cyl(Vector3(-0.07 + i * 0.026, 0.05, -hd - 0.002), 0.0075, 0.004,
+			_mat([Color(0.85, 0.15, 0.15), Color(0.95, 0.95, 0.95), Color(0.95, 0.82, 0.15)][i], 0.4), root)
+		jk.rotation.x = PI / 2.0
 	# two controllers on the rug
 	_controller(Vector3(-2.0, 0.022, 1.62), 0.3)
 	_controller(Vector3(-2.25, 0.022, 1.95), -0.25)
@@ -1734,6 +1785,20 @@ func _build_console() -> void:
 	_build_arcade()
 	_build_carts()
 	_apply_console()
+
+
+var console_lid: Node3D
+var _lid_tween: Tween
+
+
+# The cover over the cartridge slot lifts while a cartridge is in.
+func _set_lid(open: bool) -> void:
+	if console_lid == null:
+		return
+	if _lid_tween != null and _lid_tween.is_valid():
+		_lid_tween.kill()
+	_lid_tween = create_tween()
+	_lid_tween.tween_property(console_lid, "rotation:x", -1.9 if open else 0.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _console_label() -> String:
@@ -1781,11 +1846,11 @@ func _apply_console() -> void:
 		if console_on:
 			tv_screen_ui.clear_hover()
 	if console_knob != null:
-		console_knob.position.x = -0.138 if console_on else -0.162
+		console_knob.position.x = -0.145 if console_on else -0.157
 	if console_led_m != null:
-		console_led_m.albedo_color = Color(0.3, 1.0, 0.4) if console_on else Color(0.3, 0.05, 0.05)
-		console_led_m.emission = Color(0.3, 1.0, 0.4) if console_on else Color(0.6, 0.05, 0.05)
-		console_led_m.emission_energy_multiplier = 3.0 if console_on else 0.5
+		console_led_m.albedo_color = Color(0.35, 0.6, 0.45) if console_on else Color(0.12, 0.16, 0.14)
+		console_led_m.emission = Color(0.35, 0.95, 0.5) if console_on else Color(0.12, 0.16, 0.14)
+		console_led_m.emission_energy_multiplier = 1.6 if console_on else 0.2
 
 
 func _on_emu_screen(t: Texture2D) -> void:
@@ -1805,35 +1870,94 @@ func _console_fit(t: Texture2D) -> void:
 	tv_mat.set_shader_parameter("console_aspect", float(t.get_width()) / float(t.get_height()) if handheld else 1.3333)
 
 
-# ---- game carts
+# ---- game carts. Every cart is built around its centre, label toward +z. Meta "bottom" = distance from the centre down to the contacts,
+# "depth" = how far it sinks into the console slot.
 
-func _cart_mesh(body_c: Color, label_c: Color, stripe_c: Color, text: String) -> Node3D:
+const CartArt := preload("res://cart_art.gd")
+const GOLD := Color(0.80, 0.66, 0.30)
+
+
+func _label_quad(tex: Texture2D, size: Vector2, pos: Vector3, parent: Node3D) -> MeshInstance3D:
+	var q := QuadMesh.new()
+	q.size = size
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	m.roughness = 0.4
+	m.disable_fog = true
+	return _place(q, pos, m, parent)
+
+
+func _cart_text(text: String, fsize: int, psize: float, col: Color, pos: Vector3, parent: Node3D) -> Label3D:
+	var lb := Label3D.new()
+	lb.text = text
+	lb.font_size = fsize
+	lb.pixel_size = psize
+	lb.outline_size = 0
+	lb.modulate = col
+	lb.position = pos
+	parent.add_child(lb)
+	return lb
+
+
+func _cart_node(bottom: float, depth: float) -> Node3D:
 	var n := Node3D.new()
 	room.add_child(n)
-	var body := _mat(body_c, 0.6)
-	_box(Vector3.ZERO, Vector3(0.15, 0.11, 0.022), body, n)
-	for rx in [-0.04, 0.0, 0.04]:
-		_box(Vector3(rx, 0.057, 0.0), Vector3(0.02, 0.004, 0.024), body, n)         # ridges on top
-	_box(Vector3(0, -0.052, 0), Vector3(0.12, 0.012, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)   # contacts
-	if text != "":
-		_box(Vector3(0, 0.01, 0.0125), Vector3(0.11, 0.065, 0.003), _mat(label_c, 0.5), n)
-		_box(Vector3(0, 0.036, 0.0128), Vector3(0.11, 0.016, 0.0035), _mat(stripe_c, 0.5), n)
-		var lb := Label3D.new()
-		lb.text = text
-		lb.font_size = 60
-		lb.pixel_size = 0.0007
-		lb.modulate = Color(0.1, 0.08, 0.12)
-		lb.position = Vector3(0, 0.002, 0.0147)
-		n.add_child(lb)
-	else:
-		_box(Vector3(0, 0.01, 0.0118), Vector3(0.11, 0.065, 0.0015), _mat(body_c.lightened(0.07), 0.7), n)   # a plain blank label
+	n.set_meta("bottom", bottom)
+	n.set_meta("depth", depth)
 	return n
 
 
-# A Super Game Boy style cart: taller grey body, ridged sides, a raised top block, four screws, white label.
+# NES: grey, tall, a ribbed column beside a label set into the right of the face, a triangle mark near the bottom.
+func _nes_cart_mesh(egg: bool = false) -> Node3D:
+	var n := _cart_node(0.09, 0.04)
+	var gc := Color(0.19, 0.18, 0.22) if egg else Color(0.60, 0.60, 0.62)
+	var body := _mat(gc, 0.55)
+	var dark := _mat(gc.darkened(0.32), 0.7)
+	var light := _mat(gc.lightened(0.07), 0.5)
+	var t := 0.024
+	_extrude_poly([Vector2(-0.075, -0.0825), Vector2(0.075, -0.0825), Vector2(0.075, 0.0765), Vector2(0.063, 0.0765), Vector2(0.063, 0.0825),
+		Vector2(-0.063, 0.0825), Vector2(-0.063, 0.0765), Vector2(-0.075, 0.0765)], -t / 2.0, t / 2.0, body, n)
+	_box(Vector3(0, -0.0865, 0), Vector3(0.12, 0.008, 0.012), _mat(GOLD, 0.4), n)                                   # contacts
+	_box(Vector3(-0.0353, 0.009, t / 2.0 + 0.0003), Vector3(0.032, 0.14, 0.0006), dark, n)                       # ribbed column
+	for i in 22:
+		_box(Vector3(-0.0353, 0.0758 - i * 0.0066, t / 2.0 + 0.0008), Vector3(0.032, 0.0042, 0.0014), light, n)
+	_box(Vector3(0.019, 0.0269, t / 2.0 + 0.0002), Vector3(0.0726, 0.1163, 0.0004), dark, n)                      # the label's pocket
+	var lab_tex := CartArt.egg_label() if egg else CartArt.nes_label()
+	_label_quad(lab_tex, Vector2(0.0686, 0.1123), Vector3(0.019, 0.0269, t / 2.0 + 0.0008), n)
+	_extrude_poly([Vector2(-0.0155, -0.0369), Vector2(-0.0015, -0.0519), Vector2(0.0125, -0.0369)], t / 2.0 - 0.0004, t / 2.0 + 0.0006, dark, n)   # the triangle
+	_cart_text("EASTER EGG" if egg else "NES", 20 if egg else 52, 0.0005 if egg else 0.0006, Color(1.0, 0.93, 0.8) if egg else Color(0.98, 0.92, 0.98),
+		Vector3(0.019, -0.0192, t / 2.0 + 0.0014), n)
+	return n
+
+
+# SNES: wide and short, ribbed shoulders, a raised middle with the label, a recessed panel at the bottom and two screws.
+func _snes_cart_mesh() -> Node3D:
+	var n := _cart_node(0.049, 0.04)
+	var gc := Color(0.73, 0.72, 0.78)
+	var body := _mat(gc, 0.55)
+	var dark := _mat(gc.darkened(0.30), 0.7)
+	var t := 0.022
+	_extrude_poly([Vector2(-0.075, -0.0468), Vector2(0.075, -0.0468), Vector2(0.075, 0.0432), Vector2(0.0513, 0.0432), Vector2(0.0513, 0.0467),
+		Vector2(-0.0513, 0.0467), Vector2(-0.0513, 0.0432), Vector2(-0.075, 0.0432)], -t / 2.0, t / 2.0, body, n)
+	_box(Vector3(0, -0.0485, 0), Vector3(0.1, 0.004, 0.012), _mat(GOLD, 0.4), n)
+	for sx in [-1.0, 1.0]:
+		for gy in [0.0271, 0.0121, -0.0029, -0.0179, -0.0329]:                                                    # the grooves in the shoulders
+			_box(Vector3(sx * 0.0631, gy, 0), Vector3(0.022, 0.0016, t + 0.0004), dark, n)
+		var sc := _cyl(Vector3(sx * 0.0605, -0.040, t / 2.0 + 0.0004), 0.0033, 0.0014, _mat(Color(0.78, 0.66, 0.35), 0.4), n)
+		sc.rotation.x = PI / 2.0
+	_box(Vector3(0, -0.03, t / 2.0 + 0.0002), Vector3(0.091, 0.0335, 0.0006), _mat(gc.darkened(0.07), 0.6), n)    # the recess at the bottom
+	for vx in [-0.0165, 0.0165]:
+		_box(Vector3(vx, -0.03, t / 2.0 + 0.0007), Vector3(0.0016, 0.0335, 0.0006), dark, n)
+	_box(Vector3(0.0006, 0.0241, t / 2.0 + 0.0002), Vector3(0.0953, 0.0462, 0.0004), _mat(Color(0.05, 0.04, 0.08), 0.6), n)
+	_label_quad(CartArt.snes_label(), Vector2(0.0923, 0.0432), Vector3(0.0006, 0.0241, t / 2.0 + 0.0008), n)
+	_cart_text("SNES", 28, 0.00045, Color(0.98, 0.92, 0.98), Vector3(0.031, 0.0298, t / 2.0 + 0.0014), n)
+	return n
+
+
+# Super GB: taller grey body, ridged sides, a raised top block, four screws, a lavender label.
 func _sgb_cart_mesh() -> Node3D:
-	var n := Node3D.new()
-	room.add_child(n)
+	var n := _cart_node(0.0605, 0.035)
 	var gc := Color(0.66, 0.65, 0.64)
 	var body := _mat(gc, 0.55)
 	var dark := _mat(Color(0.22, 0.22, 0.24), 0.7)
@@ -1845,56 +1969,40 @@ func _sgb_cart_mesh() -> Node3D:
 		for i in 6:                                                                                               # grooves on both sides
 			_box(Vector3(sx * 0.0545, 0.036 - i * 0.0165, 0.0), Vector3(0.037, 0.0028, 0.0232), dark, n)
 		for sy in [0.03, -0.043]:                                                                                 # screws
-			var sc := _cyl(Vector3(sx * 0.0345 + sx * 0.0, sy, 0.0116), 0.0036, 0.0012, dark, n)
+			var sc := _cyl(Vector3(sx * 0.0345, sy, 0.0116), 0.0036, 0.0012, dark, n)
 			sc.rotation.x = PI / 2.0
 	_box(Vector3(0, -0.046, 0.0), Vector3(0.07, 0.03, 0.0236), _mat(gc.darkened(0.04), 0.6), n)                  # the lower panel
 	_box(Vector3(0, -0.0575, 0.0), Vector3(0.06, 0.0025, 0.0238), dark, n)
-	_box(Vector3(0, -0.0585, 0), Vector3(0.12, 0.004, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)             # contacts
-	_box(Vector3(0, 0.014, 0.0125), Vector3(0.088, 0.054, 0.003), _mat(Color(0.95, 0.95, 0.96), 0.5), n)        # white label
-	var sup := Label3D.new()
-	sup.text = "Super"
-	sup.font_size = 36
-	sup.pixel_size = 0.0006
-	sup.outline_size = 0
-	sup.modulate = Color(0.85, 0.15, 0.2)
-	sup.position = Vector3(-0.018, 0.0315, 0.0147)
-	n.add_child(sup)
-	_box(Vector3(0.01, 0.0205, 0.0143), Vector3(0.06, 0.0018, 0.0006), _mat(Color(0.85, 0.15, 0.2), 0.5), n)    # red swoosh
-	var gb := Label3D.new()
-	gb.text = "SGB"
-	gb.font_size = 52
-	gb.pixel_size = 0.0007
-	gb.outline_size = 0
-	gb.modulate = Color(0.16, 0.18, 0.55)
-	gb.position = Vector3(0, 0.0035, 0.0147)
-	n.add_child(gb)
+	_box(Vector3(0, -0.0585, 0), Vector3(0.12, 0.004, 0.012), _mat(GOLD, 0.4), n)                              # contacts
+	_box(Vector3(0, 0.014, 0.0125), Vector3(0.088, 0.054, 0.003), _mat(Color(0.86, 0.78, 0.96), 0.5), n)        # lavender label
+	_cart_text("Super", 36, 0.0006, Color(0.88, 0.25, 0.55), Vector3(0, 0.0295, 0.0147), n)
+	_box(Vector3(0.0, 0.0205, 0.0143), Vector3(0.06, 0.0018, 0.0006), _mat(Color(0.88, 0.25, 0.55), 0.5), n)    # swoosh
+	_cart_text("GB", 64, 0.0008, Color(0.20, 0.12, 0.45), Vector3(0, 0.0035, 0.0147), n)
 	return n
 
 
-# A Genesis style cart: black shell, ridged top, a notch in the lower corner, and a dark label with a blue band.
+# Sega style: black shell, thick grippy side pillars, a flat middle with the label, a grid panel and a name plate under it.
 func _gen_cart_mesh() -> Node3D:
-	var n := Node3D.new()
-	room.add_child(n)
+	var n := _cart_node(0.059, 0.022)
 	var blk := _mat(Color(0.07, 0.07, 0.085), 0.5)
 	var dark := _mat(Color(0.03, 0.03, 0.04), 0.7)
-	_box(Vector3.ZERO, Vector3(0.15, 0.11, 0.022), blk, n)
-	for i in 5:                                                                                           # ridges across the top
-		_box(Vector3(-0.045 + i * 0.0225, 0.0575, 0.0), Vector3(0.011, 0.004, 0.024), dark, n)
-	for sx in [-1.0, 1.0]:                                                                                # grip grooves on the sides
+	_extrude_poly([Vector2(-0.056, -0.051), Vector2(0.056, -0.051), Vector2(0.056, 0.051), Vector2(-0.056, 0.051)], -0.010, 0.010, blk, n)
+	for sx in [-1.0, 1.0]:                                                                                       # side pillars, rounded at the top
+		var pts := [Vector2(0.056, -0.051), Vector2(0.075, -0.051), Vector2(0.075, 0.040), Vector2(0.066, 0.051), Vector2(0.056, 0.051)]
+		if sx < 0.0:
+			pts = [Vector2(-0.056, 0.051), Vector2(-0.066, 0.051), Vector2(-0.075, 0.040), Vector2(-0.075, -0.051), Vector2(-0.056, -0.051)]
+		_extrude_poly(pts, -0.013, 0.013, blk, n)
 		for i in 4:
-			_box(Vector3(sx * 0.0745, 0.02 - i * 0.017, 0.0), Vector3(0.004, 0.009, 0.0235), dark, n)
-	_box(Vector3(0, -0.052, 0), Vector3(0.12, 0.012, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)      # contacts
-	_box(Vector3(0, 0.008, 0.0125), Vector3(0.115, 0.07, 0.003), _mat(Color(0.12, 0.12, 0.16), 0.5), n)  # label
-	_box(Vector3(0, 0.0395, 0.0128), Vector3(0.115, 0.012, 0.0035), _mat(Color(0.1, 0.32, 0.78), 0.5), n)   # blue band
-	_box(Vector3(0, -0.0255, 0.0128), Vector3(0.115, 0.004, 0.0035), _mat(Color(0.85, 0.15, 0.2), 0.5), n)  # thin red line
-	var lb := Label3D.new()
-	lb.text = "GENESIS"
-	lb.font_size = 56
-	lb.pixel_size = 0.0007
-	lb.outline_size = 0
-	lb.modulate = Color(0.92, 0.92, 0.95)
-	lb.position = Vector3(0, 0.008, 0.0147)
-	n.add_child(lb)
+			_box(Vector3(sx * 0.0658, 0.025 - i * 0.017, 0.0132), Vector3(0.013, 0.003, 0.0006), dark, n)         # grips
+	_box(Vector3(0, -0.055, 0), Vector3(0.12, 0.008, 0.012), _mat(GOLD, 0.4), n)                                 # contacts
+	_box(Vector3(0, 0.0215, 0.0102), Vector3(0.1134, 0.0630, 0.0004), dark, n)                                   # label pocket
+	_label_quad(CartArt.gen_label(), Vector2(0.1094, 0.059), Vector3(0, 0.0215, 0.0108), n)
+	_label_quad(CartArt.gen_grid(), Vector2(0.1094, 0.034), Vector3(0, -0.0255, 0.0104), n)
+	var sil := _mat(Color(0.74, 0.76, 0.84), 0.35, 0.0)
+	sil.metallic = 0.5
+	_box(Vector3(0, -0.0185, 0.0108), Vector3(0.060, 0.0135, 0.0012), sil, n)                                    # name plate
+	_box(Vector3(0, -0.0185, 0.0116), Vector3(0.054, 0.0095, 0.0012), _mat(Color(0.10, 0.17, 0.46), 0.5), n)
+	_cart_text("SEGA", 40, 0.0005, Color(0.92, 0.96, 1.0), Vector3(0, -0.0185, 0.0124), n)
 	return n
 
 
@@ -1967,12 +2075,12 @@ func _build_arcade() -> void:
 	# lower front: kick plate, the front panel with coin doors and the cart slot
 	_box(Vector3(0.755, 0.06, 0), Vector3(0.05, 0.12, CAB_W - 0.07), grey, root)
 	var fw := CAB_W - 0.07
-	_box(Vector3(0.7675, 0.28, 0), Vector3(0.025, 0.32, fw), white, root)                    # front panel, with an open cart bay in it
-	_box(Vector3(0.7675, 0.71, 0), Vector3(0.025, 0.22, fw), white, root)
+	_box(Vector3(0.7675, 0.27, 0), Vector3(0.025, 0.30, fw), white, root)                    # front panel, with an open cart bay in it
+	_box(Vector3(0.7675, 0.72, 0), Vector3(0.025, 0.20, fw), white, root)
 	for bz in [-1.0, 1.0]:
-		_box(Vector3(0.7675, 0.52, bz * 0.215), Vector3(0.025, 0.16, 0.22), white, root)
-	_box(Vector3(0.7545, 0.52, 0), Vector3(0.002, 0.17, 0.215), _mat(Color(0.015, 0.015, 0.02), 0.8), root)   # back of the bay
-	_box(Vector3(0.7665, 0.435, 0), Vector3(0.025, 0.004, 0.215), _mat(Color(0.015, 0.015, 0.02), 0.8), root)  # its dark floor edge
+		_box(Vector3(0.7675, 0.52, bz * 0.23), Vector3(0.025, 0.20, 0.19), white, root)
+	_box(Vector3(0.7545, 0.52, 0), Vector3(0.002, 0.21, 0.27), _mat(Color(0.015, 0.015, 0.02), 0.8), root)   # back of the bay
+	_box(Vector3(0.7665, 0.42, 0), Vector3(0.025, 0.004, 0.27), _mat(Color(0.015, 0.015, 0.02), 0.8), root)  # its dark floor edge
 	for cz in [-0.21, 0.21]:
 		_box(Vector3(0.7815, 0.40, cz), Vector3(0.006, 0.20, 0.13), grey, root)                       # coin door plate
 		_box(Vector3(0.785, 0.46, cz), Vector3(0.004, 0.05, 0.012), dark, root)                       # coin slot
@@ -1985,7 +2093,7 @@ func _build_arcade() -> void:
 	cl.pixel_size = 0.0007
 	cl.modulate = Color(0.25, 0.28, 0.3)
 	cl.rotation = Vector3(0, PI / 2.0, 0)
-	cl.position = Vector3(0.7815, 0.415, 0.0)
+	cl.position = Vector3(0.7815, 0.395, 0.0)
 	root.add_child(cl)
 	# the control panel: a speckled grey deck like a classic fighting-game cabinet. Two black ball-top sticks, two rows of three
 	# buttons each (red, white, blue) and four start buttons in the middle.
@@ -2097,56 +2205,47 @@ func _pick_arcade() -> void:
 		emu.set_pad(true)
 
 
-# A Neo Geo style cart: big black shell, a yellow label with a red band.
+# Neo Geo: a big black block, stepped shoulders, fins across the lower part and a small label up top with blue stripes beside it.
 func _neo_cart_mesh() -> Node3D:
-	var n := Node3D.new()
-	room.add_child(n)
-	var blk := _mat(Color(0.08, 0.08, 0.10), 0.5)
-	var dark := _mat(Color(0.03, 0.03, 0.04), 0.7)
-	_box(Vector3.ZERO, Vector3(0.17, 0.12, 0.022), blk, n)
-	for i in 6:
-		_box(Vector3(-0.055 + i * 0.022, 0.0615, 0.0), Vector3(0.011, 0.004, 0.024), dark, n)
-	_box(Vector3(0, -0.057, 0), Vector3(0.13, 0.012, 0.012), _mat(Color(0.8, 0.66, 0.3), 0.4), n)
-	_box(Vector3(0, 0.006, 0.0125), Vector3(0.14, 0.078, 0.003), _mat(Color(0.95, 0.80, 0.18), 0.5), n)
-	_box(Vector3(0, -0.026, 0.0128), Vector3(0.14, 0.014, 0.0035), _mat(Color(0.78, 0.1, 0.12), 0.5), n)
-	var lb := Label3D.new()
-	lb.text = "NEO GEO"
-	lb.font_size = 44
-	lb.pixel_size = 0.0008
-	lb.outline_size = 0
-	lb.modulate = Color(0.1, 0.06, 0.06)
-	lb.position = Vector3(0, 0.017, 0.0148)
-	n.add_child(lb)
-	var lb2 := Label3D.new()
-	lb2.text = "MVS"
-	lb2.font_size = 40
-	lb2.pixel_size = 0.0008
-	lb2.outline_size = 0
-	lb2.modulate = Color(0.1, 0.06, 0.06)
-	lb2.position = Vector3(0, -0.012, 0.0148)
-	n.add_child(lb2)
+	var n := _cart_node(0.0975, 0.0)
+	var blk := _mat(Color(0.105, 0.105, 0.12), 0.5)
+	var fin := _mat(Color(0.12, 0.12, 0.14), 0.5)
+	var dark := _mat(Color(0.02, 0.02, 0.03), 0.7)
+	var t := 0.032
+	_extrude_poly([Vector2(-0.125, -0.0925), Vector2(0.125, -0.0925), Vector2(0.125, 0.073), Vector2(0.108, 0.073), Vector2(0.108, 0.0925),
+		Vector2(-0.108, 0.0925), Vector2(-0.108, 0.073), Vector2(-0.125, 0.073)], -t / 2.0, t / 2.0, blk, n)
+	_box(Vector3(0, -0.0965, 0), Vector3(0.19, 0.008, 0.014), _mat(GOLD, 0.4), n)                                   # contacts
+	for i in 7:
+		_box(Vector3(0, -0.0865 + i * 0.0072, 0), Vector3(0.25, 0.0034, t + 0.002), fin, n)                      # fins
+	_box(Vector3(0, 0.052, t / 2.0 + 0.0002), Vector3(0.126, 0.0625, 0.0004), dark, n)                            # label pocket
+	_label_quad(CartArt.neo_label(), Vector2(0.116, 0.056), Vector3(0, 0.052, t / 2.0 + 0.0008), n)
+	for sx in [-1.0, 1.0]:
+		for off in [0.0705, 0.0745]:
+			_box(Vector3(sx * off, 0.052, t / 2.0 + 0.0004), Vector3(0.0018, 0.058, 0.0006), _mat(Color(0.20, 0.80, 0.85), 0.5), n)
+	_cart_text("NEO", 46, 0.0005, Color(1.0, 0.93, 0.8), Vector3(0.031, 0.0635, t / 2.0 + 0.0014), n)
+	_cart_text("GEO", 46, 0.0005, Color(1.0, 0.93, 0.8), Vector3(0.031, 0.0435, t / 2.0 + 0.0014), n)
 	return n
 
 
 func _build_carts() -> void:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)       # lying flat, label up
-	var nes := _cart_mesh(Color(0.56, 0.56, 0.60), Color(0.86, 0.22, 0.26), Color(0.12, 0.12, 0.14), "NES")
-	var snes := _cart_mesh(Color(0.70, 0.68, 0.76), Color(0.36, 0.30, 0.62), Color(0.88, 0.25, 0.55), "SNES")
+	var nes := _nes_cart_mesh()
+	var snes := _snes_cart_mesh()
 	var sgb := _sgb_cart_mesh()
 	var gen := _gen_cart_mesh()
 	var neo := _neo_cart_mesh()
-	var egg_c := _cart_mesh(Color(0.19, 0.18, 0.22), Color.BLACK, Color.BLACK, "")
+	var egg_c := _nes_cart_mesh(true)
 	var tv_top := 0.04 + TV_WIDTH * 0.72
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.5) * lay, Vector3(-2.3, 0.034, 1.12))}
 	carts["snes"] = {"node": snes, "name": "SNES CART", "busy": false,
 		"home": func() -> Transform3D: return tv_root.global_transform * Transform3D(Basis(Vector3.UP, 0.3) * lay, Vector3(0.52, tv_top + 0.011, 0.05))}
-	carts["sgb"] = {"node": sgb, "name": "SGB CART", "busy": false,
+	carts["sgb"] = {"node": sgb, "name": "SUPER GB CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 1.36))}
-	carts["gen"] = {"node": gen, "name": "GENESIS CART", "busy": false,
+	carts["gen"] = {"node": gen, "name": "SEGA CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.02, 0.034, 1.32))}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.12), Vector3(2.21, 1.025, 0.55))}   # standing on the bookshelf
+		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.12), Vector3(2.21, 1.066, 0.55))}   # standing on the bookshelf
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
 	for id in ["nes", "snes", "sgb", "gen", "neo"]:
@@ -2201,9 +2300,10 @@ func _insert_cart(id: String) -> void:
 	if n.get_parent() != room:
 		n.reparent(room, true)
 	if id == "neo":
-		_fly_cart(id, cab_root.global_transform * Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.768, 0.52, 0.0)))   # upright in the cart bay, label out
+		_fly_cart(id, cab_root.global_transform * Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.776, 0.52, 0.0)))   # upright in the cart bay, label out
 	else:
-		_fly_cart(id, console_root.global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0.09, -0.03)))
+		_fly_cart(id, console_root.global_transform * Transform3D(Basis.IDENTITY,
+			Vector3(0, CON_TOP - float(n.get_meta("depth")) + float(n.get_meta("bottom")), CON_SLOT_Z)))
 	_cart_changed()
 
 
@@ -2223,6 +2323,12 @@ func _eject_cart() -> void:
 func _cart_changed() -> void:
 	konami_progress = 0
 	_close_controls()
+	if slot_cart != "" and slot_cart != "neo":
+		_set_lid(true)
+	else:
+		get_tree().create_timer(0.7).timeout.connect(func() -> void:
+			if slot_cart == "" or slot_cart == "neo":
+				_set_lid(false))
 	if emu != null:
 		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen", "neo"]) else "")
 	_apply_console()
@@ -2865,14 +2971,14 @@ func _build_power() -> void:
 	_cord([Vector3(-3.85, 0.3, -0.2 + dz), Vector3(-3.8, 0.15, -0.2 + dz), Vector3(-3.72, 0.03, -0.2 + dz), Vector3(-3.62, 0.034, -0.2 + dz)], 0.007, white)
 	var tv_back := tv_root.to_global(Vector3(0.45, 0.15, -0.775))
 	_cord([tv_back, Vector3(-3.84, 0.06, 0.35 + dz), Vector3(-3.78, 0.012, 0.15 + dz), Vector3(-3.7, 0.012, 0.0 + dz), Vector3(-3.62, 0.034, 0.0 + dz)], 0.009, black)
-	var c_back := console_root.to_global(Vector3(0.18, 0.03, -0.145))
+	var c_back := console_root.to_global(Vector3(0.12, 0.035, -0.19))
 	_cord([c_back, Vector3(-2.74, 0.012, 0.14 + dz), Vector3(-3.0, 0.012, 0.09 + dz), Vector3(-3.4, 0.012, 0.04 + dz), Vector3(-3.6, 0.034, 0.05 + dz)], 0.005, black)
 	# console to TV (video cable) and the two controller cables
-	var av_from := console_root.to_global(Vector3(-0.1, 0.04, -0.145))
+	var av_from := console_root.to_global(Vector3(-0.07, 0.05, -0.19))
 	var av_to := tv_root.to_global(Vector3(TV_WIDTH / 2.0 - 0.28, 0.1, 0.235))
 	_cord([av_from, Vector3(-2.78, 0.034, 0.4 + dz), Vector3(-2.86, 0.06, 0.37 + dz), av_to], 0.004, yellow)
-	var port_a := console_root.to_global(Vector3(-0.08, 0.035, 0.145))
-	var port_b := console_root.to_global(Vector3(0.08, 0.035, 0.145))
+	var port_a := console_root.to_global(Vector3(-0.004, 0.03, 0.185))
+	var port_b := console_root.to_global(Vector3(0.094, 0.03, 0.185))
 	_cord([port_a, Vector3(-2.3, 0.034, 0.27 + dz), Vector3(-2.2, 0.034, 0.2 + dz), ctrl_exits[0]], 0.004, black)
 	_cord([port_b, Vector3(-2.3, 0.034, 0.5 + dz), Vector3(-2.15, 0.034, 0.65 + dz), ctrl_exits[1]], 0.004, black)
 
