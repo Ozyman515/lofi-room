@@ -1894,7 +1894,7 @@ func _build_arcade() -> void:
 	_extrude_poly(CAB_PROFILE, hw - 0.035, hw, white, root)
 	for sz in [-1.0, 1.0]:
 		var zz: float = sz * hw
-		_extrude_poly([Vector2(0.86, 0.95), Vector2(0.66, 1.505), Vector2(0.70, 1.52), Vector2(0.90, 0.965)], zz - 0.0015 if sz > 0 else zz - 0.0035, zz + 0.0035 if sz > 0 else zz + 0.0015, green, root)
+		_extrude_poly([Vector2(0.83, 0.96), Vector2(0.64, 1.50), Vector2(0.607, 1.488), Vector2(0.797, 0.948)], zz - 0.0015 if sz > 0 else zz - 0.0035, zz + 0.0035 if sz > 0 else zz + 0.0015, green, root)
 		_extrude_poly([Vector2(0.60, 1.79), Vector2(0.71, 1.765), Vector2(0.71, 1.735), Vector2(0.52, 1.765)], zz - 0.0015 if sz > 0 else zz - 0.0035, zz + 0.0035 if sz > 0 else zz + 0.0015, green, root)
 	# lower front: kick plate, the front panel with coin doors and the cart slot
 	_box(Vector3(0.755, 0.06, 0), Vector3(0.05, 0.12, CAB_W - 0.07), grey, root)
@@ -1939,6 +1939,7 @@ func _build_arcade() -> void:
 	_box(Vector3(1.0435, 0.86, 0), Vector3(0.0125, 0.08, CAB_W - 0.07), white, root)
 	_box(Vector3(1.044, 0.896, 0), Vector3(0.012, 0.012, CAB_W - 0.07), dark, root)
 	var plate := _box(Vector3(0.94, 0.9005, 0), Vector3(0.2, 0.001, CAB_W - 0.09), speck, root)
+	_box(Vector3(0.826, 0.93, 0), Vector3(0.008, 0.07, CAB_W - 0.07), white, root)          # closes the step between the control deck and the monitor board
 	var black_g := _mat(Color(0.04, 0.04, 0.05), 0.25)
 	var stick_m := _mat(Color(0.8, 0.8, 0.84), 0.35)
 	var btn_cols := [Color(0.92, 0.12, 0.10), Color(0.94, 0.94, 0.97), Color(0.12, 0.34, 0.95)]
