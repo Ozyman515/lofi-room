@@ -1143,7 +1143,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # Konami code: up up down down left right left right B A, entered while the console is on and the TV is showing it.
 func _konami_feed(sym: String) -> bool:
-	if egg_active or not console_on or not vcr.tv_on or egg == null or slot_cart != "egg":
+	if egg_active or sleeping or not console_on or not vcr.tv_on or egg == null or slot_cart != "egg":
 		konami_progress = 0
 		return false
 	if sym == KONAMI[konami_progress]:
@@ -1311,7 +1311,7 @@ func _bed_sleep_spot() -> void:
 	var slab := _box(Vector3(-1.65, 0.63, -1.55), Vector3(1.5, 0.16, 0.7), _mat(Color.WHITE), null)
 	slab.visible = false
 	interactables.append({"node": slab, "half": Vector3(0.75, 0.08, 0.35), "egg_lock": true,
-		"when": func() -> bool: return not sleeping and updater != null and not updater.busy(),
+		"when": func() -> bool: return not sleeping and not egg_active and updater != null and not updater.busy(),
 		"label": "Nap", "cb": _go_to_sleep})
 	# ... and the make-the-bed prompt down by the foot, only while the bed is a mess
 	var foot := _box(Vector3(-1.65, 0.63, -0.45), Vector3(1.5, 0.16, 0.9), _mat(Color.WHITE), null)

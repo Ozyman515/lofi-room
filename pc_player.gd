@@ -477,7 +477,7 @@ var _last_up_state := ""
 # When an update has just been installed from the PC, ask whether to sleep now (wake up in the new room).
 func _on_updater_changed() -> void:
 	var s: String = _main.updater.state
-	if s == "done" and _last_up_state == "downloading" and not _main.sleeping:
+	if s == "done" and _last_up_state == "downloading" and not _main.sleeping and not _main.egg_active:
 		_show_sleep_q()
 	_last_up_state = s
 
