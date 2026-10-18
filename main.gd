@@ -1636,8 +1636,8 @@ func _build_console() -> void:
 	for px in [-0.08, 0.08]:
 		_box(Vector3(px, 0.035, 0.141), Vector3(0.05, 0.03, 0.01), dark, root)        # controller ports
 	# two controllers on the rug
-	_controller(Vector3(-2.05, 0.022, 0.15 + LOUNGE_DZ), 0.3)
-	_controller(Vector3(-1.95, 0.022, 0.72 + LOUNGE_DZ), -0.25)
+	_controller(Vector3(-2.0, 0.022, 0.0 + LOUNGE_DZ), 0.3)
+	_controller(Vector3(-2.0, 0.022, 0.4 + LOUNGE_DZ), -0.25)
 	emu = Emu.new()
 	emu.name = "Emu"
 	add_child(emu)
@@ -2009,6 +2009,8 @@ func _update_held_pad(delta: float) -> void:
 	if held_pad == null or xr_active:
 		return
 	var target: Vector3 = PAD_VIEW_POS[clampi(focus_level, 0, 2)]
+	if seated:
+		target.y += 0.05
 	held_pad.position = held_pad.position.lerp(target, clampf(8.0 * delta, 0.0, 1.0))
 
 
@@ -2026,6 +2028,7 @@ func _pick_pad(idx: int) -> void:
 		held_pad.position = Vector3(0.0, -0.03, -0.09)
 	else:
 		desktop_cam.add_child(held_pad)
+		_draw_on_top(held_pad)
 		held_pad.position = PAD_VIEW_POS[0]
 		held_pad.rotation = Vector3(0.9, 0.0, 0.0)
 		held_pad.scale = Vector3.ONE * 1.15
@@ -2033,6 +2036,27 @@ func _pick_pad(idx: int) -> void:
 	pad_hint_t = 8.0
 	if emu != null:
 		emu.set_pad(true)
+
+
+# Draws a node's meshes and labels over the scene (no depth test), so the held pad never clips
+# into the beanbag, the cushions or the TV when you sit or lean in.
+func _draw_on_top(n: Node, prio: Array = [0]) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		var src: Material = mi.material_override
+		if src == null and mi.mesh != null and mi.mesh.get_surface_count() > 0:
+			src = mi.mesh.surface_get_material(0)
+		if src is BaseMaterial3D:
+			var m := (src as BaseMaterial3D).duplicate() as BaseMaterial3D
+			m.no_depth_test = true
+			prio[0] += 1
+			m.render_priority = mini(prio[0], 100)
+			mi.material_override = m
+	elif n is Label3D:
+		(n as Label3D).no_depth_test = true
+		(n as Label3D).render_priority = 110
+	for c in n.get_children():
+		_draw_on_top(c, prio)
 
 
 func _put_pad() -> void:
