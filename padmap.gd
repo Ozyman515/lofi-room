@@ -279,6 +279,21 @@ func assign(dev: String, action: String, b: String) -> void:
 	save_cfg()
 
 
+# Swap what two buttons do (the same as binding each to the other one's physical button).
+func swap_pair(dev: String, a: String, b: String) -> void:
+	var t: String = maps[dev][a]
+	maps[dev][a] = maps[dev][b]
+	maps[dev][b] = t
+	_reparse(dev)
+	save_cfg()
+
+
+# True when a and b are bound the other way round compared with the defaults.
+func is_swapped(dev: String, a: String, b: String) -> bool:
+	var d := defaults(dev)
+	return maps[dev][a] == d[b] and maps[dev][b] == d[a]
+
+
 func name_of(b: String) -> String:
 	var p := _parse(b)
 	if p.is_empty():

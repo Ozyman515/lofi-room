@@ -1979,7 +1979,7 @@ func _pad_tick(delta: float) -> void:
 
 # ---- the controls (remap) screen, drawn on the TV by emu.gd while you hold a controller
 
-const CTL_ROWS := 16             # device, layout, 12 buttons, reset, back
+const CTL_ROWS := 17             # device, swap A/B, swap X/Y, 12 buttons, reset, back
 
 
 func _ctl_devices() -> Array:
@@ -2015,10 +2015,8 @@ func _close_controls() -> void:
 func _ctl_draw() -> void:
 	var dev_names := {"pad": "GAMEPAD", "key": "KEYBOARD", "vr": "VR CONTROLLERS"}
 	var lines: Array = ["DEVICE:  " + String(dev_names[ctl_dev])]
-	if ctl_dev == "pad":
-		lines.append("LAYOUT:  " + ("CONSOLE POSITIONS" if padmap.layout == "position" else "XBOX LABELS"))
-	else:
-		lines.append("LAYOUT:  (GAMEPAD ONLY)")
+	lines.append("A AND B:  " + ("SWAPPED" if padmap.is_swapped(ctl_dev, "a", "b") else "NORMAL"))
+	lines.append("X AND Y:  " + ("SWAPPED" if padmap.is_swapped(ctl_dev, "x", "y") else "NORMAL"))
 	for a in PadMap.ACTIONS:
 		var v := "PRESS A BUTTON..." if ctl_listen == a else padmap.name_of(padmap.maps[ctl_dev][a])
 		lines.append("%s  =  %s" % [PadMap.LABELS[a], v])
@@ -2037,10 +2035,8 @@ func _ctl_cycle_device(step: int) -> void:
 	_ctl_draw()
 
 
-func _ctl_toggle_layout() -> void:
-	if ctl_dev != "pad":
-		return
-	padmap.set_layout("label" if padmap.layout == "position" else "position")
+func _ctl_swap(a: String, b: String) -> void:
+	padmap.swap_pair(ctl_dev, a, b)
 	_ctl_draw()
 
 
@@ -2048,15 +2044,17 @@ func _ctl_activate() -> void:
 	if ctl_sel == 0:
 		_ctl_cycle_device(1)
 	elif ctl_sel == 1:
-		_ctl_toggle_layout()
-	elif ctl_sel <= 13:
-		ctl_listen = PadMap.ACTIONS[ctl_sel - 2]
+		_ctl_swap("a", "b")
+	elif ctl_sel == 2:
+		_ctl_swap("x", "y")
+	elif ctl_sel <= 14:
+		ctl_listen = PadMap.ACTIONS[ctl_sel - 3]
 		ctl_listen_t = 8.0
 		var lh: Node = left_hand if xr_active else null
 		var rh: Node = right_hand if xr_active else null
 		ctl_base = padmap.held(ctl_dev, lh, rh)
 		_ctl_draw()
-	elif ctl_sel == 14:
+	elif ctl_sel == 15:
 		padmap.reset(ctl_dev)
 		_ctl_draw()
 	else:
@@ -2105,11 +2103,13 @@ func _controls_tick(nav: int, delta: float) -> void:
 	elif edge & Emu.B_DOWN:
 		ctl_sel = (ctl_sel + 1) % CTL_ROWS
 		_ctl_draw()
-	elif edge & (Emu.B_LEFT | Emu.B_RIGHT) and ctl_sel <= 1:
+	elif edge & (Emu.B_LEFT | Emu.B_RIGHT) and ctl_sel <= 2:
 		if ctl_sel == 0:
 			_ctl_cycle_device(1)
+		elif ctl_sel == 1:
+			_ctl_swap("a", "b")
 		else:
-			_ctl_toggle_layout()
+			_ctl_swap("x", "y")
 	elif edge & Emu.B_A:
 		_ctl_activate()
 	elif edge & Emu.B_SELECT:

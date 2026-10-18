@@ -27,6 +27,9 @@ var _lt_window: PanelContainer
 var _st_window: PanelContainer
 var _st_update_label: Label
 var _st_update_btn: Button
+var repeat_mode := 0                  # 0 off, 1 repeat the track, 2 repeat the folder
+var _rep_track_btn: Button
+var _rep_folder_btn: Button
 var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
 var _lt_rows: VBoxContainer
@@ -177,6 +180,17 @@ func _build_ui() -> void:
 	stop_b.text = "STOP"
 	stop_b.pressed.connect(_stop)
 	ctl.add_child(stop_b)
+
+	var rrow := HBoxContainer.new()
+	rrow.add_theme_constant_override("separation", 8)
+	right.add_child(rrow)
+	_rep_track_btn = Button.new()
+	_rep_track_btn.pressed.connect(func() -> void: _set_repeat(0 if repeat_mode == 1 else 1))
+	rrow.add_child(_rep_track_btn)
+	_rep_folder_btn = Button.new()
+	_rep_folder_btn.pressed.connect(func() -> void: _set_repeat(0 if repeat_mode == 2 else 2))
+	rrow.add_child(_rep_folder_btn)
+	_set_repeat(0)
 
 	var vrow := HBoxContainer.new()
 	right.add_child(vrow)
@@ -743,12 +757,23 @@ func _prev() -> void:
 func _next() -> void:
 	if index + 1 < playlist.size():
 		_play_index(index + 1)
+	elif repeat_mode == 2 and not playlist.is_empty():
+		_play_index(0)                           # repeat folder: back to the first song
 	else:
 		_stop()
 
 
+func _set_repeat(m: int) -> void:
+	repeat_mode = m
+	_rep_track_btn.text = " [ REPEAT TRACK ] " if m == 1 else " Repeat track "
+	_rep_folder_btn.text = " [ REPEAT FOLDER ] " if m == 2 else " Repeat folder "
+
+
 func _on_finished() -> void:
-	_next()
+	if repeat_mode == 1 and index >= 0 and index < playlist.size():
+		_play_index(index)                       # repeat track: the same song again
+	else:
+		_next()
 
 
 func _on_seek_started() -> void:
