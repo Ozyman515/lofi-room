@@ -1,5 +1,5 @@
 {
- "version": 64,
+ "version": 65,
  "files": {
   "README.md": {
    "sha": "311ab11407092bf385c49e67d4f06b7df07abcba62b1c7021a048899c959261d",
@@ -86,8 +86,8 @@
    "size": 19059
   },
   "file_browser.gd": {
-   "sha": "6e97fc563fe953bd6f93af4dac2611cac0f390e5d8431c6db3ff62baf5d85444",
-   "size": 3998
+   "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
+   "size": 4561
   },
   "gif_player.gd": {
    "sha": "270391ad48b3737e208cada68917b3a1165dc7e67d205b504798cd195f61c700",
@@ -98,8 +98,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "691992eaedfc65bbabf884dd7131507d63dda7e9a408a06e65b9214c5058ab94",
-   "size": 142101
+   "sha": "0c5720e66ef961ed55d7a81f9fda6c1c32c371ac4a2364fa307cc4f808a3d443",
+   "size": 142366
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -113,6 +113,18 @@
    "sha": "f00180678aa3eafb30bd9861a959bef0e3b4fceb3ca0834c49b11aa0f70502ef",
    "size": 9927
   },
+  "music/.gdignore": {
+   "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "size": 0
+  },
+  "music/README.txt": {
+   "sha": "270a4507794fea0e7586e45f72f0be6d1615de92f7e69e2dd4613cba78e3ab2c",
+   "size": 458
+  },
+  "music/zephiramusic-tokyo-lofi.mp3": {
+   "sha": "f1bf300ac96fc3c8ffff06f4426979328b105d39ed31d0df4630f82df304f6fb",
+   "size": 5756928
+  },
   "openxr_action_map.tres": {
    "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
    "size": 56337
@@ -122,8 +134,8 @@
    "size": 11217
   },
   "pc_player.gd": {
-   "sha": "e8514ee5828a35b28668f0a9210020598c1c2c632b6ebee2dccad7985d78775a",
-   "size": 32202
+   "sha": "ecbdaff86228e5cdc95ab19c7f03aaf3c7d6ec271fe6345fd92b00c3e9701215",
+   "size": 33415
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -178,7 +190,7 @@
    "size": 39889
   },
   "version.txt": {
-   "sha": "913f5d1da2feaf4deeccc9e55cbb350a20f12b3f507e87be85dbb77fdd3cb9bc",
+   "sha": "979b894f2d91bf199766571d58024f020d1a44a417da5f48e1fa1cdf554a14f5",
    "size": 3
   },
   "weather.gd": {
