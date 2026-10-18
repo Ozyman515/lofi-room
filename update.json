@@ -1,5 +1,5 @@
 {
- "version": 65,
+ "version": 66,
  "files": {
   "README.md": {
    "sha": "311ab11407092bf385c49e67d4f06b7df07abcba62b1c7021a048899c959261d",
@@ -28,6 +28,10 @@
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
    "size": 155
+  },
+  "bed_model.gd": {
+   "sha": "28b01222b42e54a7409f66731b31d2401af6d9792fa45ccbdc55fec3cbe4a247",
+   "size": 16288
   },
   "bin/retro_host.exe": {
    "sha": "f7d877137be99aa63320f36b6c39631e6b39bead4075132297995260cd6cee03",
@@ -98,8 +102,8 @@
    "size": 2869
   },
   "main.gd": {
-   "sha": "0c5720e66ef961ed55d7a81f9fda6c1c32c371ac4a2364fa307cc4f808a3d443",
-   "size": 142366
+   "sha": "9d0b5ec325e2243ee6862013b2c416e6e23ddce7f1c0844b1a8d9b6e3e9af5ab",
+   "size": 142660
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -109,6 +113,10 @@
    "sha": "585fb65b9b7004e8d4b496d78ed775e3acd692737570b38e861df3d76bc4d0a5",
    "size": 627600
   },
+  "media/sharknado.gif": {
+   "sha": "eac4b29f04c170cdb1fe7932d3f3b8ff3abccb068dd8af82c5b60e3f4af2a1cd",
+   "size": 278030
+  },
   "media/tv.gif": {
    "sha": "f00180678aa3eafb30bd9861a959bef0e3b4fceb3ca0834c49b11aa0f70502ef",
    "size": 9927
@@ -116,6 +124,10 @@
   "music/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
    "size": 0
+  },
+  "music/CREDITS.txt": {
+   "sha": "d9485487fedc47cbc02aa6c9b4905d8c4b6ef3f4d571ae2cd1b8deb192ccd542",
+   "size": 329
   },
   "music/README.txt": {
    "sha": "270a4507794fea0e7586e45f72f0be6d1615de92f7e69e2dd4613cba78e3ab2c",
@@ -134,8 +146,8 @@
    "size": 11217
   },
   "pc_player.gd": {
-   "sha": "ecbdaff86228e5cdc95ab19c7f03aaf3c7d6ec271fe6345fd92b00c3e9701215",
-   "size": 33415
+   "sha": "5e956bb9832a5e0ec954ca5c649d8b842b59f5502f77dba5fa04924dd2cfd96a",
+   "size": 35112
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -178,19 +190,19 @@
    "size": 2368730
   },
   "tornado_event.gd": {
-   "sha": "43c1f42fc94fa0ab32e199d66e65d54c1be3931e9e6d92cd27557fa488045193",
-   "size": 34291
+   "sha": "cd1bd1e50c8d007450108d0b967619de3154f94c9864b5c123467c38ef68eb9f",
+   "size": 35874
   },
   "updater.gd": {
-   "sha": "d6d70a5faee691c30d500ec8e81064b0d2ed6bbbd2aa198031edf907e84b9f31",
-   "size": 6310
+   "sha": "4b9fd16a38921c4ba311b2be409ca45fd4ed9ff5cace283c966bb1904425b1d4",
+   "size": 6320
   },
   "vcr.gd": {
    "sha": "5d1385a22f27d5ce935e0dc4a2f36501267281bcb4c30c41665c2351185a5b2a",
    "size": 39889
   },
   "version.txt": {
-   "sha": "979b894f2d91bf199766571d58024f020d1a44a417da5f48e1fa1cdf554a14f5",
+   "sha": "8e37bed9dff3949ffd23ae638260dff869f5cc26e551f2a9e5e289a8888949fa",
    "size": 3
   },
   "weather.gd": {
