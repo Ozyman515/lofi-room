@@ -1957,16 +1957,15 @@ func _build_arcade() -> void:
 	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9), root)
 	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
 	_box(Vector3(0.7145, 1.56, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
-	for lt in [["NEO ARCADE", 1.665, 70], ["INSERT COIN", 1.60, 18]]:
-		var ml := Label3D.new()
-		ml.text = lt[0]
-		ml.font_size = lt[2] if lt[2] > 20 else 40
-		ml.pixel_size = 0.0014 if lt[2] > 20 else 0.001
-		ml.outline_size = 0
-		ml.modulate = Color(0.08, 0.45, 0.2) if lt[2] > 20 else Color(0.35, 0.38, 0.4)
-		ml.rotation = Vector3(0, PI / 2.0, 0)
-		ml.position = Vector3(0.7165, lt[1], 0)
-		root.add_child(ml)
+	var ml := Label3D.new()
+	ml.text = "ARCADE"
+	ml.font_size = 90
+	ml.pixel_size = 0.0014
+	ml.outline_size = 0
+	ml.modulate = Color(0.08, 0.45, 0.2)
+	ml.rotation = Vector3(0, PI / 2.0, 0)
+	ml.position = Vector3(0.7165, 1.65, 0)
+	root.add_child(ml)
 	# the step from the monitor up to the marquee, the roof, and the sloped back
 	_box(Vector3(0.675, 1.515, 0), Vector3(0.08, 0.04, CAB_W - 0.07), white, root)
 	var rf := Vector2(0.50, 1.80) - Vector2(0.71, 1.77)
