@@ -472,18 +472,22 @@ func _process_running(delta: float) -> void:
 		_combo_t = 0.0
 	if not powered:
 		return
-	# the emulator program runs by itself at the game's speed; we only nudge it by 2 % to keep the sound buffer healthy
+	# the emulator program runs by itself at the game's speed; we only nudge it by 1 % to keep a small sound cushion
 	if _pb != null and _gen != null:
 		var buffered := float(_cap - _pb.get_frames_available()) / _rate
 		var want := _speed
-		if _speed == 100 and buffered < 0.06:
-			want = 102
-		elif _speed == 102 and buffered > 0.12:
+		if _speed == 100 and buffered < 0.05:
+			want = 101
+		elif _speed == 101 and buffered > 0.10:
 			want = 100
-		elif _speed == 100 and buffered > 0.30:
-			want = 98
-		elif _speed == 98 and buffered > 0.0 and buffered < 0.18:
+		elif _speed == 100 and buffered > 0.22:
+			want = 99
+		elif _speed == 99 and buffered < 0.14:
 			want = 100
+		elif _speed >= 99 and buffered > 0.30:
+			want = 98                          # only just after starting: drain the first rush of sound quickly
+		elif _speed == 98 and buffered < 0.20:
+			want = 99
 		if want != _speed:
 			_speed = want
 			_peer.put_data(PackedByteArray([77, _speed]))
@@ -534,7 +538,7 @@ func _parse() -> void:
 		elif t == 72:                             # 'H' the game is running
 			if n - p < 25: break
 			_fps = clampf(_rx.decode_double(p + 1), 20.0, 120.0)
-			_rate = clampf(_rx.decode_double(p + 9), 8000.0, 96000.0)
+			_rate = clampf(_rx.decode_double(p + 9), 8000.0, 192000.0)       # the Game Boy core plays at 131072 Hz
 			p += 25
 			_on_hello()
 		elif t == 69:                             # 'E' error
