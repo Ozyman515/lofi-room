@@ -216,7 +216,7 @@ func _refresh_screen() -> void:
 
 func _draw_menu() -> void:
 	var title: String = SYSTEMS[system]["title"] + "  GAMES"
-	var foot := "UP/DOWN CHOOSE    A PLAY    SELECT CONTROLS" if pad_held else "PICK UP A CONTROLLER FROM THE RUG"
+	var foot := "UP/DOWN CHOOSE    A PLAY    SELECT CONTROLS" if pad_held else ("USE THE LEFT OR RIGHT PLAYER PANEL" if system == "neo" else "PICK UP A CONTROLLER FROM THE RUG")
 	if _roms.is_empty():
 		_show_text(title, ["", "  NO GAMES FOUND", "", "  Put your game files in the folder", "  carts/%s/roms" % system, "  next to the game, then put the cart", "  back in the console."], foot)
 		return

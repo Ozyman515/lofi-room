@@ -3443,7 +3443,7 @@ func _update_pointer(delta: float) -> void:
 		hint_label.global_position = found_point + Vector3(0.0, 0.02 + 0.08 * k, 0.0)
 		hint_label.visible = true
 	elif game_mode and pad_hint_t > 0.0:
-		hint_label.text = "CONTROLLER:  %s  =  PUT IT DOWN" % ("GRIP" if xr_active else "E")
+		hint_label.text = "%s:  %s  =  %s" % ["ARCADE" if held_pad_idx == -1 else "CONTROLLER", "GRIP" if xr_active else "E", "STEP AWAY" if held_pad_idx == -1 else "PUT IT DOWN"]
 		if emu != null and emu.state != Emu.State.MENU:
 			hint_label.text += "\n" + ("HOLD START + SELECT  =  GAME LIST" if xr_active else "M  =  GAME LIST")
 		hint_label.scale = Vector3.ONE * 0.45
