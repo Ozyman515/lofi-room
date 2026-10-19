@@ -26,7 +26,9 @@ const SEAT_EYE_HEIGHT := 1.18   # eye height (m) while sitting
 const SIT_RANGE := 1.1          # how close you must be to the chair to sit
 const TV_WIDTH := 1.44          # CRT width in metres (80% of the 1.8 m lounge rug)
 const FRONT_Z := 3.4            # z of the front wall (the one with the door)
-const LOUNGE_DZ := 1.2          # how far the rug/TV/beanbag set sits toward the front wall
+const LOUNGE_DZ := 1.2          # the TV set's own coordinates (kept from when it stood along the left wall)
+const LOUNGE_YAW := PI / 4.0    # the whole TV set is turned by this into the front-left corner
+const TV_CORNER_GAP := 0.03     # how close the TV's back corners come to the two walls
 const WIN_X0 := -3.75            # window: left edge, right edge, sill height, top
 const WIN_X1 := 1.05
 const WIN_Y0 := 0.5
@@ -37,13 +39,15 @@ const BED_ASSET := "res://assets/bed.glb"   # drop a bed model here and it repla
 const BED_EXTRA_YAW := 0.0      # rotate the bed asset in 90 degree steps if it faces the wrong way
 const ROOM_HALF := Vector2(2.2, 1.75)   # right limit in x, and +-z limit
 const ROOM_X_MIN := -3.6                 # left limit in x (room is wider on the left now)
+const LOUNGE_BLOCKERS := [
+	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),     # CRT TV
+	Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55),  # game console (on the door side of the TV)
+]
 const BLOCKERS := [
 	Rect2(-2.6, -2.1, 1.95, 2.4),   # bed
 	Rect2(0.4, -2.1, 2.2, 1.05),    # desk
 	Rect2(2.0, -0.65, 0.6, 1.9),    # bookshelf
-	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),    # CRT TV
 	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
-	Rect2(-2.75, 0.1 + LOUNGE_DZ, 0.4, 0.55),   # game console
 	Rect2(1.4, 1.55, 1.2, 0.8),   # arcade cabinet (right wall, by the bookshelf)
 ]
 
@@ -65,6 +69,7 @@ var seat_eye: Array[float] = []
 var seat_swivel: Array[bool] = []
 var cur_seat := -1
 var tv_root: Node3D
+var lounge: Node3D                    # TV, console, controllers and carts live here (built in old wall coordinates, then turned into the corner)
 var console_root: Node3D
 var console_on := false
 var cab_root: Node3D                  # the standing arcade cabinet on the left wall
@@ -208,7 +213,7 @@ func _ready() -> void:
 
 # ---------------------------------------------------------------- multiplayer
 
-const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(-0.8, 0.0, 1.5), Vector3(1.2, 0.0, 1.6), Vector3(-0.3, 0.0, 2.2)]
+const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(0.7, 0.0, 0.2), Vector3(-0.3, 0.0, 0.1), Vector3(0.9, 0.0, 1.6)]
 
 
 func _build_multiplayer() -> void:
@@ -745,12 +750,17 @@ func _build_decor() -> void:
 	# rug
 	_box(Vector3(0.1, 0.01, 0.75), Vector3(1.8, 0.02, 1.3), _mat(Color(0.35, 0.12, 0.40), 1.0))
 	_box(Vector3(0.1, 0.012, 0.75), Vector3(1.5, 0.02, 1.0), _mat(Color(0.55, 0.22, 0.42), 1.0))
-	_build_beanbags()
+	_build_lounge_frame()
 	_build_tv()
 	_build_console()
+	# round lounge rug in front of the corner TV
+	var rug_c := tv_root.to_global(Vector3(0.0, 0.0, 1.35))
+	rug_c.x = maxf(rug_c.x, -3.9 + 1.3)
+	rug_c.z = minf(rug_c.z, FRONT_Z - 1.3)
+	_cyl(Vector3(rug_c.x, 0.01, rug_c.z), 1.3, 0.02, _mat(Color(0.30, 0.10, 0.34), 1.0))
+	_cyl(Vector3(rug_c.x, 0.012, rug_c.z), 1.15, 0.02, _mat(Color(0.42, 0.15, 0.42), 1.0))
+	_build_beanbags()
 	_build_dresser()
-	_box(Vector3(-2.4, 0.01, 0.9 + LOUNGE_DZ), Vector3(3.0, 0.02, RUG_WIDTH), _mat(Color(0.30, 0.10, 0.34), 1.0))
-	_box(Vector3(-2.4, 0.012, 0.9 + LOUNGE_DZ), Vector3(2.7, 0.02, RUG_WIDTH - 0.3), _mat(Color(0.42, 0.15, 0.42), 1.0))
 	# fairy lights: three strands, kept restrained
 	var bulb := _mat(WARM, 0.5, 3.0)
 	fairy_mat = bulb
@@ -797,7 +807,8 @@ func _build_lights() -> void:
 	var l_lantern := _light(Vector3(1.6, 2.25, 0.3), Color(1.0, 0.6, 0.35), 0.9, 3.5)     # paper lantern
 	monitor_light = _light(Vector3(1.45, 1.1, -1.3), Color(0.65, 0.40, 1.0), 0.9, 2.2)    # monitor
 	fill_light = _light(Vector3(-0.8, 2.4, 0.9), Color(0.6, 0.25, 0.7), 0.7, 7.0)      # soft fill
-	_light(Vector3(-2.6, 0.6, 0.9 + LOUNGE_DZ), Color(0.45, 0.6, 1.0), 1.0, 3.2)     # CRT glow
+	var glow := _light(Vector3(-2.6, 0.6, 0.9 + LOUNGE_DZ), Color(0.45, 0.6, 1.0), 1.0, 3.2)     # CRT glow
+	glow.reparent(lounge, false)
 	# things you can switch off (click the lamps, or use the PC's Lights window)
 	_light_group("Nightstand lamp", [l_night], [lamp_shades[0]["mat"]], lamp_shades[0]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Desk lamp", [l_desk], [lamp_shades[1]["mat"]], lamp_shades[1]["node"], Vector3(0.12, 0.14, 0.12))
@@ -1276,6 +1287,11 @@ func _walkable(x: float, z: float) -> bool:
 	for r in BLOCKERS:
 		if r.has_point(Vector2(x, z)):
 			return false
+	if lounge != null:
+		var l := lounge.to_local(Vector3(x, 0.0, z))
+		for r in LOUNGE_BLOCKERS:
+			if r.has_point(Vector2(l.x, l.z)):
+				return false
 	for i in beanbags.size():
 		if beanbags[i].visible and Vector2(x, z).distance_to(Vector2(beanbags[i].global_position.x, beanbags[i].global_position.z)) < 0.55:
 			return false
@@ -1301,35 +1317,41 @@ func _snap_turn(deg: float) -> void:
 
 # ---------------------------------------------------------------- beanbag
 
-# One beanbag when you're alone; a second, third and fourth appear as friends join the room.
-# All face the TV: the first straight on, the others from the side and from a second row.
-const BEANBAG_SPOTS := [
-	[Vector3(-1.5, 0.0, 0.9 + LOUNGE_DZ), 90.0, Color(0.95, 0.45, 0.58)],    # pink, straight in front of the TV
-	[Vector3(-1.55, 0.0, 1.0), 122.0, Color(0.56, 0.36, 0.80)],             # purple, off to the side
-	[Vector3(-0.55, 0.0, 2.75), 78.0, Color(0.35, 0.55, 0.95)],             # blue, second row by the front wall
-	[Vector3(-0.5, 0.0, 1.45), 104.0, Color(1.0, 0.72, 0.42)],              # peach, second row
+# One beanbag when you're alone; more appear as friends join. They sit in a fan in front of the corner TV:
+# alone you sit straight in front; two sit side by side with nobody in the middle; three are one in front
+# and one each side; four make a quarter circle. Spots are world x/z, every seat turns to face the screen.
+const BEANBAG_LAYOUTS := [
+	[Vector2(-1.5, 1.0)],
+	[Vector2(-1.0, 1.8), Vector2(-1.95, 0.9)],
+	[Vector2(-0.8, 2.0), Vector2(-1.49, 0.99), Vector2(-2.5, 0.84)],
+	[Vector2(-0.6, 2.8), Vector2(-0.9, 1.85), Vector2(-1.55, 1.0), Vector2(-2.5, 0.84)],
 ]
+const BEANBAG_COLORS := [Color(0.95, 0.45, 0.58), Color(0.56, 0.36, 0.80), Color(0.35, 0.55, 0.95), Color(1.0, 0.72, 0.42)]
 var beanbags: Array[Node3D] = []
 
 
 func _build_beanbags() -> void:
-	for spot in BEANBAG_SPOTS:
+	for i in 4:
 		var root := Node3D.new()
-		root.position = spot[0]
-		root.rotation.y = deg_to_rad(spot[1])
 		room.add_child(root)
 		seat_nodes.append(root)
 		seat_eye.append(0.8)
 		seat_swivel.append(false)
-		BeanbagModel.build(root, Vector3.ZERO, 0.0, spot[2]).scale = Vector3.ONE * 1.12
+		BeanbagModel.build(root, Vector3.ZERO, 0.0, BEANBAG_COLORS[i]).scale = Vector3.ONE * 1.12
 		beanbags.append(root)
 	set_beanbag_count(1)
 
 
 func set_beanbag_count(n: int) -> void:
 	n = clampi(n, 1, beanbags.size())
+	var layout: Array = BEANBAG_LAYOUTS[n - 1]
+	var screen := tv_root.to_global(Vector3(0.0, 0.0, 0.225))
 	for i in beanbags.size():
 		beanbags[i].visible = i < n
+		if i < n:
+			var sp: Vector2 = layout[i]
+			beanbags[i].position = Vector3(sp.x, 0.0, sp.y)
+			beanbags[i].rotation.y = atan2(-(screen.x - sp.x), -(screen.z - sp.y))     # local -z looks at the screen
 
 
 # ---------------------------------------------------------------- door (front wall)
@@ -1742,6 +1764,35 @@ func _wrap_row(city: Node3D, mat: Material, rng: RandomNumberGenerator, z: float
 
 # ---------------------------------------------------------------- CRT TV + dresser
 
+# The TV set was first built standing along the left wall; `lounge` turns all of it by LOUNGE_YAW
+# so the TV sits across the front-left corner with its back corners almost touching both walls.
+func _build_lounge_frame() -> void:
+	lounge = Node3D.new()
+	lounge.name = "Lounge"
+	room.add_child(lounge)
+	var fd := 0.45
+	var bd := 0.40
+	var old_tv := Vector3(-3.9 + fd / 2.0 + bd + 0.01, 0.0, 0.9 + LOUNGE_DZ)
+	var rot := Basis(Vector3.UP, LOUNGE_YAW)
+	# the TV's back corners, in its own frame, after the turn: right one toward the left wall, left one toward the front wall
+	var back := -(bd + fd / 2.0)
+	var tv_basis := Basis(Vector3.UP, PI / 2.0 + LOUNGE_YAW)
+	var c_right := tv_basis * Vector3(TV_WIDTH / 2.0, 0.0, back)
+	var c_left := tv_basis * Vector3(-TV_WIDTH / 2.0, 0.0, back)
+	var tv_pos := Vector3(-3.9 + TV_CORNER_GAP - c_right.x, 0.0, FRONT_Z - TV_CORNER_GAP - c_left.z)
+	lounge.transform = Transform3D(rot, tv_pos - rot * old_tv)
+
+
+# lounge-local (old wall) coordinates -> world
+func _lg(p: Vector3) -> Vector3:
+	return lounge.to_global(p)
+
+
+# mirrored across the TV's axis: things that used to lie on the bed side of the TV now lie on the door side
+func _lm(p: Vector3) -> Vector3:
+	return lounge.to_global(Vector3(p.x, p.y, 2.0 * (0.9 + LOUNGE_DZ) - p.z))
+
+
 func _build_tv() -> void:
 	var w := TV_WIDTH
 	var h := w * 0.72
@@ -1752,7 +1803,7 @@ func _build_tv() -> void:
 	tv_root = root
 	root.position = Vector3(-3.9 + fd / 2.0 + bd + 0.01, 0.0, 0.9 + LOUNGE_DZ)
 	root.rotation.y = PI / 2.0          # local +z (the screen) faces +x, into the room
-	room.add_child(root)
+	lounge.add_child(root)
 	var shell := _mat(Color(0.16, 0.13, 0.19), 0.5)
 	var lip := _mat(Color(0.30, 0.25, 0.33), 0.5)
 	var knob := _mat(Color(0.78, 0.72, 0.80), 0.4)
@@ -1966,9 +2017,9 @@ const CON_SLOT_Z := -0.115      # where cartridges stand in the slot
 func _build_console() -> void:
 	var root := Node3D.new()
 	console_root = root
-	root.position = Vector3(-2.60, 0.022, 0.35 + LOUNGE_DZ)
-	root.rotation.y = PI / 2.0          # local +z faces +x (toward the beanbag)
-	room.add_child(root)
+	root.position = Vector3(-2.60, 0.022, 1.45 + LOUNGE_DZ)       # on the door side of the TV
+	root.rotation.y = PI / 2.0          # local +z faces +x (toward the beanbags)
+	lounge.add_child(root)
 	var cream := _mat(Color(0.91, 0.89, 0.85), 0.5)
 	var cream_hi := _mat(Color(0.95, 0.93, 0.90), 0.45)
 	var tan := _mat(Color(0.93, 0.86, 0.62), 0.55)
@@ -2040,8 +2091,8 @@ func _build_console() -> void:
 			_mat([Color(0.85, 0.15, 0.15), Color(0.95, 0.95, 0.95), Color(0.95, 0.82, 0.15)][i], 0.4), root)
 		jk.rotation.x = PI / 2.0
 	# two controllers on the rug
-	_controller(Vector3(-2.0, 0.022, 1.62), 0.3)
-	_controller(Vector3(-2.25, 0.022, 1.95), -0.25)
+	_controller(Vector3(-2.0, 0.022, 2.58), -0.3)
+	_controller(Vector3(-2.25, 0.022, 2.25), 0.25)
 	emu = Emu.new()
 	emu.name = "Emu"
 	add_child(emu)
@@ -2556,13 +2607,13 @@ func _build_carts() -> void:
 	var egg_c := _nes_cart_mesh(true)
 	var tv_top := 0.04 + TV_WIDTH * 0.72
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.5) * lay, Vector3(-2.3, 0.034, 1.12))}
+		"home": func() -> Transform3D: return lounge.global_transform * Transform3D(Basis(Vector3.UP, 0.5) * lay, Vector3(-2.3, 0.034, 3.08))}
 	carts["snes"] = {"node": snes, "name": "SNES CART", "busy": false,
 		"home": func() -> Transform3D: return tv_root.global_transform * Transform3D(Basis(Vector3.UP, 0.3) * lay, Vector3(0.52, tv_top + 0.011, 0.05))}
 	carts["sgb"] = {"node": sgb, "name": "SUPER GB CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 1.36))}
+		"home": func() -> Transform3D: return lounge.global_transform * Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 2.84))}
 	carts["gen"] = {"node": gen, "name": "SEGA CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.02, 0.034, 1.32))}
+		"home": func() -> Transform3D: return lounge.global_transform * Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.15, 0.034, 2.78))}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
 		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.12), Vector3(2.21, 1.066, 0.55))}   # standing on the bookshelf
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
@@ -3143,7 +3194,7 @@ func _controller(pos: Vector3, yaw_off: float) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation.y = PI / 2.0 + yaw_off     # long axis along the wall, cable toward the console
-	room.add_child(root)
+	lounge.add_child(root)
 	_pad_meshes(root)
 	ctrl_exits.append(root.to_global(Vector3(0, 0.014, -0.052)))
 	var idx := pad_nodes.size()
@@ -3272,13 +3323,13 @@ func _build_power() -> void:
 	_outlet(Vector3(1.1, 0.3, -2.0), 0.0)             # desk power strip
 	_outlet(Vector3(2.2, 0.3, -2.0), 0.0)             # desk lamp
 	_outlet(Vector3(-0.15, 0.3, -2.0), 0.0)           # nightstand lamp
-	_outlet(Vector3(-3.9, 0.3, -0.2 + LOUNGE_DZ), PI / 2.0)       # TV + console strip
+	_outlet(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)       # TV + console strip
 	_outlet(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)        # fairy lights
 	_outlet(Vector3(-3.9, 0.3, 0.3), PI / 2.0)                  # wall speakers
 	_plug(Vector3(1.1, 0.3, -2.0), 0.0)
 	_plug(Vector3(2.2, 0.3, -2.0), 0.0)
 	_plug(Vector3(-0.15, 0.3, -2.0), 0.0)
-	_plug(Vector3(-3.9, 0.3, -0.2 + LOUNGE_DZ), PI / 2.0)
+	_plug(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)
 	_plug(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)
 	_plug(Vector3(-3.9, 0.3, 0.3), PI / 2.0)
 
@@ -3300,28 +3351,31 @@ func _build_power() -> void:
 	# nightstand lamp
 	_cord([Vector3(-0.5, 0.475, -1.73), Vector3(-0.4, 0.465, -1.88), Vector3(-0.37, 0.44, -1.935), Vector3(-0.3, 0.3, -1.96), Vector3(-0.15, 0.3, -1.95)], 0.005, white)
 
-	# TV + console strip on the floor by the left wall
+	# TV + console strip on the floor, against the left wall behind the TV
 	var dz := LOUNGE_DZ
-	_power_strip(Vector3(-3.62, 0.017, -0.05 + dz), 0.0, 0.5)
-	_cord([Vector3(-3.85, 0.3, -0.2 + dz), Vector3(-3.8, 0.15, -0.2 + dz), Vector3(-3.72, 0.03, -0.2 + dz), Vector3(-3.62, 0.034, -0.2 + dz)], 0.007, white)
+	var strip := _lg(Vector3(-3.62, 0.017, -0.05 + dz))
+	_power_strip(Vector3(-3.84, 0.017, strip.z), 0.0, 0.5)
+	_cord([Vector3(-3.85, 0.3, strip.z - 0.15), Vector3(-3.8, 0.15, strip.z - 0.17), Vector3(-3.84, 0.034, strip.z - 0.2)], 0.007, white)
 	var tv_back := tv_root.to_global(Vector3(0.45, 0.15, -0.775))
-	_cord([tv_back, Vector3(-3.84, 0.06, 0.35 + dz), Vector3(-3.78, 0.012, 0.15 + dz), Vector3(-3.7, 0.012, 0.0 + dz), Vector3(-3.62, 0.034, 0.0 + dz)], 0.009, black)
+	_cord([tv_back, _lg(Vector3(-3.84, 0.06, 0.35 + dz)), _lg(Vector3(-3.78, 0.012, 0.15 + dz)), Vector3(-3.84, 0.034, strip.z + 0.1)], 0.009, black)
+	# the console sits on the door side of the TV; its cord runs round the back of the TV to the strip
 	var c_back := console_root.to_global(Vector3(0.12, 0.035, -0.19))
-	_cord([c_back, Vector3(-2.74, 0.012, 0.14 + dz), Vector3(-3.0, 0.012, 0.09 + dz), Vector3(-3.4, 0.012, 0.04 + dz), Vector3(-3.6, 0.034, 0.05 + dz)], 0.005, black)
+	_cord([c_back, _lg(Vector3(-2.9, 0.012, 2.75 + dz - 0.9)), _lg(Vector3(-3.5, 0.012, 2.7 + dz - 0.9)), _lg(Vector3(-4.0, 0.012, 2.3 + dz - 0.9)),
+			_lg(Vector3(-4.05, 0.012, 1.6 + dz - 0.9)), Vector3(-3.84, 0.034, strip.z + 0.2)], 0.005, black)
 	# console to TV (video cable) and the two controller cables
 	var av_from := console_root.to_global(Vector3(-0.07, 0.05, -0.19))
-	var av_to := tv_root.to_global(Vector3(TV_WIDTH / 2.0 - 0.28, 0.1, 0.235))
-	_cord([av_from, Vector3(-2.78, 0.034, 0.4 + dz), Vector3(-2.86, 0.06, 0.37 + dz), av_to], 0.004, yellow)
+	var av_to := tv_root.to_global(Vector3(-(TV_WIDTH / 2.0 - 0.28), 0.1, 0.235))
+	_cord([av_from, _lm(Vector3(-2.78, 0.034, 0.4 + dz)), _lm(Vector3(-2.86, 0.06, 0.37 + dz)), av_to], 0.004, yellow)
 	var port_a := console_root.to_global(Vector3(-0.004, 0.03, 0.185))
 	var port_b := console_root.to_global(Vector3(0.094, 0.03, 0.185))
-	_cord([port_a, Vector3(-2.3, 0.034, 0.27 + dz), Vector3(-2.2, 0.034, 0.2 + dz), ctrl_exits[0]], 0.004, black)
-	_cord([port_b, Vector3(-2.3, 0.034, 0.5 + dz), Vector3(-2.15, 0.034, 0.65 + dz), ctrl_exits[1]], 0.004, black)
+	_cord([port_a, _lm(Vector3(-2.3, 0.034, 0.27 + dz)), _lm(Vector3(-2.2, 0.034, 0.2 + dz)), ctrl_exits[0]], 0.004, black)
+	_cord([port_b, _lm(Vector3(-2.3, 0.034, 0.5 + dz)), _lm(Vector3(-2.15, 0.034, 0.65 + dz)), ctrl_exits[1]], 0.004, black)
 
 	# VCR on top of the TV: power cord down the back of the TV to the strip, video cable to the TV
 	var tl := func(p: Vector3) -> Vector3: return tv_root.to_global(p)
 	_cord([tl.call(Vector3(-0.35, 1.13, -0.2)), tl.call(Vector3(-0.38, 1.02, -0.3)), tl.call(Vector3(-0.40, 0.87, -0.5)),
 			tl.call(Vector3(-0.42, 0.75, -0.645)), tl.call(Vector3(-0.42, 0.3, -0.645)), tl.call(Vector3(-0.42, 0.05, -0.645)),
-			Vector3(-3.86, 0.034, 2.4), Vector3(-3.86, 0.034, 1.6), Vector3(-3.64, 0.034, 1.3)], 0.005, black)
+			_lg(Vector3(-3.86, 0.034, 2.4)), _lg(Vector3(-3.86, 0.034, 1.6)), Vector3(-3.84, 0.034, strip.z - 0.1)], 0.005, black)
 	_cord([tl.call(Vector3(0.3, 1.13, -0.2)), tl.call(Vector3(0.3, 1.02, -0.3)), tl.call(Vector3(0.28, 0.87, -0.5)),
 			tl.call(Vector3(0.26, 0.75, -0.645)), tl.call(Vector3(0.26, 0.6, -0.645))], 0.004, yellow)
 

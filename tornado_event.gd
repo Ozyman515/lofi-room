@@ -811,7 +811,7 @@ func _update_audio(delta: float) -> void:
 	# the alert tone comes out of the TV, so the TV's volume buttons control it
 	var tvv: int = main.vcr.tv_volume
 	_tone_pl.volume_db = -80.0 if tvv == 0 else linear_to_db(float(tvv) / 10.0) - 3.0
-	_tone_pl.global_position = main.tv_root.global_position + Vector3(0.4, 0.6, 0.0)
+	_tone_pl.global_position = main.tv_root.to_global(Vector3(0.0, 0.6, 0.4))     # just in front of the screen
 	_rumble_pl.volume_db = linear_to_db(maxf(0.03 + 0.55 * inten, 0.0001))
 	# honks
 	_horn_t -= delta
