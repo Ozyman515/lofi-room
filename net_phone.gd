@@ -57,7 +57,7 @@ func build(session: Node, add_interactable: Callable) -> void:
 	net.roster_changed.connect(_render)
 	_render()
 	add_interactable.call({"node": case_node, "half": Vector3(0.14, 0.26, 0.03),
-		"label": func() -> String: return "CHILL WITH BUDDY BOIS", "cb": func() -> void: pass})
+		"label": func() -> String: return "CHILL WITH BUDDY BOIS", "cb": func() -> void: pass, "guest_ok": true})
 
 
 func _box(pos: Vector3, size: Vector3, m: Material) -> MeshInstance3D:

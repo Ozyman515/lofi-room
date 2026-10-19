@@ -86,6 +86,8 @@ var held_pad_idx := -1
 var net: Node                            # NetSession (null when the WebRTC plugin isn't loaded)
 var net_avatars: Node3D
 var net_phone: Node3D
+var net_game: Node
+var _net_toast_t := 0
 var _net_moved := false
 var arcade_side := 0                     # 0 = left player, 1 = right player
 var held_pad: Node3D
@@ -231,6 +233,47 @@ func _build_multiplayer() -> void:
 	net_phone.build(net, func(it: Dictionary) -> void: interactables.append(it))
 	screens.append(net_phone.ui)
 	net.state_changed.connect(_on_net_state)
+	net_game = load("res://net_game.gd").new()
+	net_game.name = "NetGame"
+	add_child(net_game)
+	net_game.setup(net, self, emu)
+
+
+func _is_guest() -> bool:
+	return net != null and net.state == net.State.JOINED
+
+
+# true (with a short message) when somebody else is playing: carts, console power and TV power stay put
+func _net_play_lock() -> bool:
+	if net_game != null and net_game.guests_playing():
+		_net_say("Someone is playing. Wait until they put the controller down.")
+		return true
+	return false
+
+
+func _net_say(msg: String) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _net_toast_t > 2500:
+		_net_toast_t = now
+		updater.show_toast(msg, 3.0)
+
+
+# guests copy what the host does to the console
+func net_apply_game(d: Dictionary) -> void:
+	if egg_active:
+		return
+	var cart := str(d.get("cart", ""))
+	if cart != slot_cart and (cart == "" or (carts.has(cart) and cart != "egg")):
+		var busy := (slot_cart != "" and bool(carts[slot_cart]["busy"])) or (cart != "" and bool(carts[cart]["busy"]))
+		if not busy:
+			if cart == "":
+				_eject_cart()
+			else:
+				_insert_cart(cart)
+	if bool(d.get("console", false)) != console_on and slot_cart != "neo" and slot_cart != "egg":
+		toggle_console()
+	if bool(d.get("tv", true)) != vcr.tv_on:
+		vcr.toggle_tv()
 
 
 func _on_net_state() -> void:
@@ -1298,7 +1341,7 @@ func _build_door() -> void:
 	var slab := _box(Vector3(x, 1.05, fz - 0.02), Vector3(0.94, 2.1, 0.04), wood)
 	slab.visible = false
 	interactables.append({"node": slab, "half": Vector3(0.47, 1.05, 0.06), "when": func() -> bool: return not leave_prompt,
-		"label": func() -> String: return "LEAVE", "cb": _ask_leave})
+		"label": func() -> String: return "LEAVE", "cb": _ask_leave, "guest_ok": true})
 	leave_panel = Node3D.new()
 	leave_panel.position = Vector3(x, 1.5, fz - 0.45)
 	leave_panel.visible = false
@@ -1329,9 +1372,9 @@ func _build_door() -> void:
 		l.rotation = Vector3(0, PI, 0)
 		l.position = Vector3(float(lb[2]), -0.07, -0.024)
 		leave_panel.add_child(l)
-	interactables.append({"node": stay_b, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
+	interactables.append({"node": stay_b, "guest_ok": true, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
 		"label": func() -> String: return "STAY", "cb": _cancel_leave})
-	interactables.append({"node": leave_b, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
+	interactables.append({"node": leave_b, "guest_ok": true, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
 		"label": func() -> String: return "YES, LEAVE", "cb": _do_leave})
 
 
@@ -1784,7 +1827,9 @@ func _build_tv() -> void:
 	vcr.power_changed.connect(func(_on: bool): _apply_console())
 	interactables.append({"node": pw, "half": Vector3(0.05, 0.035, 0.04),
 		"label": _tv_label.bind("power"), "egg_lock": true,
-		"cb": vcr.toggle_tv, "hover": _glow_hover(pw_m)})
+		"cb": func() -> void:
+			if not _net_play_lock():
+				vcr.toggle_tv(), "hover": _glow_hover(pw_m)})
 	var vd_m := _mat(Color(0.45, 0.40, 0.50), 0.4)
 	var vu_m := _mat(Color(0.45, 0.40, 0.50), 0.4)
 	var vd := _box(Vector3(px - 0.045, cy, fz + 0.01), Vector3(0.06, 0.04, 0.02), vd_m, root)
@@ -2010,7 +2055,7 @@ func _console_label() -> String:
 
 
 func toggle_console() -> void:
-	if egg_active or slot_cart == "neo":
+	if egg_active or slot_cart == "neo" or (not _is_guest() and _net_play_lock()):
 		return
 	console_on = not console_on
 	vcr.external_hold = console_on
@@ -2440,7 +2485,7 @@ func _build_arcade() -> void:
 		var hit := _box(Vector3(0.94, 0.9005, (z0 + z1) * 0.5), Vector3(0.2, 0.001, z1 - z0), speck, root)
 		hit.visible = false
 		interactables.append({"node": hit, "half": Vector3(0.12, 0.05, (z1 - z0) * 0.5), "egg_lock": true,
-			"label": _arcade_label.bind(sd), "cb": _pick_arcade.bind(sd)})
+			"label": _arcade_label.bind(sd), "cb": _pick_arcade.bind(sd), "guest_ok": true})
 
 
 func _arcade_label(side: int) -> String:
@@ -2524,7 +2569,7 @@ func _cart_label(id: String) -> String:
 
 
 func _cart_click(id: String) -> void:
-	if egg_active or bool(carts[id]["busy"]):
+	if egg_active or bool(carts[id]["busy"]) or _net_play_lock():
 		return
 	if slot_cart == id:
 		_eject_cart()
@@ -3088,7 +3133,7 @@ func _controller(pos: Vector3, yaw_off: float) -> void:
 	ctrl_exits.append(root.to_global(Vector3(0, 0.014, -0.052)))
 	var idx := pad_nodes.size()
 	pad_nodes.append(root)
-	interactables.append({"node": root, "half": Vector3(0.095, 0.035, 0.065), "label": _pad_label, "cb": _pick_pad.bind(idx)})
+	interactables.append({"node": root, "half": Vector3(0.095, 0.035, 0.065), "label": _pad_label, "cb": _pick_pad.bind(idx), "guest_ok": true})
 
 
 func _build_dresser() -> void:
@@ -3390,6 +3435,8 @@ func _update_pointer(delta: float) -> void:
 		hint_label.text = str((lbl as Callable).call()) if lbl is Callable else str(lbl)
 		if egg_active and found_item.get("egg_lock", false):
 			hint_label.text += "  [LOCKED]"
+		elif _is_guest() and not found_item.get("guest_ok", false):
+			hint_label.text += "  [HOST ONLY]"
 		# the closer you are, the smaller the sign (so it never fills the view); from ~1.2 m away it is full size
 		var k := clampf(found_t / 1.2, 0.2, 1.0)
 		hint_label.scale = Vector3.ONE * k
@@ -3434,6 +3481,9 @@ func _pointer_press(hand: int) -> bool:
 	if not hover_item.is_empty():
 		if egg_active and hover_item.get("egg_lock", false):
 			return true                       # locked while the alert is on
+		if _is_guest() and not hover_item.get("guest_ok", false):
+			_net_say("Only the host can change the room.")
+			return true
 		var cb: Callable = hover_item["cb"]
 		cb.call()
 		return true

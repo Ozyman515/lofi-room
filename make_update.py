@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes update.json (SHA-256 of every updatable file). Run before each release:  python3 make_update.py <version>"""
 import hashlib, json, os, sys
-SKIP = (".godot/", ".git/", "carts/", "addons/godot-vlc/bin/", "tools/")
+SKIP = (".godot/", ".git/", "carts/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/")
 SKIP_FILES = {"update.json", "make_update.py", ".gitattributes", ".gitignore", "project.godot", "CLAUDE.md"}  # project.godot: the editor rewrites it
 ver = int(sys.argv[1])
 open("version.txt", "w").write("%d\n" % ver)

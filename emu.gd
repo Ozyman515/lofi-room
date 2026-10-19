@@ -7,6 +7,9 @@ const Plat := preload("res://platform.gd")
 ## draws the game menu. Games live in carts/<system>/roms and the battery saves in carts/<system>/saves.
 
 signal screen_changed(tex: Texture2D)
+signal frame_out(img: Image)                    # host: every new picture (for guests)
+signal audio_out(pcm: PackedByteArray, count: int)   # host: float stereo pairs (for guests)
+signal buttons_out(mask: int)                   # guest: the pad state to send to the host
 
 enum State { IDLE, MENU, STARTING, RUNNING, ERROR }
 
@@ -63,6 +66,8 @@ var _gen: AudioStreamGenerator
 var _pb: AudioStreamGeneratorPlayback
 var _prev_mask := 0
 var _sent_mask := -1
+var streaming := false              # host with guests: publish picture and sound
+var remote := false                 # guest: the game runs on the host, we only show its picture and sound
 var local_port := 0                 # which libretro port the pad in your hand drives: 0 = player 1 (left), 1 = player 2 (right)
 var _remote_mask := 0               # the other player's buttons (a guest in the room), on the other port
 var _rep_t := 0.0
@@ -194,6 +199,8 @@ func _refresh_screen() -> void:
 		State.IDLE:
 			if system == "":
 				_show_text("NO CART", ["", "  Put a game cart in the console."], "SELECT  CONTROLS" if pad_held else "")
+			elif remote:
+				_show_text(SYSTEMS[system]["title"], ["", "  WAITING FOR THE HOST", "  TO PICK A GAME"], "")
 			else:
 				_show_text(SYSTEMS[system]["title"], [], "")
 		State.MENU:
@@ -288,6 +295,8 @@ func is_running() -> bool:
 
 # back to the game list (the same as holding START + SELECT); the game saves its place first
 func to_menu() -> void:
+	if remote:
+		return                      # a guest can't change the host's game
 	if state == State.RUNNING or state == State.STARTING or state == State.ERROR:
 		_stop_host()
 		_enter_idle_or_menu()
@@ -298,7 +307,7 @@ func uses_texture() -> bool:
 
 
 func _enter_idle_or_menu() -> void:
-	if system == "":
+	if system == "" or remote:
 		state = State.IDLE
 	else:
 		_scan_roms()
@@ -320,7 +329,10 @@ func set_buttons(mask: int) -> void:
 			if pressed & (B_A | B_START | B_B) and _err_cd <= 0.0:
 				_enter_idle_or_menu()
 		State.RUNNING:
-			_send_buttons(mask)
+			if remote:
+				buttons_out.emit(mask)
+			else:
+				_send_buttons(mask)
 
 
 func _menu_press(pressed: int) -> void:
@@ -589,6 +601,8 @@ func _parse() -> void:
 		else:
 			_img_tex.update(img)
 		_set_tex(_img_tex)
+		if streaming:
+			frame_out.emit(img)
 		_peer.put_data(PackedByteArray([68]))      # 'D': picture shown, the program may send the next one
 	if p > 0:
 		_rx = _rx.slice(p) if p < n else PackedByteArray()
@@ -613,6 +627,8 @@ func _on_hello() -> void:
 
 
 func _push_audio(at: int, cnt: int) -> void:
+	if streaming:
+		audio_out.emit(_rx.slice(at, at + cnt * 8), cnt)
 	if _pb == null or not powered:
 		return
 	if _pb.get_frames_available() < cnt:
@@ -622,3 +638,57 @@ func _push_audio(at: int, cnt: int) -> void:
 	head.encode_u32(4, cnt)
 	var arr: PackedVector2Array = bytes_to_var(head + _rx.slice(at, at + cnt * 8))
 	_pb.push_buffer(arr)
+
+
+# ---------------------------------------------------------------- guest side: show the host's game
+
+func remote_frame(img: Image) -> void:
+	if not remote or img == null or img.get_width() == 0:
+		return
+	if state != State.RUNNING:
+		state = State.RUNNING
+	if _img_tex == null or _img_tex.get_width() != img.get_width() or _img_tex.get_height() != img.get_height():
+		_img_tex = ImageTexture.create_from_image(img)
+	else:
+		_img_tex.update(img)
+	_set_tex(_img_tex)
+
+
+func remote_audio(pcm: PackedByteArray, rate: float, count: int) -> void:
+	if not remote or not powered or count <= 0 or pcm.size() < count * 4:
+		return
+	if _gen == null or absf(_gen.mix_rate - rate) > 1.0:
+		_gen = AudioStreamGenerator.new()
+		_gen.mix_rate = rate
+		_gen.buffer_length = 0.5
+		_audio.stream = _gen
+		set_volume(volume)
+		_audio.play()
+		_pb = _audio.get_stream_playback() as AudioStreamGeneratorPlayback
+	if _pb == null or _pb.get_frames_available() < count:
+		return
+	var arr := PackedVector2Array()
+	arr.resize(count)
+	for i in count:
+		arr[i] = Vector2(pcm.decode_s16(i * 4), pcm.decode_s16(i * 4 + 2)) / 32768.0
+	_pb.push_buffer(arr)
+
+
+# the host stopped the game (or went back to the list)
+func remote_stopped() -> void:
+	if remote and state == State.RUNNING:
+		state = State.IDLE
+		if _audio != null:
+			_audio.stop()
+		_pb = null
+		_gen = null
+		_img_tex = null
+		_refresh_screen()
+
+
+func set_remote_mode(on: bool) -> void:
+	if remote == on:
+		return
+	remote = on
+	_stop_host()
+	_enter_idle_or_menu()
