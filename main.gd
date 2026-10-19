@@ -41,8 +41,6 @@ const BLOCKERS := [
 	Rect2(-2.6, -2.1, 1.95, 2.4),   # bed
 	Rect2(0.4, -2.1, 2.2, 1.05),    # desk
 	Rect2(2.0, -0.65, 0.6, 1.9),    # bookshelf
-	Rect2(-2.05, 0.35 + LOUNGE_DZ, 1.1, 1.1),   # beanbag
-	Rect2(-2.05, 0.5, 1.0, 1.0),    # purple beanbag
 	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),    # CRT TV
 	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
 	Rect2(-2.75, 0.1 + LOUNGE_DZ, 0.4, 0.55),   # game console
@@ -234,6 +232,7 @@ func _build_multiplayer() -> void:
 	net_phone.build(net, func(it: Dictionary) -> void: interactables.append(it))
 	screens.append(net_phone.ui)
 	net.state_changed.connect(_on_net_state)
+	net.roster_changed.connect(_on_net_roster)
 	net_game = load("res://net_game.gd").new()
 	net_game.name = "NetGame"
 	add_child(net_game)
@@ -277,7 +276,12 @@ func net_apply_game(d: Dictionary) -> void:
 		vcr.toggle_tv()
 
 
+func _on_net_roster() -> void:
+	set_beanbag_count(net.player_count() if net.is_online() else 1)
+
+
 func _on_net_state() -> void:
+	_on_net_roster()
 	# guests appear at their own spot so nobody stands inside the host
 	if net.state == net.State.JOINED and not _net_moved and not seated:
 		_net_moved = true
@@ -741,8 +745,7 @@ func _build_decor() -> void:
 	# rug
 	_box(Vector3(0.1, 0.01, 0.75), Vector3(1.8, 0.02, 1.3), _mat(Color(0.35, 0.12, 0.40), 1.0))
 	_box(Vector3(0.1, 0.012, 0.75), Vector3(1.5, 0.02, 1.0), _mat(Color(0.55, 0.22, 0.42), 1.0))
-	_build_beanbag(Vector3(-1.5, 0.0, 0.9 + LOUNGE_DZ), 90.0)   # faces the left wall (the TV)
-	_build_beanbag2(Vector3(-1.55, 0.0, 1.0), 122.0)             # the purple one, turned toward the TV
+	_build_beanbags()
 	_build_tv()
 	_build_console()
 	_build_dresser()
@@ -1273,6 +1276,9 @@ func _walkable(x: float, z: float) -> bool:
 	for r in BLOCKERS:
 		if r.has_point(Vector2(x, z)):
 			return false
+	for i in beanbags.size():
+		if beanbags[i].visible and Vector2(x, z).distance_to(Vector2(beanbags[i].global_position.x, beanbags[i].global_position.z)) < 0.55:
+			return false
 	return true
 
 
@@ -1295,43 +1301,35 @@ func _snap_turn(deg: float) -> void:
 
 # ---------------------------------------------------------------- beanbag
 
-func _build_beanbag(pos: Vector3, yaw_deg: float) -> void:
-	var root := Node3D.new()
-	root.position = pos
-	root.rotation.y = deg_to_rad(yaw_deg)
-	room.add_child(root)
-	seat_nodes.append(root)
-	seat_eye.append(0.85)
-	seat_swivel.append(false)
-	var fabric := _mat(Color(0.95, 0.45, 0.58), 0.95)
-	var fabric_d := _mat(Color(0.78, 0.30, 0.48), 0.95)
-	var cushion := _mat(Color(1.0, 0.85, 0.75), 0.95)
-	# seat bulge, slumped backrest leaning toward +z, and a dented seat
-	_sphere(Vector3(0, 0.26, 0.05), 0.46, fabric, Vector3(1.0, 0.62, 1.0), root, 40)
-	var back := _sphere(Vector3(0, 0.5, 0.28), 0.36, fabric, Vector3(1.05, 1.0, 0.75), root, 40)
-	back.rotation.x = 0.3
-	_sphere(Vector3(0, 0.37, -0.06), 0.3, fabric_d, Vector3(1.0, 0.16, 1.0), root, 32)
-	# carry handle loop at the top
-	var loop := TorusMesh.new()
-	loop.inner_radius = 0.025
-	loop.outer_radius = 0.06
-	var h := _place(loop, Vector3(0, 0.86, 0.34), fabric_d, root)
-	h.rotation.x = PI / 2.0 + 0.3
-	# little cushion on the seat
-	var c := _sphere(Vector3(0.14, 0.4, -0.02), 0.2, cushion, Vector3(1.0, 0.45, 0.8), root, 24)
-	c.rotation.y = 0.5
+# One beanbag when you're alone; a second, third and fourth appear as friends join the room.
+# All face the TV: the first straight on, the others from the side and from a second row.
+const BEANBAG_SPOTS := [
+	[Vector3(-1.5, 0.0, 0.9 + LOUNGE_DZ), 90.0, Color(0.95, 0.45, 0.58)],    # pink, straight in front of the TV
+	[Vector3(-1.55, 0.0, 1.0), 122.0, Color(0.56, 0.36, 0.80)],             # purple, off to the side
+	[Vector3(-0.55, 0.0, 2.75), 78.0, Color(0.35, 0.55, 0.95)],             # blue, second row by the front wall
+	[Vector3(-0.5, 0.0, 1.45), 104.0, Color(1.0, 0.72, 0.42)],              # peach, second row
+]
+var beanbags: Array[Node3D] = []
 
 
-# the round purple one (beanbag_model.gd): local -z is where you sit
-func _build_beanbag2(pos: Vector3, yaw_deg: float) -> void:
-	var root := Node3D.new()
-	root.position = pos
-	root.rotation.y = deg_to_rad(yaw_deg)
-	room.add_child(root)
-	seat_nodes.append(root)
-	seat_eye.append(0.8)
-	seat_swivel.append(false)
-	BeanbagModel.build(root, Vector3.ZERO, 0.0, Color(0.56, 0.36, 0.80)).scale = Vector3.ONE * 1.12
+func _build_beanbags() -> void:
+	for spot in BEANBAG_SPOTS:
+		var root := Node3D.new()
+		root.position = spot[0]
+		root.rotation.y = deg_to_rad(spot[1])
+		room.add_child(root)
+		seat_nodes.append(root)
+		seat_eye.append(0.8)
+		seat_swivel.append(false)
+		BeanbagModel.build(root, Vector3.ZERO, 0.0, spot[2]).scale = Vector3.ONE * 1.12
+		beanbags.append(root)
+	set_beanbag_count(1)
+
+
+func set_beanbag_count(n: int) -> void:
+	n = clampi(n, 1, beanbags.size())
+	for i in beanbags.size():
+		beanbags[i].visible = i < n
 
 
 # ---------------------------------------------------------------- door (front wall)
@@ -1588,6 +1586,8 @@ func _nearest_seat() -> int:
 	var best := -1
 	var best_d := SIT_RANGE
 	for i in seat_nodes.size():
+		if not seat_nodes[i].visible:
+			continue
 		var sp := seat_nodes[i].global_position
 		var dist := Vector2(p.x, p.z).distance_to(Vector2(sp.x, sp.z))
 		if dist < best_d:
