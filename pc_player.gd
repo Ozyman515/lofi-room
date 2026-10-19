@@ -1,6 +1,7 @@
 extends Node3D
 
 const ScreenUI := preload("res://screen_ui.gd")
+const Plat := preload("res://platform.gd")
 const FileBrowser := preload("res://file_browser.gd")
 const SpeakerBank := preload("res://speaker_bank.gd")
 ## The PC in the room: a small music player drawn on the monitor. Click "Music" in the taskbar,
@@ -964,10 +965,44 @@ func _wx_refresh() -> void:
 
 # The room's own songs live in the "music" folder next to the game; the music player opens there.
 static func default_music_dir() -> String:
+	if Plat.is_android():
+		# the game's own files are read-only on a headset, so the room's songs are copied to a folder the player can add to
+		var u := ProjectSettings.globalize_path("user://music")
+		DirAccess.make_dir_recursive_absolute(u)
+		_seed_songs(u)
+		return u
 	var d := ProjectSettings.globalize_path("res://music") if FileAccess.file_exists("res://project.godot") else OS.get_executable_path().get_base_dir().path_join("music")
 	if not DirAccess.dir_exists_absolute(d):
 		DirAccess.make_dir_recursive_absolute(d)
 	return d
+
+
+static func _seed_songs(dest: String) -> void:
+	var have := DirAccess.open(dest)
+	if have == null:
+		return
+	have.list_dir_begin()
+	var f := have.get_next()
+	while f != "":
+		if not have.current_is_dir() and AUDIO_EXTS.has(f.get_extension().to_lower()):
+			have.list_dir_end()
+			return                                      # already has songs
+		f = have.get_next()
+	have.list_dir_end()
+	var src := DirAccess.open("res://music")
+	if src == null:
+		return
+	src.list_dir_begin()
+	f = src.get_next()
+	while f != "":
+		if not src.current_is_dir() and AUDIO_EXTS.has(f.get_extension().to_lower()):
+			var bytes := FileAccess.get_file_as_bytes("res://music/" + f)
+			if not bytes.is_empty():
+				var o := FileAccess.open(dest.path_join(f), FileAccess.WRITE)
+				if o != null:
+					o.store_buffer(bytes)
+		f = src.get_next()
+	src.list_dir_end()
 
 
 # At start-up: a random song from the room's folder (nothing happens if the folder is empty).

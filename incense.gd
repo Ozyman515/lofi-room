@@ -1,9 +1,12 @@
 extends Node3D
+const Plat := preload("res://platform.gd")
 ## A stick of incense in a little wooden boat on the dresser. Light it and a curl of smoke rises,
 ## the glow of the ember warms the corner and the whole room slowly turns hazy; put it out and it clears.
 
 const HAZE_SECS := 4.0
 const WISP_N := 64
+const WISP_N_LOW := 24                 # headset: fewer puffs and fewer big haze sheets (see-through layers cost a lot there)
+const SHEETS_LOW := 5
 
 var main: Node3D
 var lit := false
@@ -123,16 +126,16 @@ func _sprite(tex: Texture2D, size: float) -> Sprite3D:
 
 func _build_smoke() -> void:
 	var puff := _soft_tex(64, 1.6)
-	for i in WISP_N:
+	for i in (WISP_N_LOW if Plat.low_power() else WISP_N):
 		_wisp.append(_sprite(puff, 0.05))
 	# big soft sheets of haze floating through the room, thicker around the dresser
 	var big := _soft_tex(128, 1.1)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 21
-	for i in 16:
+	for i in (SHEETS_LOW if Plat.low_power() else 16):
 		var s := _sprite(big, rng.randf_range(1.6, 2.8))
 		var p := Vector3(rng.randf_range(-3.7, 2.3), rng.randf_range(0.9, 2.5), rng.randf_range(-1.8, 1.4))
-		if i < 6:
+		if i < (2 if Plat.low_power() else 6):
 			p = Vector3(rng.randf_range(-3.7, -2.0), rng.randf_range(1.0, 2.4), rng.randf_range(-1.8, 0.2))
 		s.position = p
 		_sheets.append(s)
@@ -201,7 +204,7 @@ func _process(delta: float) -> void:
 	for i in _sheets.size():
 		var b := _sheet_base[i]
 		_sheets[i].position = b + Vector3(sin(_t * 0.07 + i) * 0.35, sin(_t * 0.05 + i * 2.0) * 0.12, cos(_t * 0.06 + i * 1.3) * 0.3)
-		_sheets[i].modulate.a = 0.05 * haze
+		_sheets[i].modulate.a = (0.11 if Plat.low_power() else 0.05) * haze
 	if _veil_m != null:
 		_veil_m.albedo_color.a = 0.11 * haze
 	var e: Environment = main.world_env

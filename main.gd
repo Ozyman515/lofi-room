@@ -11,6 +11,7 @@ const Updater := preload("res://updater.gd")
 var updater: Node
 const Emu := preload("res://emu.gd")
 const Reticle := preload("res://reticle.gd")
+const Plat := preload("res://platform.gd")
 const PadMap := preload("res://padmap.gd")
 const SETTINGS_FILE := "user://lofi_room.cfg"
 const RETICLE_COLORS := [["Pink", Color(1.0, 0.35, 0.65)], ["Cyan", Color(0.20, 0.85, 0.90)], ["Amber", Color(1.0, 0.70, 0.30)], ["Lavender", Color(0.72, 0.58, 1.0)], ["White", Color(1.0, 0.95, 1.0)]]
@@ -276,7 +277,12 @@ func _build_environment() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.25
-	if USE_GLOW:
+	var glow_on := USE_GLOW and not Plat.low_power()            # bloom is costly on the headset: off there unless the config asks for it
+	if FileAccess.file_exists(SETTINGS_FILE):
+		var gcfg := ConfigFile.new()
+		if gcfg.load(SETTINGS_FILE) == OK:
+			glow_on = bool(gcfg.get_value("settings", "glow", glow_on))
+	if glow_on:
 		env.glow_enabled = true
 		env.glow_intensity = 0.9
 		env.glow_bloom = 0.15
@@ -942,6 +948,8 @@ func _setup_player() -> void:
 		head = xr_cam
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 		get_viewport().use_xr = true
+		if Plat.is_android():
+			_tune_quest_xr(xr)
 		sit_label.text = "Sit  (A or trigger)"
 		print("OpenXR active - put the headset on.")
 	else:
@@ -1403,6 +1411,10 @@ func _go_to_sleep() -> void:
 
 # Starts a fresh copy of the room (same display / VR options) and closes this one.
 func _relaunch() -> bool:
+	if Plat.is_android() and not dry_relaunch:
+		# a headset app can't start a second copy of itself, so the room starts over inside this run instead
+		get_tree().reload_current_scene.call_deferred()
+		return true
 	var args := PackedStringArray()
 	if FileAccess.file_exists("res://project.godot"):
 		args.append_array(["--path", ProjectSettings.globalize_path("res://")])
@@ -1424,6 +1436,21 @@ func _relaunch() -> bool:
 	print("RELAUNCH pid ", pid)
 	get_tree().quit()
 	return true
+
+
+# Meta Quest 3: ask for 90 Hz and let the runtime lower the resolution toward the edges of the lenses.
+func _tune_quest_xr(xr: XRInterface) -> void:
+	if xr.has_method("get_available_display_refresh_rates"):
+		var rates: Array = xr.call("get_available_display_refresh_rates")
+		for want in [90.0, 120.0, 72.0]:
+			if rates.has(want):
+				xr.set("display_refresh_rate", want)
+				break
+	for p in xr.get_property_list():
+		if p["name"] == "foveation_level":
+			xr.set("foveation_level", 2)
+		elif p["name"] == "foveation_dynamic":
+			xr.set("foveation_dynamic", true)
 
 
 # ---------------------------------------------------------------- sitting (chair + beanbag)

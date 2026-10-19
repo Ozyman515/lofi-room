@@ -1,4 +1,5 @@
 extends Node
+const Plat := preload("res://platform.gd")
 ## Plays NES and SNES games on the room's TV.
 ##
 ## The emulator itself runs in a small separate program (bin/retro_host.exe on Windows) that loads a libretro core from
@@ -345,6 +346,8 @@ func _menu_press(pressed: int) -> void:
 # ---------------------------------------------------------------- the emulator program
 
 func _launch(rom_file: String) -> void:
+	if not Plat.can_spawn_programs():
+		return _fail("Game consoles can't run on this headset yet.\nThey work in the PC version of the room.")
 	var win := OS.get_name() == "Windows"
 	var host := base.path_join("bin").path_join("retro_host.exe" if win else "retro_host_linux")
 	var core := base.path_join("cores").path_join(SYSTEMS[system]["core"] + (".dll" if win else ".so"))

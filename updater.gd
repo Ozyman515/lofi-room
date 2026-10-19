@@ -1,4 +1,5 @@
 extends Node
+const Plat := preload("res://platform.gd")
 ## Checks GitHub for a newer version of the room and installs only the files that changed.
 ## update.json (published with every release) lists each updatable file with its SHA-256; anything that differs
 ## from what is on disk is downloaded, verified and copied over. Carts, ROMs, saves and settings are never touched.
@@ -73,6 +74,9 @@ func busy() -> bool:
 func check() -> void:
 	if busy():
 		return
+	if not Plat.can_self_update():              # the headset app can't change its own files: updates arrive as a new install
+		_state("current", "Updates on this headset come as a new install of the app.")
+		return
 	_state("checking", "Checking for updates...")
 	_http.download_file = ""
 	if _http.request_completed.is_connected(_on_check_done):
@@ -125,6 +129,8 @@ func show_toast(msg: String, secs: float = 8.0) -> void:
 
 # Download everything that changed, check each file, then copy it into place.
 func install() -> void:
+	if not Plat.can_self_update():
+		return
 	if state != "available" or _todo.is_empty():
 		return
 	_toast.visible = false

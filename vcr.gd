@@ -1,6 +1,7 @@
 extends Node3D
 
 const ScreenUI := preload("res://screen_ui.gd")
+const Plat := preload("res://platform.gd")
 const FileBrowser := preload("res://file_browser.gd")
 ## A VHS-style VCR that sits on top of the TV. Point at its slot or EJECT button to pick a video file
 ## from your PC; the TV plays it. Godot can only play Ogg Theora (.ogv) video, so other formats are
@@ -1064,6 +1065,8 @@ func _probe(src: String, ff: String) -> Dictionary:
 # ---------------------------------------------------------------- converting other formats with ffmpeg
 
 func _find_ffmpeg() -> String:
+	if not Plat.can_spawn_programs():
+		return ""                 # no ffmpeg on a headset
 	if _ffmpeg != "":
 		return _ffmpeg
 	var candidates: Array[String] = [
@@ -1102,6 +1105,9 @@ func _fail_tape(msg: String) -> void:
 func _convert_and_play(src: String) -> void:
 	var ff := _find_ffmpeg()
 	if ff == "":
+		if not Plat.can_spawn_programs():
+			_fail_tape("This headset can only play .ogv videos.\nConvert the video to .ogv on a PC first.")
+			return
 		_fail_tape("This video needs ffmpeg to convert it to .ogv, and ffmpeg wasn't found.\nPut ffmpeg.exe in the project's tools folder,\nor install ffmpeg and restart. (.ogv files play without it)")
 		return
 	_tracks = _probe(src, ff)

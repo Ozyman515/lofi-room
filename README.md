@@ -1,4 +1,4 @@
-# Lofi Room (Godot 4.3+, OpenXR, Steam Frame)
+# Lofi Room (Godot 4.3+, OpenXR: Steam Frame, PCs and Meta Quest 3)
 
 ## Run it on your PC and play it on the Frame (easiest)
 1. Open Godot, click Import, pick this folder's project.godot.
@@ -8,6 +8,10 @@
 
 Controls: left stick = walk, right stick = snap turn. You can also just walk around physically.
 No headset connected? It falls back to a flat view: click to look, WASD to move, Esc frees the mouse.
+
+## Meta Quest 3
+The room also targets the Quest 3 (standalone Android). What works there, how to build the APK and what is still missing
+(the game consoles) is in docs/QUEST.md.
 
 ## Tweaking
 Everything is in main.gd. Colors are at the top of each _build_* function. USE_GLOW turns the bloom on/off.
