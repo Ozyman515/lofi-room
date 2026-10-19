@@ -63,6 +63,8 @@ var _gen: AudioStreamGenerator
 var _pb: AudioStreamGeneratorPlayback
 var _prev_mask := 0
 var _sent_mask := -1
+var local_port := 0                 # which libretro port the pad in your hand drives: 0 = player 1 (left), 1 = player 2 (right)
+var _remote_mask := 0               # the other player's buttons (a guest in the room), on the other port
 var _rep_t := 0.0
 var _combo_t := 0.0
 var resume_games := true         # keep the place in each game (set from the Settings window)
@@ -426,11 +428,23 @@ func _stop_host() -> void:
 
 
 func _send_buttons(mask: int) -> void:
-	if state != State.RUNNING or _peer == null or mask == _sent_mask:
+	var key := mask | (_remote_mask << 16) | (local_port << 32)
+	if state != State.RUNNING or _peer == null or key == _sent_mask:
 		return
-	_sent_mask = mask
-	var b := PackedByteArray([66, mask & 255, (mask >> 8) & 255, 0, 0])
+	_sent_mask = key
+	var p := [0, 0]
+	p[local_port] = mask
+	p[1 - local_port] = _remote_mask
+	var b := PackedByteArray([66, p[0] & 255, (p[0] >> 8) & 255, p[1] & 255, (p[1] >> 8) & 255])
 	_peer.put_data(b)
+
+
+# the buttons of the second person (a guest): they drive the port you are not using
+func set_remote_buttons(mask: int) -> void:
+	if mask == _remote_mask:
+		return
+	_remote_mask = mask
+	_send_buttons(_prev_mask if pad_held else 0)
 
 
 func _process(delta: float) -> void:

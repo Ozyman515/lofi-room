@@ -83,6 +83,11 @@ var leave_panel: Node3D
 var game_mode := false                # holding a controller: it drives the game and you cannot walk
 var pad_nodes: Array[Node3D] = []     # the controllers lying on the rug
 var held_pad_idx := -1
+var net: Node                            # NetSession (null when the WebRTC plugin isn't loaded)
+var net_avatars: Node3D
+var net_phone: Node3D
+var _net_moved := false
+var arcade_side := 0                     # 0 = left player, 1 = right player
 var held_pad: Node3D
 var reticle: Control
 var padmap: PadMap
@@ -195,8 +200,48 @@ func _ready() -> void:
 	_build_power()
 	_finish_cords()
 	_setup_player()
+	_build_multiplayer()
 	_load_prefs()
 	pc.play_random_default()
+
+
+# ---------------------------------------------------------------- multiplayer
+
+const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(-0.8, 0.0, 1.5), Vector3(1.2, 0.0, 1.6), Vector3(-0.3, 0.0, 2.2)]
+
+
+func _build_multiplayer() -> void:
+	# The net scripts use WebRTC classes, so they are only loaded when the plugin is there.
+	# (After an update that adds the plugin, the Godot editor must be opened once to register it.)
+	if not ClassDB.class_exists("WebRTCPeerConnection"):
+		print("Multiplayer unavailable: WebRTC plugin not loaded.")
+		return
+	net = load("res://net_session.gd").new()
+	net.name = "Net"
+	add_child(net)
+	net_avatars = load("res://net_avatars.gd").new()
+	net_avatars.name = "NetAvatars"
+	add_child(net_avatars)
+	net_avatars.setup(net, self)
+	net_phone = load("res://net_phone.gd").new()
+	net_phone.name = "WallPhone"
+	net_phone.position = Vector3(-0.45, 1.45, FRONT_Z - 0.025)
+	net_phone.scale = Vector3.ONE * 1.5
+	room.add_child(net_phone)
+	net_phone.build(net, func(it: Dictionary) -> void: interactables.append(it))
+	screens.append(net_phone.ui)
+	net.state_changed.connect(_on_net_state)
+
+
+func _on_net_state() -> void:
+	# guests appear at their own spot so nobody stands inside the host
+	if net.state == net.State.JOINED and not _net_moved and not seated:
+		_net_moved = true
+		origin.position = GUEST_SPAWNS[(net.my_id - 1) % GUEST_SPAWNS.size()]
+	elif net.state == net.State.OFFLINE and _net_moved:
+		_net_moved = false
+		if not seated:
+			origin.position = GUEST_SPAWNS[0]
 
 
 # ---------------------------------------------------------------- helpers
@@ -2199,6 +2244,7 @@ func _gen_cart_mesh() -> Node3D:
 # ---- the standing arcade cabinet (right wall, beside the bookshelf). Local axes: x = out from the wall, y = up, z = across the front.
 const CAB_POS := Vector3(2.5, 0.0, 1.95)       # against the right wall, next to the bookshelf, facing into the room
 const CAB_W := 0.72
+const ARC_SPLIT_Z := -0.015               # where the arcade shelf divides: +z is the left player, -z the right player
 const CAB_PROFILE := [Vector2(0, 0), Vector2(0.78, 0), Vector2(0.78, 0.82), Vector2(1.05, 0.82), Vector2(1.05, 0.90), Vector2(0.83, 0.90),
 	Vector2(0.83, 0.96), Vector2(0.64, 1.50), Vector2(0.71, 1.53), Vector2(0.71, 1.77), Vector2(0.50, 1.80), Vector2(0.0, 1.40)]
 const CAB_TILT := 0.3384        # the monitor leans back by atan(0.19 / 0.54)
@@ -2305,6 +2351,18 @@ func _build_arcade() -> void:
 	_box(Vector3(1.0435, 0.86, 0), Vector3(0.0125, 0.08, CAB_W - 0.07), white, root)
 	_box(Vector3(1.044, 0.896, 0), Vector3(0.012, 0.012, CAB_W - 0.07), dark, root)
 	var plate := _box(Vector3(0.94, 0.9005, 0), Vector3(0.2, 0.001, CAB_W - 0.09), speck, root)
+	# the shelf is split in two: a dark divider down the middle, and a label on the front lip for each player
+	_box(Vector3(0.94, 0.9025, ARC_SPLIT_Z), Vector3(0.2, 0.003, 0.004), dark, root)
+	for sd in 2:
+		var pl := Label3D.new()
+		pl.text = "LEFT PLAYER" if sd == 0 else "RIGHT PLAYER"
+		pl.font_size = 28
+		pl.pixel_size = 0.0007
+		pl.outline_size = 0
+		pl.modulate = Color(0.16, 0.18, 0.22)
+		pl.rotation = Vector3(0, PI / 2.0, 0)
+		pl.position = Vector3(1.0507, 0.86, 0.17 if sd == 0 else -0.185)
+		root.add_child(pl)
 	_box(Vector3(0.826, 0.93, 0), Vector3(0.008, 0.07, CAB_W - 0.07), white, root)          # closes the step between the control deck and the monitor board
 	var black_g := _mat(Color(0.04, 0.04, 0.05), 0.25)
 	var stick_m := _mat(Color(0.8, 0.8, 0.84), 0.35)
@@ -2375,19 +2433,29 @@ func _build_arcade() -> void:
 	arcade_light.omni_range = 2.2
 	root.add_child(arcade_light)
 	# interaction: the arcade controls (stick and buttons)
-	interactables.append({"node": plate, "half": Vector3(0.12, 0.05, 0.36), "egg_lock": true,
-		"label": _arcade_label, "cb": _pick_arcade})
+	var zl := CAB_W * 0.5 - 0.02                      # the shelf runs from -zl to +zl; the split divides it
+	for sd in 2:
+		var z0: float = ARC_SPLIT_Z if sd == 0 else -zl
+		var z1: float = zl if sd == 0 else ARC_SPLIT_Z
+		var hit := _box(Vector3(0.94, 0.9005, (z0 + z1) * 0.5), Vector3(0.2, 0.001, z1 - z0), speck, root)
+		hit.visible = false
+		interactables.append({"node": hit, "half": Vector3(0.12, 0.05, (z1 - z0) * 0.5), "egg_lock": true,
+			"label": _arcade_label.bind(sd), "cb": _pick_arcade.bind(sd)})
 
 
-func _arcade_label() -> String:
+func _arcade_label(side: int) -> String:
+	var who := "LEFT PLAYER" if side == 0 else "RIGHT PLAYER"
 	if slot_cart != "neo":
-		return "ARCADE CONTROLS  (insert the Neo Geo cart first)"
-	return "PLAY  (arcade controls)"
+		return who + " CONTROLS  (insert the Neo Geo cart first)"
+	return "PLAY AS " + who
 
 
-func _pick_arcade() -> void:
+func _pick_arcade(side: int) -> void:
 	if game_mode or slot_cart != "neo":
 		return
+	arcade_side = side
+	if emu != null:
+		emu.local_port = side                    # left player = port 0, right player = port 1
 	game_mode = true
 	held_pad_idx = -1
 	_pad_stick_prev = false
@@ -2699,6 +2767,8 @@ func _pick_pad(idx: int) -> void:
 	if game_mode:
 		return
 	game_mode = true
+	if emu != null:
+		emu.local_port = 0                       # the console pads are player 1 for now
 	held_pad_idx = idx
 	pad_nodes[idx].visible = false
 	held_pad = Node3D.new()
