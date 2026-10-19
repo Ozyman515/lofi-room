@@ -1,5 +1,5 @@
 {
- "version": 69,
+ "version": 70,
  "files": {
   "README.md": {
    "sha": "433ccbdd8234e177a7094311e453d75264ff2e81ccadf327946e4baeebf4c7c7",
@@ -60,6 +60,10 @@
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
    "size": 155
+  },
+  "beanbag_model.gd": {
+   "sha": "eda4021e7d77641ef870c6a4033104c68cab4abdc4f4e5cfe48f2ed79abd206f",
+   "size": 4684
   },
   "bed_model.gd": {
    "sha": "28b01222b42e54a7409f66731b31d2401af6d9792fa45ccbdc55fec3cbe4a247",
@@ -122,8 +126,8 @@
    "size": 3287
   },
   "emu.gd": {
-   "sha": "0678bf6aa7ce050ebb4a06ab9e64df9e5b1933591ff3241d1a2cef5111d433b2",
-   "size": 22182
+   "sha": "29b3ace6f1d2f585a234d586744453bb95ddc3de39eadfa9400eced6a13dc9f4",
+   "size": 22245
   },
   "file_browser.gd": {
    "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
@@ -142,8 +146,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "506767f2b378f57daf6e6fbad26909bbc6ceb5e8254438c240687b48e234d013",
-   "size": 148896
+   "sha": "a903a760896e9dab5bd49835c914f05008e4be39cbd3e0178e947b1f784fec36",
+   "size": 153149
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -190,8 +194,8 @@
    "size": 5615
   },
   "net_phone.gd": {
-   "sha": "fae0d9390b8d884297c1e7ebe2c5e20f5ccc70409a6e2e96afb636303b1893d3",
-   "size": 7910
+   "sha": "52f11752e846e1945845b11d9d9504e3efbddba3b66ed18888d263dfe4a5e219",
+   "size": 7950
   },
   "net_session.gd": {
    "sha": "f7d990e630dfab4db6175577baa6496f4c380ac4e259b9cfc2223d3c73b058c6",
@@ -206,8 +210,8 @@
    "size": 11217
   },
   "pc_player.gd": {
-   "sha": "45d3a8c4af45756fc7e918b1413f4f439b6a558a6ced16fffdbab69697bded9f",
-   "size": 36866
+   "sha": "8486b27183bdd11a29ab52b01dc30a2229927ffe4216f8839c25c72d8268f222",
+   "size": 39323
   },
   "platform.gd": {
    "sha": "c6bf62a1be57b71e552c88787f24461adaad9ca0fd97f5b4921b755ddba72ff7",
@@ -254,8 +258,8 @@
    "size": 2368730
   },
   "tornado_event.gd": {
-   "sha": "cd1bd1e50c8d007450108d0b967619de3154f94c9864b5c123467c38ef68eb9f",
-   "size": 35874
+   "sha": "b4c5550b12094a4d37b46ea6579d0cbf10e9f601ea969479542e2a4beabeaaae",
+   "size": 35901
   },
   "updater.gd": {
    "sha": "4f9be3b75302d6a53539e27f90f8ee0e0d4a0d503996cb2e5a10fecb9d7068c4",
@@ -266,7 +270,7 @@
    "size": 40165
   },
   "version.txt": {
-   "sha": "b35e87b5838011a3637be660e4238af9a55e4edc74404c990f7a558e7f416658",
+   "sha": "6442bc26a7c562f5afe6467dab36365c709909f6a81afcecfc0c25cff0f1bab0",
    "size": 3
   },
   "weather.gd": {
