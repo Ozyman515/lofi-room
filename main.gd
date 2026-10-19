@@ -42,6 +42,7 @@ const BLOCKERS := [
 	Rect2(0.4, -2.1, 2.2, 1.05),    # desk
 	Rect2(2.0, -0.65, 0.6, 1.9),    # bookshelf
 	Rect2(-2.05, 0.35 + LOUNGE_DZ, 1.1, 1.1),   # beanbag
+	Rect2(-2.05, 0.5, 1.0, 1.0),    # purple beanbag
 	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),    # CRT TV
 	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
 	Rect2(-2.75, 0.1 + LOUNGE_DZ, 0.4, 0.55),   # game console
@@ -432,6 +433,7 @@ func _build_window() -> void:
 # ---------------------------------------------------------------- bed
 
 const BedModel := preload("res://bed_model.gd")
+const BeanbagModel := preload("res://beanbag_model.gd")
 const Incense := preload("res://incense.gd")
 var incense: Node3D
 const BED_POS := Vector3(-1.65, 0.0, -0.9)
@@ -740,6 +742,7 @@ func _build_decor() -> void:
 	_box(Vector3(0.1, 0.01, 0.75), Vector3(1.8, 0.02, 1.3), _mat(Color(0.35, 0.12, 0.40), 1.0))
 	_box(Vector3(0.1, 0.012, 0.75), Vector3(1.5, 0.02, 1.0), _mat(Color(0.55, 0.22, 0.42), 1.0))
 	_build_beanbag(Vector3(-1.5, 0.0, 0.9 + LOUNGE_DZ), 90.0)   # faces the left wall (the TV)
+	_build_beanbag2(Vector3(-1.55, 0.0, 1.0), 122.0)             # the purple one, turned toward the TV
 	_build_tv()
 	_build_console()
 	_build_dresser()
@@ -1317,6 +1320,18 @@ func _build_beanbag(pos: Vector3, yaw_deg: float) -> void:
 	# little cushion on the seat
 	var c := _sphere(Vector3(0.14, 0.4, -0.02), 0.2, cushion, Vector3(1.0, 0.45, 0.8), root, 24)
 	c.rotation.y = 0.5
+
+
+# the round purple one (beanbag_model.gd): local -z is where you sit
+func _build_beanbag2(pos: Vector3, yaw_deg: float) -> void:
+	var root := Node3D.new()
+	root.position = pos
+	root.rotation.y = deg_to_rad(yaw_deg)
+	room.add_child(root)
+	seat_nodes.append(root)
+	seat_eye.append(0.8)
+	seat_swivel.append(false)
+	BeanbagModel.build(root, Vector3.ZERO, 0.0, Color(0.56, 0.36, 0.80)).scale = Vector3.ONE * 1.12
 
 
 # ---------------------------------------------------------------- door (front wall)
