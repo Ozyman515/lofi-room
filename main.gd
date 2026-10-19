@@ -1335,9 +1335,11 @@ func _build_beanbags() -> void:
 		var root := Node3D.new()
 		room.add_child(root)
 		seat_nodes.append(root)
-		seat_eye.append(0.8)
+		seat_eye.append(0.95)
 		seat_swivel.append(false)
-		BeanbagModel.build(root, Vector3.ZERO, 0.0, BEANBAG_COLORS[i]).scale = Vector3.ONE * 1.12
+		# the root is the sitting spot (in the bowl); the ball itself sits a little behind it
+		var ball := BeanbagModel.build(root, Vector3(0.0, 0.0, 0.14), 0.0, BEANBAG_COLORS[i])
+		ball.scale = Vector3.ONE * 1.12
 		beanbags.append(root)
 	set_beanbag_count(1)
 

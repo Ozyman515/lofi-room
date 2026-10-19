@@ -38,9 +38,9 @@ static func _seam(ph: float, rr: float, w := 0.012) -> float:
 	return f * smoothstep(0.03, 0.09, rr)          # the seams fade out before they all meet at the centre
 
 
-const AXIS := Vector3(0.0, 1.0, -0.4)      # the bowl is pressed in along this (tilted toward the front)
-const CAV_H := 0.52                          # cavity sphere centre, along AXIS from the ball's centre
-const CAV_R := 0.40
+const AXIS := Vector3(0.0, 1.0, -0.55)      # the bowl is pressed in along this (tilted toward the front)
+const CAV_H := 0.50                          # cavity sphere centre, along AXIS from the ball's centre
+const CAV_R := 0.42
 
 
 # how far inside the bowl's footprint a sphere point is, in metres (negative outside)
@@ -74,7 +74,7 @@ static func _p(th: float, ph: float) -> Vector3:
 		p -= a * t * smoothstep(0.0, 0.10, inside)
 	# the filling piles up around the rim: a rolled lip all the way round
 	var lip := exp(-pow((inside - 0.01) / 0.09, 2.0))
-	p += n * 0.045 * lip
+	p += n * 0.045 * lip * (0.35 + 0.65 * clampf(0.5 + 0.5 * n.z, 0.0, 1.0))
 	# the sides are not perfectly round: a gentle swell between the seams (the filling pushes the panels out)
 	var seam := _seam(ph, R * st, 0.012 + 0.03 * s)
 	var panel_swell := 0.008 * (0.5 - 0.5 * cos(GORES * (ph + PI / 2.0))) * st
