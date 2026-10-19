@@ -282,7 +282,37 @@ func net_apply_game(d: Dictionary) -> void:
 
 
 func _on_net_roster() -> void:
-	set_beanbag_count(net.player_count() if net.is_online() else 1)
+	_refresh_beanbag_count()
+
+
+# Debug: force a number of seats (0 = follow the number of players in the room)
+var debug_seats := 0
+
+
+func set_debug_seats(n: int) -> void:
+	debug_seats = clampi(n, 0, 4)
+	_refresh_beanbag_count()
+	settings_changed.emit()
+
+
+# Debug: hide the wall phone (it's also absent when the WebRTC plugin isn't loaded)
+var phone_hidden := false
+
+
+func set_phone_hidden(on: bool) -> void:
+	phone_hidden = on
+	if net_phone != null:
+		net_phone.visible = not on
+		net_phone.ui.enabled = not on
+	_save_settings()
+	settings_changed.emit()
+
+
+func _refresh_beanbag_count() -> void:
+	if debug_seats > 0:
+		set_beanbag_count(debug_seats)
+	else:
+		set_beanbag_count(net.player_count() if net != null and net.is_online() else 1)
 
 
 func _on_net_state() -> void:
@@ -2794,6 +2824,11 @@ func _load_prefs() -> void:
 			weather.snap()
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
+		if bool(cfg.get_value("settings", "phone_hidden", false)):
+			phone_hidden = true
+			if net_phone != null:
+				net_phone.visible = false
+				net_phone.ui.enabled = false
 		weather_start = "remember" if str(cfg.get_value("settings", "weather_start", "random")) == "remember" else "random"
 		if weather_start == "remember" and cfg.has_section_key("room", "weather_mode"):
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
@@ -2844,6 +2879,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "weather_start", weather_start)
 	cfg.set_value("settings", "resume_games", emu.resume_games if emu != null else true)
 	cfg.set_value("settings", "cart_wash", cart_wash)
+	cfg.set_value("settings", "phone_hidden", phone_hidden)
 	cfg.save(SETTINGS_FILE)
 
 

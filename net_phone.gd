@@ -56,7 +56,7 @@ func build(session: Node, add_interactable: Callable) -> void:
 	net.state_changed.connect(_render)
 	net.roster_changed.connect(_render)
 	_render()
-	add_interactable.call({"node": case_node, "half": Vector3(0.14, 0.26, 0.03),
+	add_interactable.call({"node": case_node, "half": Vector3(0.14, 0.26, 0.03), "when": func() -> bool: return visible,
 		"label": func() -> String: return "CHILL WITH BUDDY BOIS", "cb": func() -> void: pass, "guest_ok": true})
 
 

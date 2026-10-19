@@ -37,6 +37,9 @@ var _st_cart_btn: Button
 var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
 var _ct_window: PanelContainer
+var _dbg_window: PanelContainer
+var _dbg_seat_btns: Array[Button] = []
+var _dbg_phone_btn: Button
 var _ct_dev := "key"
 var _ct_listen := ""
 var _ct_listen_t := 0.0
@@ -354,6 +357,8 @@ func _wx_hide() -> void:
 	if _ct_window != null:
 		_ct_window.visible = false
 		_ct_listen = ""
+	if _dbg_window != null:
+		_dbg_window.visible = false
 
 
 func _toggle_weather() -> void:
@@ -383,6 +388,8 @@ func _toggle_settings() -> void:
 	if _ct_window != null:
 		_ct_window.visible = false
 		_ct_listen = ""
+	if _dbg_window != null:
+		_dbg_window.visible = false
 	if _st_window.visible:
 		_window.visible = false
 		_spk_window.visible = false
@@ -417,6 +424,10 @@ func _build_settings_window() -> void:
 	ctl_btn.text = "  Controls...  "
 	ctl_btn.pressed.connect(_open_controls_window)
 	head.add_child(ctl_btn)
+	var dbg_btn := Button.new()
+	dbg_btn.text = "  Debug...  "
+	dbg_btn.pressed.connect(_open_debug_window)
+	head.add_child(dbg_btn)
 	var close := Button.new()
 	close.text = " x "
 	close.pressed.connect(_toggle_settings)
@@ -474,6 +485,70 @@ func _build_settings_window() -> void:
 	_main.settings_changed.connect(_st_refresh)
 	_st_refresh()
 	_build_controls_window()
+	_build_debug_window()
+
+
+# ---- debug window: things that are handy while testing the room
+
+func _build_debug_window() -> void:
+	_dbg_window = PanelContainer.new()
+	_dbg_window.offset_left = 150.0
+	_dbg_window.offset_top = 6.0
+	_dbg_window.offset_right = 874.0
+	_dbg_window.offset_bottom = 545.0
+	_dbg_window.visible = false
+	ui.root.add_child(_dbg_window)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_dbg_window.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var t := Label.new()
+	t.text = "Debug"
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var back := Button.new()
+	back.text = "  Back  "
+	back.pressed.connect(func() -> void:
+		_dbg_window.visible = false
+		_st_window.visible = true
+		_st_refresh())
+	head.add_child(back)
+	var note := Label.new()
+	note.text = "Seats in front of the TV. Players = as many as there are people in the room (one when you're alone)."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 17)
+	v.add_child(note)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	v.add_child(row)
+	for i in 5:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(0, 42)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(func() -> void: _main.set_debug_seats(i))
+		row.add_child(b)
+		_dbg_seat_btns.append(b)
+	_dbg_phone_btn = Button.new()
+	_dbg_phone_btn.custom_minimum_size = Vector2(0, 42)
+	_dbg_phone_btn.pressed.connect(func() -> void: _main.set_phone_hidden(not _main.phone_hidden))
+	v.add_child(_dbg_phone_btn)
+	_dbg_refresh()
+	_main.settings_changed.connect(_dbg_refresh)
+
+
+func _open_debug_window() -> void:
+	_st_window.visible = false
+	_dbg_window.visible = true
+	_dbg_refresh()
+
+
+func _dbg_refresh() -> void:
+	for i in _dbg_seat_btns.size():
+		var on: bool = i == _main.debug_seats
+		_dbg_seat_btns[i].text = ("[ %s ]" if on else "%s") % ("Players" if i == 0 else str(i))
+	if _dbg_phone_btn != null:
+		_dbg_phone_btn.text = "Wall phone (buddy bois)  [%s]" % ("HIDDEN" if _main.phone_hidden else "SHOWN")
 
 
 var _sleep_q: PanelContainer
