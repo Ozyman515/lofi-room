@@ -39,3 +39,9 @@ the Quest we need: (1) arm64-v8a builds of fceumm, snes9x2010, mgba, genesis_plu
 NDK, and (2) the host built as an arm64 library that the room starts inside its own process (a GDExtension or an
 Android plugin) instead of OS.create_process. The cloud workspace this room is developed in can't download the NDK,
 so this needs a build on a machine that can.
+
+## Comics
+Comics (.cbz, or a folder of them read as one book) live in `user://books` on the headset and in the `books`
+folder next to the game on a PC. Reading is pure GDScript (zip + the engine's image decoders), so it works
+on the Quest; pages are capped at 1600 px there. .cbr (RAR) files can't be opened anywhere; convert them to .cbz.
+When friends are in the room, a book you take off your shelf is streamed to whoever picks it up as JPEGs.

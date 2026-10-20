@@ -10,6 +10,8 @@ const PAGE_H := 0.40          # metres, the height of a page
 const PAGE_W := 0.27          # default width (pages keep their own aspect)
 const BOOKMARKS := "user://reader.cfg"
 
+signal turned                 # the reader changed the spread (page turn or contents jump)
+
 var comic: ComicBook
 var spread := 0               # 0 = the cover alone, then pairs
 var title := ""
@@ -192,6 +194,7 @@ func jump_to_chapter(i: int) -> void:
 	spread = comic.spread_of(int(comic.chapters[i]["first"]))
 	_refresh()
 	_save_bookmark()
+	turned.emit()
 
 
 func _update_toc() -> void:
@@ -223,6 +226,7 @@ func next_spread() -> void:
 		spread += 1
 		_refresh()
 		_save_bookmark()
+		turned.emit()
 
 
 func prev_spread() -> void:
@@ -230,6 +234,15 @@ func prev_spread() -> void:
 		spread -= 1
 		_refresh()
 		_save_bookmark()
+		turned.emit()
+
+
+# somebody else turned the page of this book (seen from across the room)
+func show_spread(s: int) -> void:
+	if comic == null:
+		return
+	spread = clampi(s, 0, spread_count() - 1)
+	_refresh()
 
 
 func _refresh() -> void:

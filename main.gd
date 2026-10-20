@@ -91,6 +91,7 @@ var net: Node                            # NetSession (null when the WebRTC plug
 var net_avatars: Node3D
 var net_phone: Node3D
 var net_game: Node
+var net_books: Node
 var _net_toast_t := 0
 var _net_moved := false
 var arcade_side := 0                     # 0 = left player, 1 = right player
@@ -242,6 +243,10 @@ func _build_multiplayer() -> void:
 	net_game.name = "NetGame"
 	add_child(net_game)
 	net_game.setup(net, self, emu)
+	net_books = load("res://net_books.gd").new()
+	net_books.name = "NetBooks"
+	add_child(net_books)
+	net_books.setup(net, self)
 
 
 func _is_guest() -> bool:
@@ -936,10 +941,15 @@ func _open_book(path: String) -> void:
 	room.add_child(bk)
 	_add_book(bk)
 	_hold_book(bk)
+	if net_books != null:
+		net_books._my_book_opened(bk)
 
 
 func _add_book(bk: Node3D) -> void:
 	books.append(bk)
+	bk.turned.connect(func() -> void:
+		if net_books != null:
+			net_books._my_book_turned(bk))
 	if bk.toc != null:
 		screens.append(bk.toc)
 	interactables.append({"node": bk, "half": Vector3(0.3, 0.22, 0.03), "guest_ok": true,
@@ -957,18 +967,24 @@ func _hold_book(bk: Node3D) -> void:
 	bk.held_by_me = true
 	bk._update_toc()
 	book_hint_t = 8.0
+	if net_books != null and bk.net_id != "":
+		net_books._my_book_taken(bk)
 	var xf := _book_target()
 	bk.global_transform = Transform3D(xf.basis, xf.origin - xf.basis.z * 0.3)
 
 
 # where a held book floats: in front of the face, a little low, tilted up toward the eyes
 func _book_target() -> Transform3D:
-	var fwd := -head.global_transform.basis.z
+	return _book_pose_for(head.global_transform)
+
+
+func _book_pose_for(hx: Transform3D) -> Transform3D:
+	var fwd := -hx.basis.z
 	fwd.y = 0.0
 	if fwd.length() < 0.01:
 		fwd = Vector3.FORWARD
 	fwd = fwd.normalized()
-	var pos := head.global_position + fwd * 0.6 + Vector3(0.0, -0.14, 0.0)
+	var pos := hx.origin + fwd * 0.6 + Vector3(0.0, -0.14, 0.0)
 	var basis := Basis.looking_at(fwd, Vector3.UP)      # local -z looks where you look, so +z (the pages) faces you
 	basis = basis * Basis(Vector3.RIGHT, -0.3)          # tilted back so the pages face up toward your eyes
 	return Transform3D(basis, pos)
@@ -992,15 +1008,45 @@ func _put_book() -> void:
 	var yaw := atan2(fwd.x, fwd.z)
 	bk.global_transform = Transform3D(Basis(Vector3.UP, yaw + PI) * Basis(Vector3.RIGHT, -PI / 2.0), p)   # open, pages up, the top away from you
 	bk._save_bookmark()
+	if net_books != null:
+		net_books._my_book_put(bk)
+
+
+func _remove_book(bk: Node3D) -> void:
+	if held_book == bk:
+		held_book = null
+	books.erase(bk)
+	for it in interactables.duplicate():
+		if it.get("node") == bk:
+			interactables.erase(it)
+	if bk.toc != null:
+		screens.erase(bk.toc)
+		if hover_screen == bk.toc:
+			hover_screen = null
+	bk.queue_free()
 
 
 func _update_book(delta: float) -> void:
+	var k := 1.0 - exp(-10.0 * delta)
 	if held_book != null:
-		var t := _book_target()
-		var k := 1.0 - exp(-10.0 * delta)
-		var cur := held_book.global_transform
-		held_book.global_transform = Transform3D(cur.basis.get_rotation_quaternion().slerp(t.basis.get_rotation_quaternion(), k), cur.origin.lerp(t.origin, k))
+		_glide(held_book, _book_target(), k)
+	# books in other people's hands float in front of their avatars
+	if net_avatars != null:
+		for bk in books:
+			if bk == held_book or bk.lying or bk.holder_id == 0 or not net_avatars.avatars.has(bk.holder_id):
+				continue
+			var av: Node3D = net_avatars.avatars[bk.holder_id]
+			if av.visible:
+				_glide(bk, _book_pose_for(av.head.global_transform), k)
 	_check_shelf(delta)
+
+
+func _glide(bk: Node3D, t: Transform3D, k: float) -> void:
+	var cur := bk.global_transform
+	if cur.origin.distance_to(t.origin) > 3.0:
+		bk.global_transform = t
+		return
+	bk.global_transform = Transform3D(cur.basis.get_rotation_quaternion().slerp(t.basis.get_rotation_quaternion(), k), cur.origin.lerp(t.origin, k))
 
 
 func _book_page(dir: int) -> void:

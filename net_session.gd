@@ -14,6 +14,7 @@ const K_EVENT := 3       # reliable game events (var)
 const K_INPUT := 4       # guest -> host: pad / stick state
 const K_VIDEO := 5       # host -> guest: emulator frames
 const K_AUDIO := 6       # host -> guest: emulator sound
+const K_BOOK := 7        # comic pages (JPEG) from a book's owner to whoever is reading it
 
 signal state_changed
 signal roster_changed
@@ -94,6 +95,12 @@ func kick(id: int) -> void:
 func send_to(id: int, kind: int, payload: PackedByteArray, reliable := true) -> void:
 	if _mp == null:
 		return
+	if id == 0:
+		for pid in peer_ids():
+			send_to(pid, kind, payload, reliable)
+		return
+	if _connecting_since.has(id) or not _conns.has(id):
+		return                          # not linked up yet (or gone)
 	_mp.transfer_mode = MultiplayerPeer.TRANSFER_MODE_RELIABLE if reliable else MultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED
 	_mp.set_target_peer(id)
 	var b := PackedByteArray([kind])
