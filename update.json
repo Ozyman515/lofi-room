@@ -1,5 +1,5 @@
 {
- "version": 71,
+ "version": 72,
  "files": {
   "README.md": {
    "sha": "433ccbdd8234e177a7094311e453d75264ff2e81ccadf327946e4baeebf4c7c7",
@@ -86,8 +86,8 @@
    "size": 14999
   },
   "comic_book.gd": {
-   "sha": "c0811d76114dcae7cbcf255e8f02be4084b80ed38c809a83d929a52dc6e3bc87",
-   "size": 9748
+   "sha": "379643e1b49a316075d4d3940715a09ac9298e0e5997ba53378828ec39900593",
+   "size": 17957
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -130,8 +130,8 @@
    "size": 2896968
   },
   "docs/QUEST.md": {
-   "sha": "d34b781a100f3fa4d0ccdc799610967718f76765bc31b5ce0ae128f0537ec7c1",
-   "size": 3734
+   "sha": "0e6325ddc1e1630de78467aebe72fa834dff629af93de770816cb463e2a35c85",
+   "size": 3768
   },
   "emu.gd": {
    "sha": "29b3ace6f1d2f585a234d586744453bb95ddc3de39eadfa9400eced6a13dc9f4",
@@ -154,8 +154,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "8d2a30587a02d8b872782f3e60e11ce38c9a6ad98ebb2c15bb6963dd673ad301",
-   "size": 163770
+   "sha": "8ba3be7a3c17c5c43ce261df5cd284a86f081d07fe47247737c90443d56bc108",
+   "size": 166379
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -190,8 +190,8 @@
    "size": 5756928
   },
   "net_avatars.gd": {
-   "sha": "93e2f0e783d64a9c912f60f7f966ce7903165f0fe92c307f507f4448f6ac8e78",
-   "size": 5430
+   "sha": "dea20b3c618b421b5ddd90f49296d95d519c770d852d93292882c878efd9ad76",
+   "size": 5996
   },
   "net_books.gd": {
    "sha": "39db78a72b37512a61959a70ace03b6a5d13aa6578301898b1db075e47ccfdee",
@@ -202,8 +202,8 @@
    "size": 1663
   },
   "net_game.gd": {
-   "sha": "d0436d288dc3d30c01832f37dbc8c7ad930721f540981651d271a87e7d449b13",
-   "size": 5615
+   "sha": "70d0b19a143d154ea125b3463f3f12ead17182bae89025b9ad9c0c97ee65108c",
+   "size": 9110
   },
   "net_phone.gd": {
    "sha": "52f11752e846e1945845b11d9d9504e3efbddba3b66ed18888d263dfe4a5e219",
@@ -222,8 +222,8 @@
    "size": 11217
   },
   "pc_player.gd": {
-   "sha": "8486b27183bdd11a29ab52b01dc30a2229927ffe4216f8839c25c72d8268f222",
-   "size": 39323
+   "sha": "f65c60dbadfbeb28ea24f4d3b532a8f46047d3f210f0618cccd88f2f71b382bc",
+   "size": 41797
   },
   "platform.gd": {
    "sha": "c6bf62a1be57b71e552c88787f24461adaad9ca0fd97f5b4921b755ddba72ff7",
@@ -286,7 +286,7 @@
    "size": 40165
   },
   "version.txt": {
-   "sha": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+   "sha": "bd5fa6e75f0ddfcd9ff32e0a2297554cd81188f177f14d7ce416310efa0b5c77",
    "size": 3
   },
   "weather.gd": {
