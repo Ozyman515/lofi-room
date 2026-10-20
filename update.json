@@ -1,5 +1,5 @@
 {
- "version": 70,
+ "version": 71,
  "files": {
   "README.md": {
    "sha": "433ccbdd8234e177a7094311e453d75264ff2e81ccadf327946e4baeebf4c7c7",
@@ -77,9 +77,17 @@
    "sha": "9d7e9a847dc6a2e30d79c4d9715c318905fb501a0b191bda10faead797c1ca6c",
    "size": 23184
   },
+  "book.gd": {
+   "sha": "be4f0c971054e452eadee47007cac5e8942d394752fa2c6a72a952a95c04ec4b",
+   "size": 10054
+  },
   "cart_art.gd": {
    "sha": "e6a4b35c85f7becde478ad51ee4b9633965363cecd3a0ad32d375e25a9e96ea5",
    "size": 14999
+  },
+  "comic_book.gd": {
+   "sha": "c0811d76114dcae7cbcf255e8f02be4084b80ed38c809a83d929a52dc6e3bc87",
+   "size": 9748
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -122,8 +130,8 @@
    "size": 2896968
   },
   "docs/QUEST.md": {
-   "sha": "5f31ebcd3ce9ff0b47c700273a01af09570bab09ce50389fdfe08f1faafda2a2",
-   "size": 3287
+   "sha": "d34b781a100f3fa4d0ccdc799610967718f76765bc31b5ce0ae128f0537ec7c1",
+   "size": 3734
   },
   "emu.gd": {
    "sha": "29b3ace6f1d2f585a234d586744453bb95ddc3de39eadfa9400eced6a13dc9f4",
@@ -146,8 +154,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "a903a760896e9dab5bd49835c914f05008e4be39cbd3e0178e947b1f784fec36",
-   "size": 153149
+   "sha": "8d2a30587a02d8b872782f3e60e11ce38c9a6ad98ebb2c15bb6963dd673ad301",
+   "size": 163770
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -185,6 +193,10 @@
    "sha": "93e2f0e783d64a9c912f60f7f966ce7903165f0fe92c307f507f4448f6ac8e78",
    "size": 5430
   },
+  "net_books.gd": {
+   "sha": "39db78a72b37512a61959a70ace03b6a5d13aa6578301898b1db075e47ccfdee",
+   "size": 8972
+  },
   "net_config.gd": {
    "sha": "e64afb899e11096b5b66bf1bd64e6a2976b8bae35b6897088600cb28a7c99fc4",
    "size": 1663
@@ -198,8 +210,8 @@
    "size": 7950
   },
   "net_session.gd": {
-   "sha": "f7d990e630dfab4db6175577baa6496f4c380ac4e259b9cfc2223d3c73b058c6",
-   "size": 10625
+   "sha": "b268a993956ab0d985b1a0e94408a54ac81a678ec0a5c0135eb353575df6d4d5",
+   "size": 10921
   },
   "openxr_action_map.tres": {
    "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
@@ -216,6 +228,10 @@
   "platform.gd": {
    "sha": "c6bf62a1be57b71e552c88787f24461adaad9ca0fd97f5b4921b755ddba72ff7",
    "size": 853
+  },
+  "remote_comic.gd": {
+   "sha": "24b1fdb19ca566ed7f28dcd406f78b57d37b778999842887f9ddcf8b0b8cf17a",
+   "size": 2049
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -262,15 +278,15 @@
    "size": 35901
   },
   "updater.gd": {
-   "sha": "4f9be3b75302d6a53539e27f90f8ee0e0d4a0d503996cb2e5a10fecb9d7068c4",
-   "size": 6650
+   "sha": "b51d61158dfcd0689e1d10f5fccd1a995e0ad86ca3ed1ed152581b8db7032d32",
+   "size": 6660
   },
   "vcr.gd": {
    "sha": "083ed5e90a42dd9dd3072bd92e7ee2f017f1aeb9f01ebda2f61e58c8f0713de9",
    "size": 40165
   },
   "version.txt": {
-   "sha": "6442bc26a7c562f5afe6467dab36365c709909f6a81afcecfc0c25cff0f1bab0",
+   "sha": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
    "size": 3
   },
   "weather.gd": {
