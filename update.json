@@ -1,5 +1,5 @@
 {
- "version": 72,
+ "version": 73,
  "files": {
   "README.md": {
    "sha": "433ccbdd8234e177a7094311e453d75264ff2e81ccadf327946e4baeebf4c7c7",
@@ -78,16 +78,16 @@
    "size": 23184
   },
   "book.gd": {
-   "sha": "be4f0c971054e452eadee47007cac5e8942d394752fa2c6a72a952a95c04ec4b",
-   "size": 10054
+   "sha": "d2d8dc1ed8a68d44116112ae030b9256791b1d85b88f510c7b1f964e0c22cd28",
+   "size": 10136
   },
   "cart_art.gd": {
    "sha": "e6a4b35c85f7becde478ad51ee4b9633965363cecd3a0ad32d375e25a9e96ea5",
    "size": 14999
   },
   "comic_book.gd": {
-   "sha": "379643e1b49a316075d4d3940715a09ac9298e0e5997ba53378828ec39900593",
-   "size": 17957
+   "sha": "0440f1e48ace9715a638de8f9f1167e021af7f3a631f338a6f60130787aefe35",
+   "size": 18050
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -145,6 +145,14 @@
    "sha": "270391ad48b3737e208cada68917b3a1165dc7e67d205b504798cd195f61c700",
    "size": 7852
   },
+  "icon.ico": {
+   "sha": "b388e6674618b3595fb3d241d1cade4c6f4b4b5f3e5ea8c7e89b688eac27ddea",
+   "size": 180435
+  },
+  "icon.png": {
+   "sha": "43e43ba8135f89da9e159ab0ba0a743020f4e6ef76ec35a6d2e42bf5d6cca5f3",
+   "size": 123268
+  },
   "incense.gd": {
    "sha": "5f6b45bc90ed587121b93dc79b7347d2b7bd9dc80fc03c92e68c2851d4a84dca",
    "size": 8732
@@ -154,8 +162,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "8ba3be7a3c17c5c43ce261df5cd284a86f081d07fe47247737c90443d56bc108",
-   "size": 166379
+   "sha": "999b1699bdacb7e3ed5038def8c64c8eee9599ff7e47d8c3532d6044c1e49397",
+   "size": 170432
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -202,8 +210,8 @@
    "size": 1663
   },
   "net_game.gd": {
-   "sha": "70d0b19a143d154ea125b3463f3f12ead17182bae89025b9ad9c0c97ee65108c",
-   "size": 9110
+   "sha": "d9588d34a77d4c0fa704486b211bb9dfdf955122a554670f684213f816eb26d5",
+   "size": 9136
   },
   "net_phone.gd": {
    "sha": "52f11752e846e1945845b11d9d9504e3efbddba3b66ed18888d263dfe4a5e219",
@@ -230,8 +238,8 @@
    "size": 853
   },
   "remote_comic.gd": {
-   "sha": "24b1fdb19ca566ed7f28dcd406f78b57d37b778999842887f9ddcf8b0b8cf17a",
-   "size": 2049
+   "sha": "c5157cf9767acf502f015c013957b8acad18e8d5f00be1b513ea39c7e4c3c628",
+   "size": 2073
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -286,7 +294,7 @@
    "size": 40165
   },
   "version.txt": {
-   "sha": "bd5fa6e75f0ddfcd9ff32e0a2297554cd81188f177f14d7ce416310efa0b5c77",
+   "sha": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
    "size": 3
   },
   "weather.gd": {
