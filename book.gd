@@ -63,6 +63,7 @@ func _init() -> void:
 func _page_mat() -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED     # pages read like lit paper in the dark room
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	m.albedo_color = Color(0.93, 0.90, 0.84)
 	m.disable_fog = true
 	return m

@@ -75,6 +75,9 @@ var console_on := false
 var cab_root: Node3D                  # the standing arcade cabinet on the left wall
 var arcade_mat: ShaderMaterial
 var arcade_light: OmniLight3D
+var arcade_on := true                  # the power switch on the cabinet's side
+var arcade_marquee_m: StandardMaterial3D
+var arcade_marquee_label: Label3D
 var emu: Node                         # NES / SNES games (emu.gd)
 var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo" or "egg" (the secret one)
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
@@ -284,6 +287,8 @@ func net_apply_game(d: Dictionary) -> void:
 		toggle_console()
 	if bool(d.get("tv", true)) != vcr.tv_on:
 		vcr.toggle_tv()
+	if bool(d.get("arcade", true)) != arcade_on:
+		set_arcade_on(bool(d.get("arcade", true)))
 
 
 func _on_net_roster() -> void:
@@ -1012,7 +1017,7 @@ func _hold_book(bk: Node3D) -> void:
 	bk._update_toc()
 	book_hint_t = 8.0
 	_book_placed = false
-	book_zoom = false
+	book_zoom = 0
 	if net_books != null and bk.net_id != "":
 		net_books._my_book_taken(bk)
 	var xf := _book_target()
@@ -1024,23 +1029,41 @@ func _book_target() -> Transform3D:
 	return _held_book_target()
 
 
-func _book_pose_for(hx: Transform3D, zoomed := false) -> Transform3D:
+func _book_pose_for(hx: Transform3D, zoom := 0) -> Transform3D:
 	var fwd := -hx.basis.z
 	fwd.y = 0.0
 	if fwd.length() < 0.01:
 		fwd = Vector3.FORWARD
 	fwd = fwd.normalized()
-	var dist := 0.42 if zoomed else 0.6
-	var drop := -0.06 if zoomed else -0.14
+	var dist := 0.6
+	var drop := -0.14
+	var tilt := -0.3
+	if zoom == 1:
+		dist = 0.42
+		drop = -0.06
+		tilt = -0.15
+	elif zoom == 2:
+		# the pages fill the height of the view: straight ahead, square on
+		dist = _book_fill_distance()
+		drop = 0.0
+		tilt = 0.0
 	var pos := hx.origin + fwd * dist + Vector3(0.0, drop, 0.0)
 	var basis := Basis.looking_at(fwd, Vector3.UP)      # local -z looks where you look, so +z (the pages) faces you
-	basis = basis * Basis(Vector3.RIGHT, -0.15 if zoomed else -0.3)      # tilted back so the pages face up toward your eyes
+	basis = basis * Basis(Vector3.RIGHT, tilt)          # tilted back so the pages face up toward your eyes
 	return Transform3D(basis, pos)
+
+
+func _book_fill_distance() -> float:
+	var h := Book.PAGE_H + 0.03
+	if xr_active:
+		return maxf(0.45, (h / 2.0) / tan(deg_to_rad(40.0)))
+	var vfov := deg_to_rad(desktop_cam.fov)
+	return (h / 2.0) / tan(vfov / 2.0) / 0.93
 
 
 # The held book only follows you once you look well away from it, so you can aim at the contents page
 # (and at the pages themselves) without dragging it along.
-var book_zoom := false
+var book_zoom := 0              # 0 = in your hands, 1 = close, 2 = fills the view
 var _book_yaw := 0.0            # the yaw the book was last placed at
 var _book_placed := false
 
@@ -1049,7 +1072,7 @@ func _held_book_target() -> Transform3D:
 	var fwd := -head.global_transform.basis.z
 	fwd.y = 0.0
 	var yaw := atan2(fwd.x, fwd.z) if fwd.length() > 0.01 else _book_yaw
-	var dead := 0.22 if book_zoom else 0.42         # radians of free look before the book comes along
+	var dead: float = [0.42, 0.22, 0.12][book_zoom]      # radians of free look before the book comes along
 	if not _book_placed or absf(angle_difference(yaw, _book_yaw)) > dead:
 		_book_placed = true
 		_book_yaw = yaw
@@ -1058,7 +1081,7 @@ func _held_book_target() -> Transform3D:
 
 
 func toggle_book_zoom() -> void:
-	book_zoom = not book_zoom
+	book_zoom = (book_zoom + 1) % 3
 	_book_placed = false
 
 
@@ -2556,7 +2579,7 @@ func toggle_console() -> void:
 func _apply_console() -> void:
 	if tv_mat == null:
 		return
-	var arcade_in := slot_cart == "neo"
+	var arcade_in := slot_cart == "neo" and arcade_on
 	tv_mat.set_shader_parameter("use_console", console_on and not arcade_in)
 	if arcade_mat != null:
 		arcade_mat.set_shader_parameter("console_tex", emu.tex if emu != null else null)
@@ -2935,7 +2958,8 @@ func _build_arcade() -> void:
 	screens.append(arc_focus)
 	arcade_focus = arc_focus
 	# marquee: a lit panel above the monitor
-	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9), root)
+	arcade_marquee_m = _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9)
+	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), arcade_marquee_m, root)
 	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
 	_box(Vector3(0.7145, 1.56, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
 	var ml := Label3D.new()
@@ -2947,6 +2971,15 @@ func _build_arcade() -> void:
 	ml.rotation = Vector3(0, PI / 2.0, 0)
 	ml.position = Vector3(0.7165, 1.65, 0)
 	root.add_child(ml)
+	arcade_marquee_label = ml
+	# the power switch: a red rocker low on the side panel, round the back
+	var sw_m := _mat(Color(0.85, 0.12, 0.12), 0.4)
+	var sw_plate := _box(Vector3(0.14, 0.32, -hw - 0.006), Vector3(0.06, 0.09, 0.012), _mat(Color(0.2, 0.2, 0.22), 0.5), root)
+	var sw := _box(Vector3(0.14, 0.32, -hw - 0.016), Vector3(0.028, 0.05, 0.012), sw_m, root)
+	sw.rotation.x = -0.25
+	interactables.append({"node": sw_plate, "half": Vector3(0.05, 0.07, 0.03), "egg_lock": true,
+		"label": func() -> String: return "ARCADE POWER  [%s]" % ("ON" if arcade_on else "OFF"),
+		"cb": _toggle_arcade_power, "hover": _glow_hover(sw_m)})
 	# the step from the monitor up to the marquee, the roof, and the sloped back
 	_box(Vector3(0.675, 1.515, 0), Vector3(0.08, 0.04, CAB_W - 0.07), white, root)
 	var rf := Vector2(0.50, 1.80) - Vector2(0.71, 1.77)
@@ -2968,7 +3001,7 @@ func _build_arcade() -> void:
 		var z1: float = zl if sd == 0 else ARC_SPLIT_Z
 		var hit := _box(Vector3(0.94, 0.9005, (z0 + z1) * 0.5), Vector3(0.2, 0.001, z1 - z0), speck, root)
 		hit.visible = false
-		interactables.append({"node": hit, "half": Vector3(0.12, 0.05, (z1 - z0) * 0.5), "egg_lock": true,
+		interactables.append({"node": hit, "half": Vector3(0.12, 0.05, (z1 - z0) * 0.5), "egg_lock": true, "when": func() -> bool: return arcade_on,
 			"label": _arcade_label.bind(sd), "cb": _pick_arcade.bind(sd), "guest_ok": true})
 
 
@@ -2979,8 +3012,26 @@ func _arcade_label(side: int) -> String:
 	return "PLAY AS " + who
 
 
+func _toggle_arcade_power() -> void:
+	if egg_active or _net_play_lock():
+		return
+	set_arcade_on(not arcade_on)
+	_save_settings()
+
+
+func set_arcade_on(on: bool) -> void:
+	arcade_on = on
+	if not on and game_mode and held_pad_idx == -1:
+		_put_pad()                             # you were at the sticks: step away
+	if arcade_marquee_m != null:
+		arcade_marquee_m.emission_energy_multiplier = 0.9 if on else 0.0
+		arcade_marquee_m.albedo_color = Color(0.95, 0.97, 0.92) if on else Color(0.45, 0.46, 0.44)
+		arcade_marquee_label.modulate = Color(0.08, 0.45, 0.2) if on else Color(0.1, 0.22, 0.14)
+	_apply_console()
+
+
 func _pick_arcade(side: int) -> void:
-	if game_mode or slot_cart != "neo":
+	if game_mode or slot_cart != "neo" or not arcade_on:
 		return
 	arcade_side = side
 	if emu != null:
@@ -3015,6 +3066,56 @@ func _neo_cart_mesh() -> Node3D:
 	return n
 
 
+# The carts lie on the floor around the console, somewhere new every visit: never inside the console, the TV,
+# the controllers, a wall or a beanbag spot, and never through each other.
+var cart_spots := {}                   # id -> Transform3D in lounge coordinates
+const CART_RADIUS := {"nes": 0.085, "snes": 0.085, "sgb": 0.08, "gen": 0.085, "neo": 0.14}
+
+
+func _scatter_carts() -> void:
+	var lay := Basis(Vector3.RIGHT, -PI / 2.0)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var centre := Vector2(-2.60, 1.45 + LOUNGE_DZ)                # the console
+	var console_rect := Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55)
+	var tv_rect := Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7)
+	var pads := [Vector2(-2.0, 2.58), Vector2(-2.25, 2.25)]
+	var placed: Array = []                                           # [Vector2, radius]
+	var ids := ["neo", "nes", "snes", "gen", "sgb"]                  # biggest first, it is the hardest to fit
+	for id in ids:
+		var r: float = CART_RADIUS[id]
+		var best := Vector2.ZERO
+		var found := false
+		for attempt in 400:
+			var ang := rng.randf_range(0.0, TAU)
+			var dist := rng.randf_range(0.42, 0.78)
+			var p := centre + Vector2(cos(ang), sin(ang)) * dist
+			if console_rect.grow(r + 0.03).has_point(p) or tv_rect.grow(r + 0.02).has_point(p):
+				continue
+			var ok := true
+			for pd in pads:
+				if p.distance_to(pd) < r + 0.17:
+					ok = false
+			for o in placed:
+				if p.distance_to(o[0]) < r + float(o[1]) + 0.01:
+					ok = false
+			var w := lounge.to_global(Vector3(p.x, 0.0, p.y))
+			if w.x < -3.9 + r + 0.05 or w.z > FRONT_Z - r - 0.05 or not _walkable(w.x, w.z):
+				ok = false
+			for layout in BEANBAG_LAYOUTS:
+				for sp in layout:
+					if Vector2(w.x, w.z).distance_to(sp) < r + 0.6:
+						ok = false
+			if ok:
+				best = p
+				found = true
+				break
+		if not found:
+			best = centre + Vector2(0.55, 0.0).rotated(float(placed.size()) * 1.2)     # the fallback keeps them apart at least
+		placed.append([best, r])
+		cart_spots[id] = Transform3D(Basis(Vector3.UP, rng.randf_range(-PI, PI)) * lay, Vector3(best.x, 0.034, best.y))
+
+
 func _build_carts() -> void:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)       # lying flat, label up
 	var nes := _nes_cart_mesh()
@@ -3023,17 +3124,17 @@ func _build_carts() -> void:
 	var gen := _gen_cart_mesh()
 	var neo := _neo_cart_mesh()
 	var egg_c := _nes_cart_mesh(true)
-	var tv_top := 0.04 + TV_WIDTH * 0.72
+	_scatter_carts()
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
-		"home": func() -> Transform3D: return lounge.global_transform * Transform3D(Basis(Vector3.UP, 0.5) * lay, Vector3(-2.3, 0.034, 3.08))}
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["nes"]}
 	carts["snes"] = {"node": snes, "name": "SNES CART", "busy": false,
-		"home": func() -> Transform3D: return tv_root.global_transform * Transform3D(Basis(Vector3.UP, 0.3) * lay, Vector3(0.52, tv_top + 0.011, 0.05))}
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["snes"]}
 	carts["sgb"] = {"node": sgb, "name": "SUPER GB CART", "busy": false,
-		"home": func() -> Transform3D: return lounge.global_transform * Transform3D(Basis(Vector3.UP, -0.4) * lay, Vector3(-2.28, 0.034, 2.84))}
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["sgb"]}
 	carts["gen"] = {"node": gen, "name": "SEGA CART", "busy": false,
-		"home": func() -> Transform3D: return lounge.global_transform * Transform3D(Basis(Vector3.UP, 0.25) * lay, Vector3(-2.15, 0.034, 2.78))}
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["gen"]}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
-		"home": func() -> Transform3D: return Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.12), Vector3(2.21, 1.066, 0.55))}   # standing on the bookshelf
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["neo"]}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
 	for id in ["nes", "snes", "sgb", "gen", "neo"]:
@@ -3211,6 +3312,8 @@ func _load_prefs() -> void:
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
 		slap_minutes = int(cfg.get_value("settings", "slap_minutes", 30))
+		if not bool(cfg.get_value("settings", "arcade_on", true)):
+			set_arcade_on(false)
 		if bool(cfg.get_value("settings", "phone_hidden", false)):
 			phone_hidden = true
 			if net_phone != null:
@@ -3268,6 +3371,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "cart_wash", cart_wash)
 	cfg.set_value("settings", "phone_hidden", phone_hidden)
 	cfg.set_value("settings", "slap_minutes", slap_minutes)
+	cfg.set_value("settings", "arcade_on", arcade_on)
 	cfg.save(SETTINGS_FILE)
 
 
@@ -3940,7 +4044,8 @@ func _update_pointer(delta: float) -> void:
 	elif held_book != null and book_hint_t > 0.0:
 		hint_label.text = ("A / B  =  NEXT / PREVIOUS PAGE     STICK CLICK  =  ZOOM     GRIP  =  PUT IT DOWN" if xr_active else "ARROWS OR WHEEL  =  TURN PAGES     V  =  ZOOM     G  =  PUT IT DOWN")
 		hint_label.scale = Vector3.ONE * 0.45
-		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.42 if book_zoom else -0.3, 0.0)
+		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.42 if book_zoom > 0 else -0.3, 0.0)
+		hint_label.visible = book_zoom < 2         # nothing over the pages when they fill the view
 		hint_label.visible = true
 	elif game_mode and pad_hint_t > 0.0:
 		hint_label.text = "%s:  %s  =  %s" % ["ARCADE" if held_pad_idx == -1 else "CONTROLLER", "GRIP" if xr_active else "E", "STEP AWAY" if held_pad_idx == -1 else "PUT IT DOWN"]

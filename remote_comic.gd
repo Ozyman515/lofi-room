@@ -69,6 +69,7 @@ func receive(i: int, jpeg: PackedByteArray) -> void:
 	if img.load_jpg_from_buffer(jpeg) != OK:
 		_tex[i] = null
 		return
+	img.generate_mipmaps()
 	_tex[i] = ImageTexture.create_from_image(img)
 
 

@@ -217,7 +217,7 @@ func _collect() -> void:
 			_results.erase(i)
 			_mutex.unlock()
 			if img != null:
-				_tex[i] = ImageTexture.create_from_image(img)
+				_tex[i] = ImageTexture.create_from_image(img)       # mipmaps were generated on the worker
 			else:
 				_tex[i] = null
 
@@ -255,6 +255,7 @@ static func _decode(zip_path: String, name: String, max_dim: int) -> Image:
 		img.resize(int(w * k), int(h * k), Image.INTERPOLATE_LANCZOS)
 	if img.get_format() != Image.FORMAT_RGB8 and img.get_format() != Image.FORMAT_RGBA8:
 		img.convert(Image.FORMAT_RGBA8)
+	img.generate_mipmaps()
 	return img
 
 
@@ -466,6 +467,7 @@ static func _decode_pdf_image(path: String, desc: String, max_dim: int) -> Image
 		img.resize(int(img.get_width() * k), int(img.get_height() * k), Image.INTERPOLATE_LANCZOS)
 	if img.get_format() != Image.FORMAT_RGB8 and img.get_format() != Image.FORMAT_RGBA8:
 		img.convert(Image.FORMAT_RGBA8)
+	img.generate_mipmaps()
 	return img
 
 
