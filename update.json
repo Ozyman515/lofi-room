@@ -1,5 +1,5 @@
 {
- "version": 78,
+ "version": 79,
  "files": {
   ".godot/.gdignore": {
    "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
@@ -150,16 +150,16 @@
    "size": 23184
   },
   "book.gd": {
-   "sha": "d2d8dc1ed8a68d44116112ae030b9256791b1d85b88f510c7b1f964e0c22cd28",
-   "size": 10136
+   "sha": "81de8dc89a2af16f7711d1099218d7f5a7737e4a7ebb9ea217e9a689124c4e31",
+   "size": 12169
   },
   "cart_art.gd": {
    "sha": "e6a4b35c85f7becde478ad51ee4b9633965363cecd3a0ad32d375e25a9e96ea5",
    "size": 14999
   },
   "comic_book.gd": {
-   "sha": "ebd678c805a278337a91eed82b2b2c15e31cbf6240b505215afcdb37b1b6b33e",
-   "size": 26544
+   "sha": "e378101b398114706d307882c7ba9fea20eaa0ed51fff571c2cd1cd508b366b7",
+   "size": 35377
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -201,13 +201,21 @@
    "sha": "3479b968b8d3f9124d1f1f1b4af3a4a66453f6b58d3c6ed351a9d52ef41188c5",
    "size": 2896968
   },
+  "diary.gd": {
+   "sha": "b04562353cfa09c7daa12e2ba11ff4d5da6550fd7bbf99f5fb79f38dc6c28871",
+   "size": 3966
+  },
+  "diary_book.gd": {
+   "sha": "e02704ba52133ed5fe39c23a378c9af4d7c82c97de776d163801bb911e55c76d",
+   "size": 5316
+  },
   "docs/QUEST.md": {
-   "sha": "0e6325ddc1e1630de78467aebe72fa834dff629af93de770816cb463e2a35c85",
-   "size": 3768
+   "sha": "df36ee04655d5ccb1e14fbbe8aa4080425c72c236fea81a563d137992ae701ae",
+   "size": 3839
   },
   "emu.gd": {
-   "sha": "29b3ace6f1d2f585a234d586744453bb95ddc3de39eadfa9400eced6a13dc9f4",
-   "size": 22245
+   "sha": "050af6c153b6e4e622c58e604ebfbfc875654d6cdeef70f996491fed0ed8ff4b",
+   "size": 22377
   },
   "file_browser.gd": {
    "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
@@ -238,8 +246,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "4c511120aa8a6b31c8bf4c24a38aed1d0ed1ae9e910f195b0505eb43c68f2120",
-   "size": 170551
+   "sha": "aab6b0bcf7d09f4d8842b2a898831436c5a09e4aaa6648f919daa08f67066924",
+   "size": 174101
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -378,7 +386,7 @@
    "size": 40165
   },
   "version.txt": {
-   "sha": "b03c70ff0d641a363f1a021413a098dce02e4c68b75f3a47aa10044f42ee1784",
+   "sha": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
    "size": 3
   },
   "weather.gd": {
