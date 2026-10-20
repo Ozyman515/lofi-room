@@ -95,7 +95,8 @@ func check() -> void:
 
 func _on_check_done(result: int, code: int, _h: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
-		_state("error", "Could not check for updates (offline?).")
+		_state("error", "Could not check for updates (result %d, http %d)." % [result, code])
+		_log("check failed: result %d http %d" % [result, code])
 		return
 	# the signature travels separately; nothing is trusted until it checks out
 	_pending_body = body
@@ -194,7 +195,7 @@ func install() -> void:
 				return _fail("Download failed: " + path)
 			var res: Array = await _http.request_completed
 			if int(res[0]) != HTTPRequest.RESULT_SUCCESS or int(res[1]) != 200:
-				return _fail("Download failed: " + path)
+				return _fail("Download failed: %s (result %d, http %d)" % [path, int(res[0]), int(res[1])])
 			if FileAccess.get_sha256(dest) == want:
 				ok = true
 				break
@@ -208,8 +209,9 @@ func install() -> void:
 		var dest_abs: String = root.path_join(path)
 		DirAccess.make_dir_recursive_absolute(dest_abs.get_base_dir())
 		var src: String = ProjectSettings.globalize_path(_stage_dir.path_join(path.replace("/", "__")))
-		if DirAccess.copy_absolute(src, dest_abs) != OK:
-			return _fail("Could not write " + path + " (is it open?)")
+		var cerr := DirAccess.copy_absolute(src, dest_abs)
+		if cerr != OK:
+			return _fail("Could not write %s (error %d: is the folder read-only, or the file open?)" % [path, cerr])
 		DirAccess.remove_absolute(src)
 	for path in _remove:
 		var gone: String = root.path_join(path)
@@ -217,9 +219,21 @@ func install() -> void:
 			DirAccess.remove_absolute(gone)
 	_todo.clear()
 	local_version = _read_version()
+	_log("installed version %d (%d files)" % [remote_version, staged.size()])
 	_state("done", "Updated to version %d. Take a nap in the bed to wake up in the new room (or close and reopen)." % remote_version)
 
 
 func _fail(m: String) -> void:
 	_http.download_file = ""
 	_state("error", m)
+	_log(m)
+
+
+# user://updater.log keeps the last few outcomes, so a failing copy can be diagnosed from one file
+func _log(m: String) -> void:
+	var f := FileAccess.open("user://updater.log", FileAccess.READ_WRITE if FileAccess.file_exists("user://updater.log") else FileAccess.WRITE)
+	if f == null:
+		return
+	f.seek_end()
+	f.store_line("%s  v%d  %s  root=%s" % [Time.get_datetime_string_from_system(), local_version, m, _root()])
+	f.close()
