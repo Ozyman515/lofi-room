@@ -1,6 +1,11 @@
 # Lofi Room (Godot 4.3+, OpenXR: Steam Frame, PCs and Meta Quest 3)
 
-## Run it on your PC and play it on the Frame (easiest)
+## Just play it (Windows)
+Unzip and double-click `lofi-room.exe`. That exe is Godot's own runtime with the room's icon; it runs the
+project files next to it, and the in-game updater keeps them current. With SteamVR running and set as the
+OpenXR runtime it starts in VR; without a headset it starts as a flat desktop view.
+
+## Run it from the editor (for tinkering)
 1. Open Godot, click Import, pick this folder's project.godot.
 2. On the PC, start SteamVR and connect your Frame the normal way. Make sure SteamVR is the active OpenXR runtime
    (SteamVR settings, Developer, "Set SteamVR as OpenXR runtime").
