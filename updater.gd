@@ -7,7 +7,9 @@ const Plat := preload("res://platform.gd")
 signal changed
 
 var base := "https://raw.githubusercontent.com/Ozyman515/lofi-room/main/"
-const SKIP_PREFIXES := ["carts/", ".godot/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/"]
+# .godot/imported (and the small .godot/*.cfg files) ARE updated: the exe build runs the loose project and needs them;
+# the editor just regenerates identical ones. Only the editor's own caches stay out.
+const SKIP_PREFIXES := ["carts/", ".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/"]
 
 var state := "idle"            # idle, checking, current, available, downloading, done, error
 var message := ""
@@ -58,7 +60,7 @@ func _state(s: String, m: String) -> void:
 func _ok_path(p: String) -> bool:
 	if p == "" or p.begins_with("/") or p.contains("..") or p.contains("\\") or p.contains(":"):
 		return false
-	if p == "project.godot" or p.ends_with(".import") or p.ends_with(".uid"):
+	if p == "project.godot" or p.ends_with(".uid"):
 		return false
 	for s in SKIP_PREFIXES:
 		if p.begins_with(s):
