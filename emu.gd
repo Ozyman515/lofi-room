@@ -1,5 +1,6 @@
 extends Node
 const Plat := preload("res://platform.gd")
+const Diary := preload("res://diary.gd")
 ## Plays NES and SNES games on the room's TV.
 ##
 ## The emulator itself runs in a small separate program (bin/retro_host.exe on Windows) that loads a libretro core from
@@ -420,6 +421,8 @@ func _notification(what: int) -> void:
 
 
 func _stop_host() -> void:
+	if state == State.RUNNING:
+		Diary.game_stopped()
 	if _peer != null:
 		if _peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 			_peer.put_data(PackedByteArray([81]))      # 'Q': save and quit
@@ -610,6 +613,7 @@ func _parse() -> void:
 
 func _on_hello() -> void:
 	state = State.RUNNING
+	Diary.game_started(system, _game_name)
 	_gen = AudioStreamGenerator.new()
 	_gen.mix_rate = _rate
 	_gen.buffer_length = 0.5

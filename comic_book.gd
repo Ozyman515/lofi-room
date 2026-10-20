@@ -46,10 +46,13 @@ func open(file_path: String) -> bool:
 		for f in files:
 			(extras if is_extra(f.get_file()) else main).append(f)
 		files = main + extras
+	files_count = files.size()
 	if files.size() == 1 and files[0].get_extension().to_lower() == "epub" and _open_text_epub(files[0]):
 		return true
 	for f in files:
 		var entries := _list_pages(f)
+		if text_mode:
+			return true
 		if entries.is_empty():
 			if files.size() == 1:
 				return false            # `error` is set
@@ -100,6 +103,9 @@ static func issues_in(dir_path: String) -> Array:
 	return out
 
 
+var files_count := 1
+
+
 func _list_pages(file_path: String) -> Array:
 	var f := FileAccess.open(file_path, FileAccess.READ)
 	if f == null:
@@ -108,7 +114,10 @@ func _list_pages(file_path: String) -> Array:
 	var head := f.get_buffer(4)
 	f.close()
 	if head.size() >= 4 and head[0] == 0x25 and head[1] == 0x50 and head[2] == 0x44 and head[3] == 0x46:     # %PDF
-		return _list_pdf_pages(file_path)
+		var pp := _list_pdf_pages(file_path)
+		if pp.is_empty() and files_count == 1 and _open_text_pdf(file_path):
+			return ["text"]          # a marker: the book was built from text already
+		return pp
 	if file_path.get_extension().to_lower() == "epub":
 		var ep := _list_epub_pages(file_path)
 		if not ep.is_empty():
@@ -798,3 +807,302 @@ static func html_to_bbcode(html: String) -> Dictionary:
 	if title.length() > 60:
 		title = title.left(57) + "…"
 	return {"bbcode": out.strip_edges(), "plain": plain, "title": title}
+
+
+# ---------------------------------------------------------------- PDF: text, pulled out of the page content streams
+# Godot has no PDF renderer. For a text PDF (a novel) the words are taken from the content streams and laid out
+# as pages by page_renderer, so you read the book, not a picture of the original page. Works for PDFs that use
+# plain (unencoded, non-subset-remapped) fonts, which is most ebook PDFs; scanned books have no text to find.
+
+func _open_text_pdf(path: String) -> bool:
+	if renderer == null:
+		return false
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return false
+	var size := f.get_length()
+	if size > 200 * 1024 * 1024:
+		return false
+	var data := f.get_buffer(size)
+	f.close()
+	var hx := data.hex_encode()
+	var H_STREAM := "73747265616d"          # "stream"
+	var H_END := "656e6473747265616d"       # "endstream"
+	var H_FLATE := "2f466c6174654465636f6465"   # "/FlateDecode"
+	var texts: Array = []
+	var at := 0
+	var total := 0
+	while true:
+		var i := _hex_find(hx, H_STREAM, at)
+		if i < 0:
+			break
+		var e := _hex_find(hx, H_END, i)
+		if e < 0:
+			break
+		at = e + H_END.length()
+		var dstart := _hex_rfind(hx, HEX_OBJ, i)
+		if dstart < 0 or i - dstart > 6000:
+			continue
+		var dict := hx.substr(dstart, i - dstart)
+		if dict.contains("2f496d616765") or dict.contains("2f466f6e7446696c65") or dict.contains("2f584d4c") or dict.contains("2f4f626a53746d") and false:
+			continue        # /Image, /FontFile, /XML
+		var b0 := i / 2 + 6
+		if b0 < data.size() and data[b0] == 0x0D:
+			b0 += 1
+		if b0 < data.size() and data[b0] == 0x0A:
+			b0 += 1
+		var raw := data.slice(b0, e / 2)
+		if raw.size() > 0 and (raw[raw.size() - 1] == 0x0A or raw[raw.size() - 1] == 0x0D):
+			raw = raw.slice(0, raw.size() - 1)
+		var body := raw
+		if dict.contains(H_FLATE):
+			body = raw.decompress_dynamic(32 * 1024 * 1024, FileAccess.COMPRESSION_DEFLATE)
+			if body.is_empty():
+				continue
+		var t := _pdf_stream_text(body)
+		if t.strip_edges().length() > 20:
+			texts.append(t)
+			total += t.length()
+	if total < 1500:
+		return false
+	# chapters: a long PDF is split into even chunks so the contents page is useful; headings are not reliable here
+	text_mode = true
+	var all := "\n\n".join(texts)
+	var chunk := 60000
+	var parts: Array = []
+	var p := 0
+	while p < all.length():
+		var cut := mini(all.length(), p + chunk)
+		if cut < all.length():
+			var nl := all.rfind("\n\n", cut)
+			if nl > p + chunk / 2:
+				cut = nl
+		parts.append(all.substr(p, cut - p))
+		p = cut
+	pages = []
+	chapters = []
+	spreads = []
+	for ci in parts.size():
+		var bb: String = str(parts[ci]).replace("[", "[lb]").strip_edges()
+		var starts: PackedInt32Array = renderer.paginate(bb)
+		var first := pages.size()
+		for k in starts.size():
+			pages.append(["text", "%d:%d" % [ci, k]])
+		_text_chapters.append({"bbcode": bb, "starts": starts})
+		chapters.append({"title": "Part %d" % (ci + 1), "path": "", "first": first, "count": starts.size(), "section": "Parts"})
+	var q := 0
+	while q < pages.size():
+		spreads.append([q, q + 1 if q + 1 < pages.size() else -1])
+		q += 2
+	error = ""
+	return true
+
+
+# The text-showing operators of a content stream: (..) Tj, [..] TJ, ' and ". Hex strings <..> too.
+# Text runs are joined with spaces; T* / Td / TD / ET start new lines; big vertical moves become paragraphs.
+static func _pdf_stream_text(body: PackedByteArray) -> String:
+	var out := ""
+	var i := 0
+	var n := body.size()
+	var depth := 0
+	var in_text := false
+	var last_op := ""
+	var tok := ""
+	var had_text := false
+	while i < n:
+		var c := body[i]
+		if c == 0x28:                     # ( string
+			var s := ""
+			depth = 1
+			i += 1
+			while i < n and depth > 0:
+				var ch := body[i]
+				if ch == 0x5C and i + 1 < n:       # backslash escape
+					i += 1
+					var e := body[i]
+					match e:
+						0x6E: s += "\n"
+						0x72: pass
+						0x74: s += "\t"
+						0x28: s += "("
+						0x29: s += ")"
+						0x5C: s += "\\"
+						_:
+							if e >= 0x30 and e <= 0x37:         # octal
+								var o := 0
+								var k := 0
+								while k < 3 and i < n and body[i] >= 0x30 and body[i] <= 0x37:
+									o = o * 8 + (body[i] - 0x30)
+									i += 1
+									k += 1
+								i -= 1
+								s += char(_pdf_std_char(o))
+							else:
+								s += char(e)
+				elif ch == 0x28:
+					depth += 1
+					s += "("
+				elif ch == 0x29:
+					depth -= 1
+					if depth > 0:
+						s += ")"
+				else:
+					s += char(_pdf_std_char(ch))
+				i += 1
+			tok = s
+			continue
+		elif c == 0x3C and i + 1 < n and body[i + 1] != 0x3C:       # <hex string>
+			var j := i + 1
+			var hexs := ""
+			while j < n and body[j] != 0x3E:
+				hexs += char(body[j])
+				j += 1
+			i = j + 1
+			hexs = hexs.replace(" ", "").replace("\n", "").replace("\r", "")
+			var s := ""
+			var k := 0
+			while k + 1 < hexs.length():
+				var v := ("0x" + hexs.substr(k, 2)).hex_to_int()
+				if v >= 32 and v < 127:
+					s += char(v)
+				elif v > 160 and v < 256:
+					s += char(v)
+				k += 2
+			tok = s
+			continue
+		elif c == 0x5B:                   # [ array: strings inside, with kerning numbers between
+			var j := i + 1
+			var parts := ""
+			var d := 1
+			var buf := PackedByteArray()
+			while j < n and d > 0:
+				if body[j] == 0x5B: d += 1
+				elif body[j] == 0x5D: d -= 1
+				if d > 0: buf.append(body[j])
+				j += 1
+			# recursive: strings inside the array; a large negative kerning number is a space
+			var inner := _pdf_array_strings(buf)
+			tok = inner
+			i = j
+			continue
+		# operators and numbers
+		var j := i
+		while j < n and body[j] > 0x20 and body[j] != 0x28 and body[j] != 0x5B and body[j] != 0x3C:
+			j += 1
+		if j == i:
+			i += 1
+			continue
+		var word := body.slice(i, j).get_string_from_ascii()
+		i = j
+		match word:
+			"BT":
+				in_text = true
+			"ET":
+				in_text = false
+				if had_text and not out.ends_with("\n"):
+					out += "\n"
+			"Tj", "'", "\"":
+				if in_text and tok != "":
+					if word != "Tj" and had_text:
+						out += "\n"
+					out += tok
+					had_text = true
+				tok = ""
+			"TJ":
+				if in_text and tok != "":
+					out += tok
+					had_text = true
+				tok = ""
+			"T*", "Td", "TD", "Tm":
+				if had_text and not out.ends_with("\n") and not out.ends_with(" "):
+					out += " " if word != "T*" else "\n"
+			_:
+				pass
+		last_op = word
+	# tidy: hyphenation at line ends, runs of spaces, paragraph breaks from blank lines;
+	# single line breaks inside a sentence are just the PDF's own wrapping and are joined back into flowing text
+	out = out.replace("-\n", "").replace(" \n", "\n")
+	var re := RegEx.new()
+	re.compile("([^.!?:\"”’'\\n])\\n(?!\\n)")
+	out = re.sub(out, "$1 ", true)
+	while out.contains("  "):
+		out = out.replace("  ", " ")
+	while out.contains("\n\n\n"):
+		out = out.replace("\n\n\n", "\n\n")
+	return out
+
+
+static func _pdf_array_strings(buf: PackedByteArray) -> String:
+	var s := ""
+	var i := 0
+	var n := buf.size()
+	while i < n:
+		var c := buf[i]
+		if c == 0x28:
+			var d := 1
+			i += 1
+			while i < n and d > 0:
+				var ch := buf[i]
+				if ch == 0x5C and i + 1 < n:
+					i += 1
+					var e := buf[i]
+					if e == 0x6E: s += "\n"
+					elif e == 0x28 or e == 0x29 or e == 0x5C: s += char(e)
+					elif e >= 0x30 and e <= 0x37:
+						var o := 0
+						var k := 0
+						while k < 3 and i < n and buf[i] >= 0x30 and buf[i] <= 0x37:
+							o = o * 8 + (buf[i] - 0x30)
+							i += 1
+							k += 1
+						i -= 1
+						s += char(_pdf_std_char(o))
+				elif ch == 0x28:
+					d += 1
+					s += "("
+				elif ch == 0x29:
+					d -= 1
+					if d > 0: s += ")"
+				else:
+					s += char(_pdf_std_char(ch))
+				i += 1
+			continue
+		elif c == 0x3C:
+			var j := i + 1
+			var hexs := ""
+			while j < n and buf[j] != 0x3E:
+				hexs += char(buf[j]); j += 1
+			i = j + 1
+			var k := 0
+			while k + 1 < hexs.length():
+				var v := ("0x" + hexs.substr(k, 2)).hex_to_int()
+				if v >= 32 and v < 256: s += char(v)
+				k += 2
+			continue
+		elif (c >= 0x30 and c <= 0x39) or c == 0x2D or c == 0x2E:
+			var j := i
+			while j < n and ((buf[j] >= 0x30 and buf[j] <= 0x39) or buf[j] == 0x2D or buf[j] == 0x2E):
+				j += 1
+			var v := buf.slice(i, j).get_string_from_ascii().to_float()
+			if v < -180.0:
+				s += " "          # a big backwards kern is a word gap
+			i = j
+			continue
+		i += 1
+	return s
+
+
+# WinAnsi / Standard encodings mostly agree with Latin-1 in the printable range; a few common swaps
+static func _pdf_std_char(c: int) -> int:
+	match c:
+		0x91, 0xD4: return 0x2018
+		0x92, 0xD5: return 0x2019
+		0x93, 0xD2: return 0x201C
+		0x94, 0xD3: return 0x201D
+		0x96, 0xD0: return 0x2013
+		0x97, 0xD1: return 0x2014
+		0x85, 0xC9: return 0x2026
+		0xAD: return 0x2D
+	if c < 32 and c != 10 and c != 9:
+		return 32
+	return c

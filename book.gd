@@ -32,6 +32,10 @@ var _shown := [-2, -2]         # page index on each side (-1 = blank)
 var _want := [-1, -1]
 var toc: ScreenUI              # table of contents on the inside cover of a series (null for a single issue)
 var _toc_quad: MeshInstance3D
+var tab_home: MeshInstance3D   # small tab sticking out of the top-left corner: back to the front page
+var tab_mark: MeshInstance3D   # top-right: jump to the bookmark (hold = set it here)
+var mark_page := -1            # the deliberate bookmark (separate from "where you were", which is automatic)
+var _ribbon: MeshInstance3D
 
 
 func _init() -> void:
@@ -50,6 +54,18 @@ func _init() -> void:
 	_right_m = _page_mat()
 	_left = _quad(_left_m, Vector3(-PAGE_W / 2.0 - 0.005, 0.0, 0.0))
 	_right = _quad(_right_m, Vector3(PAGE_W / 2.0 + 0.005, 0.0, 0.0))
+	var tab_m := StandardMaterial3D.new()
+	tab_m.albedo_color = Color(0.55, 0.2, 0.45)
+	tab_m.roughness = 0.6
+	tab_m.disable_fog = true
+	var tab_m2 := StandardMaterial3D.new()
+	tab_m2.albedo_color = Color(0.9, 0.7, 0.2)
+	tab_m2.roughness = 0.6
+	tab_m2.disable_fog = true
+	tab_home = _box(Vector3(-PAGE_W - 0.01 + 0.03, PAGE_H / 2.0 + 0.012, -0.004), Vector3(0.05, 0.018, 0.006), tab_m)
+	tab_mark = _box(Vector3(PAGE_W + 0.01 - 0.03, PAGE_H / 2.0 + 0.012, -0.004), Vector3(0.05, 0.018, 0.006), tab_m2)
+	_ribbon = _box(Vector3(0.0, -PAGE_H / 2.0 - 0.02, -0.004), Vector3(0.012, 0.05, 0.004), tab_m2)
+	_ribbon.visible = false
 	_label = Label3D.new()
 	_label.font_size = 36
 	_label.pixel_size = 0.0005
@@ -101,6 +117,7 @@ func open_file(path: String) -> String:
 		return e
 	title = comic.title
 	spread = comic.spread_of(_load_bookmark(path))
+	mark_page = _load_mark(path)
 	_build_toc()
 	_refresh()
 	return ""
@@ -208,6 +225,38 @@ func _update_toc() -> void:
 		_left_back.visible = true
 
 
+func go_front() -> void:
+	if comic == null:
+		return
+	spread = 0
+	_refresh()
+	_save_bookmark()
+	turned.emit()
+
+
+func go_mark() -> void:
+	if comic == null or mark_page < 0:
+		return
+	spread = comic.spread_of(mark_page)
+	_refresh()
+	_save_bookmark()
+	turned.emit()
+
+
+func set_mark_here() -> void:
+	if comic == null:
+		return
+	mark_page = first_page()
+	_save_bookmark()
+	_refresh()
+
+
+func mark_label() -> String:
+	if mark_page < 0:
+		return "BOOKMARK  (hold to set it on this page)"
+	return "GO TO BOOKMARK  p. %d   (hold to move it here)" % (mark_page + 1)
+
+
 func spread_count() -> int:
 	if comic == null:
 		return 0
@@ -254,6 +303,7 @@ func _refresh() -> void:
 	comic.prefetch(maxi(_want[0], _want[1]))
 	_update_toc()
 	var p := first_page()
+	_ribbon.visible = mark_page >= 0 and (p == mark_page or p + 1 == mark_page)
 	if comic.chapters.size() > 1:
 		var c: int = comic.chapter_of(p)
 		var ch: Dictionary = comic.chapters[c]
@@ -311,6 +361,13 @@ func _load_bookmark(path: String) -> int:
 	return 0
 
 
+func _load_mark(path: String) -> int:
+	var cf := ConfigFile.new()
+	if cf.load(BOOKMARKS) == OK:
+		return int(cf.get_value("marks", _key(path), -1))
+	return -1
+
+
 func _save_bookmark() -> void:
 	if comic == null:
 		return
@@ -318,6 +375,11 @@ func _save_bookmark() -> void:
 	cf.load(BOOKMARKS)
 	cf.set_value("bookmarks", _key(comic.path), first_page())
 	cf.set_value("titles", _key(comic.path), comic.path)
+	cf.set_value("names", _key(comic.path), title)
+	cf.set_value("pages", _key(comic.path), comic.page_count())
+	cf.set_value("when", _key(comic.path), int(Time.get_unix_time_from_system()))
+	if mark_page >= 0:
+		cf.set_value("marks", _key(comic.path), mark_page)
 	cf.save(BOOKMARKS)
 
 

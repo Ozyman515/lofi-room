@@ -586,6 +586,17 @@ func _build_nightstand() -> void:
 	interactables.append({"node": face, "half": Vector3(0.18, 0.09, 0.04), "cb": _toggle_drawer, "hover": _glow_hover(face_m),
 		"label": func() -> String: return "CLOSE DRAWER" if drawer_open else "OPEN DRAWER"})
 	_lamp(Vector3(-0.5, 0.46, -1.7), 1.0)
+	# the diary, lying beside the lamp
+	diary = load("res://diary_book.gd").new()
+	diary.name = "Diary"
+	diary.position = Vector3(-0.42, 0.46, -1.6)
+	diary.rotation.y = -0.2
+	room.add_child(diary)
+	diary.build(self)
+	screens.append(diary.ui)
+	interactables.append({"node": diary.cover, "half": Vector3(0.1, 0.03, 0.14), "guest_ok": true,
+		"when": func() -> bool: return not diary.open_book,
+		"label": func() -> String: return "READ THE DIARY", "cb": pick_diary})
 
 
 func _toggle_drawer() -> void:
@@ -838,6 +849,8 @@ var _shelf_check_t := 0.0
 var library: Array = []                # [{"title", "path", "size"}], what is in the books folder
 var books: Array = []                  # Book nodes in the room (held or lying about)
 var held_book: Node3D
+var diary: Node3D                   # the little book on the nightstand (diary_book.gd)
+var _diary_home := Transform3D.IDENTITY
 var book_hint_t := 0.0
 
 
@@ -1005,6 +1018,13 @@ func _add_book(bk: Node3D) -> void:
 			net_books._my_book_turned(bk))
 	if bk.toc != null:
 		screens.append(bk.toc)
+	# the two little tabs on a held book: front page (left) and bookmark (right, hold to set)
+	interactables.append({"node": bk.tab_home, "half": Vector3(0.03, 0.014, 0.012), "guest_ok": true,
+		"when": func() -> bool: return bk == held_book,
+		"label": func() -> String: return "FRONT PAGE", "cb": func() -> void: bk.go_front()})
+	interactables.append({"node": bk.tab_mark, "half": Vector3(0.03, 0.014, 0.012), "guest_ok": true,
+		"when": func() -> bool: return bk == held_book,
+		"label": func() -> String: return bk.mark_label(), "cb": func() -> void: _mark_press(bk), "hold": func() -> void: bk.set_mark_here()})
 	interactables.append({"node": bk, "half": Vector3(0.3, 0.22, 0.03), "guest_ok": true,
 		"when": func() -> bool: return bk.lying,
 		"label": func() -> String: return "PICK UP  " + bk.title, "cb": _hold_book.bind(bk)})
@@ -1076,7 +1096,10 @@ func _held_book_target() -> Transform3D:
 	var fwd := -head.global_transform.basis.z
 	fwd.y = 0.0
 	var yaw := atan2(fwd.x, fwd.z) if fwd.length() > 0.01 else _book_yaw
-	var dead: float = [0.42, 0.22, 0.12][book_zoom]      # radians of free look before the book comes along
+	# the book stays put while you look anywhere on it (its half-width as seen from your eye, plus a margin),
+	# so every corner of both pages can be aimed at, at every zoom; look well past its edge and it comes along
+	var dist: float = [0.6, 0.42, _book_fill_distance()][book_zoom]
+	var dead: float = atan((Book.PAGE_W * 1.35 + 0.02) / dist) + 0.12
 	if not _book_placed or absf(angle_difference(yaw, _book_yaw)) > dead:
 		_book_placed = true
 		_book_yaw = yaw
@@ -1138,6 +1161,7 @@ func _update_book(delta: float) -> void:
 			if av.visible:
 				_glide(bk, _book_pose_for(av.head.global_transform), k)
 	_check_shelf(delta)
+	_update_diary(delta)
 
 
 func _glide(bk: Node3D, t: Transform3D, k: float) -> void:
@@ -1146,6 +1170,64 @@ func _glide(bk: Node3D, t: Transform3D, k: float) -> void:
 		bk.global_transform = t
 		return
 	bk.global_transform = Transform3D(cur.basis.get_rotation_quaternion().slerp(t.basis.get_rotation_quaternion(), k), cur.origin.lerp(t.origin, k))
+
+
+var _mark_down_t := 0.0
+var _mark_bk: Node3D
+
+
+func _mark_press(bk: Node3D) -> void:
+	# a tap jumps to the bookmark; holding ~0.6 s sets it on the page you're on
+	_mark_bk = bk
+	_mark_down_t = Time.get_ticks_msec() / 1000.0
+
+
+func _mark_release() -> void:
+	if _mark_bk == null:
+		return
+	var held := Time.get_ticks_msec() / 1000.0 - _mark_down_t
+	if held >= 0.6:
+		_mark_bk.set_mark_here()
+		updater.show_toast("Bookmark set on page %d." % (_mark_bk.mark_page + 1), 3.0)
+	else:
+		if _mark_bk.mark_page < 0:
+			_mark_bk.set_mark_here()
+			updater.show_toast("Bookmark set on page %d. Hold the tab to move it later." % (_mark_bk.mark_page + 1), 4.0)
+		else:
+			_mark_bk.go_mark()
+	_mark_bk = null
+
+
+# ---- the diary floats in front of you like a book; put it down and it goes back to the nightstand
+
+func pick_diary() -> void:
+	if diary.open_book:
+		return
+	if held_book != null:
+		_put_book()
+	_diary_home = diary.global_transform
+	diary.set_open(true)
+	_book_placed = false
+	book_zoom = 1
+	book_hint_t = 8.0
+
+
+func put_diary() -> void:
+	if not diary.open_book:
+		return
+	diary.set_open(false)
+	diary.global_transform = _diary_home
+	book_zoom = 0
+
+
+func _update_diary(delta: float) -> void:
+	if diary == null or not diary.open_book:
+		return
+	var t := _held_book_target()
+	var k := 1.0 - exp(-10.0 * delta)
+	# the diary is smaller than a comic: bring it a little closer
+	t.origin += -t.basis.z * -0.1
+	_glide(diary, t, k)
 
 
 func _book_page(dir: int) -> void:
@@ -1644,6 +1726,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_toggle_sit()
 		elif held_book != null and event.keycode == KEY_G:
 			_put_book()
+		elif diary != null and diary.open_book and event.keycode == KEY_G:
+			put_diary()
 		elif held_book != null and (event.keycode == KEY_RIGHT or event.keycode == KEY_PAGEDOWN):
 			_book_page(1)
 		elif held_book != null and (event.keycode == KEY_LEFT or event.keycode == KEY_PAGEUP):
@@ -2018,6 +2102,9 @@ func _on_button(button_name: String, hand: int) -> void:
 	if game_mode:
 		if button_name == "grip_click":
 			_put_pad()
+		return
+	if diary != null and diary.open_book and button_name == "grip_click":
+		put_diary()
 		return
 	if held_book != null:
 		# reading: A/X turns forward, B/Y back, grip puts the book down; the trigger still points at things
@@ -3277,6 +3364,8 @@ func _prefs_now() -> Dictionary:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and pc != null:
 		pc.save_music_dir()                     # closing the window keeps the music folder you were in
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		load("res://diary.gd").close_open_session()      # a game still running counts up to now
 
 
 func _save_prefs_tick() -> void:
@@ -4045,6 +4134,11 @@ func _update_pointer(delta: float) -> void:
 		hint_label.scale = Vector3.ONE * k
 		hint_label.global_position = found_point + Vector3(0.0, 0.02 + 0.08 * k, 0.0)
 		hint_label.visible = true
+	elif diary != null and diary.open_book and book_hint_t > 0.0:
+		hint_label.text = ("GRIP  =  PUT IT DOWN" if xr_active else "G  =  PUT IT DOWN")
+		hint_label.scale = Vector3.ONE * 0.45
+		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.3, 0.0)
+		hint_label.visible = true
 	elif held_book != null and book_hint_t > 0.0:
 		hint_label.text = ("A / B  =  NEXT / PREVIOUS PAGE     STICK CLICK  =  ZOOM     GRIP  =  PUT IT DOWN" if xr_active else "ARROWS OR WHEEL  =  TURN PAGES     V  =  ZOOM     G  =  PUT IT DOWN")
 		hint_label.scale = Vector3.ONE * 0.45
@@ -4104,6 +4198,7 @@ func _pointer_release(_hand: int) -> void:
 		down_screen.send_button(down_screen.last_pos, false)
 	ptr_down = false
 	down_screen = null
+	_mark_release()
 
 
 # ---------------------------------------------------------------- view cycling (V / B or Y button)
