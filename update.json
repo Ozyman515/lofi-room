@@ -1,5 +1,5 @@
 {
- "version": 77,
+ "version": 78,
  "files": {
   ".godot/.gdignore": {
    "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
@@ -158,8 +158,8 @@
    "size": 14999
   },
   "comic_book.gd": {
-   "sha": "0440f1e48ace9715a638de8f9f1167e021af7f3a631f338a6f60130787aefe35",
-   "size": 18050
+   "sha": "ebd678c805a278337a91eed82b2b2c15e31cbf6240b505215afcdb37b1b6b33e",
+   "size": 26544
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -238,8 +238,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "999b1699bdacb7e3ed5038def8c64c8eee9599ff7e47d8c3532d6044c1e49397",
-   "size": 170432
+   "sha": "4c511120aa8a6b31c8bf4c24a38aed1d0ed1ae9e910f195b0505eb43c68f2120",
+   "size": 170551
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -305,6 +305,10 @@
    "sha": "0b678e4fb84251d74304846e80524014c8ad8c8d0d1ecdcc53b9fddcebdb3284",
    "size": 11217
   },
+  "page_renderer.gd": {
+   "sha": "b8ae3b2d3958a7e876a92544b563bf3f1d96a6fac3ff3b1846a1fb811a75bf2f",
+   "size": 3618
+  },
   "pc_player.gd": {
    "sha": "f65c60dbadfbeb28ea24f4d3b532a8f46047d3f210f0618cccd88f2f71b382bc",
    "size": 41797
@@ -366,15 +370,15 @@
    "size": 35901
   },
   "updater.gd": {
-   "sha": "cf62927007046f98b725c000c7858141e4194abc2829f5067e5d2be8512d65d5",
-   "size": 9143
+   "sha": "31f88e498d98fd8634074e577a4cfa8b65ce389457e960f897765460cd71d12c",
+   "size": 9858
   },
   "vcr.gd": {
    "sha": "083ed5e90a42dd9dd3072bd92e7ee2f017f1aeb9f01ebda2f61e58c8f0713de9",
    "size": 40165
   },
   "version.txt": {
-   "sha": "94d5a38598be77593d4781b8fbd74cb4e2cd05bb006b1b531988ab2db90de9c9",
+   "sha": "b03c70ff0d641a363f1a021413a098dce02e4c68b75f3a47aa10044f42ee1784",
    "size": 3
   },
   "weather.gd": {
