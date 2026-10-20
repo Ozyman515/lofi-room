@@ -210,6 +210,10 @@ func _ready() -> void:
 	_build_power()
 	_finish_cords()
 	_setup_player()
+	var pr: Node = load("res://page_renderer.gd").new()
+	pr.name = "PageRenderer"
+	add_child(pr)
+	ComicBook.renderer = pr
 	_build_multiplayer()
 	_load_prefs()
 	pc.play_random_default()

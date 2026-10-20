@@ -16,6 +16,9 @@ const EXTRA_WORDS := ["annual", "special", "one-shot", "oneshot", "one shot", "p
 var pages: Array = []           # global page index -> [zip path, entry name]
 var spreads: Array = []         # spread index -> [left page, right page] (-1 = blank); every chapter opens with its cover alone
 
+static var renderer: Node     # the page_renderer that draws ebook text (set by main)
+var text_mode := false        # an ebook: pages are drawn from text, not read from files
+var _text_chapters: Array = []    # [{"bbcode": String, "starts": PackedInt32Array}]
 var _tex := {}             # page index -> ImageTexture
 var _tasks := {}           # page index -> WorkerThreadPool task id
 var _results := {}         # page index -> Image (filled by the worker)
@@ -43,6 +46,8 @@ func open(file_path: String) -> bool:
 		for f in files:
 			(extras if is_extra(f.get_file()) else main).append(f)
 		files = main + extras
+	if files.size() == 1 and files[0].get_extension().to_lower() == "epub" and _open_text_epub(files[0]):
+		return true
 	for f in files:
 		var entries := _list_pages(f)
 		if entries.is_empty():
@@ -109,6 +114,8 @@ func _list_pages(file_path: String) -> Array:
 		if not ep.is_empty():
 			return ep
 		# not a picture book: fall through and treat it as a zip of images (fixed-layout comics often work that way)
+		if error != "":
+			return []
 	if head.size() >= 4 and head[0] == 0x52 and head[1] == 0x61 and head[2] == 0x72 and head[3] == 0x21:
 		error = "This one is a RAR comic (.cbr).\nConvert it to .cbz on the PC first."
 		return []
@@ -178,6 +185,10 @@ func get_page(i: int) -> ImageTexture:
 		return null
 	if _tex.has(i):
 		return _tex[i]
+	if text_mode:
+		if renderer != null:
+			renderer.request(self, i)
+		return null
 	_collect()
 	if _tex.has(i):
 		return _tex[i]
@@ -188,6 +199,14 @@ func get_page(i: int) -> ImageTexture:
 
 # Start decoding pages that will be needed soon; drop the ones far away.
 func prefetch(center: int, span := 3) -> void:
+	if text_mode:
+		for i in range(center - 1, center + 3):
+			if i >= 0 and i < pages.size() and not _tex.has(i) and renderer != null:
+				renderer.request(self, i)
+		for k in _tex.keys():
+			if absi(k - center) > 6:
+				_tex.erase(k)
+		return
 	for i in range(center - span, center + span + 1):
 		if i >= 0 and i < pages.size() and not _tex.has(i) and not _tasks.has(i):
 			_start(i)
@@ -276,6 +295,10 @@ var _jpeg_results := {}     # page -> PackedByteArray
 func request_jpeg(i: int) -> void:
 	if i < 0 or i >= pages.size() or _jpeg_tasks.has(i):
 		return
+	if text_mode:
+		_jpeg_tasks[i] = -1              # a marker: taken from the rendered page when it is ready
+		get_page(i)
+		return
 	var zp: String = pages[i][0]
 	var name: String = pages[i][1]
 	_jpeg_tasks[i] = WorkerThreadPool.add_task(func() -> void:
@@ -294,6 +317,15 @@ func request_jpeg(i: int) -> void:
 func take_jpegs() -> Dictionary:
 	var out := {}
 	for i in _jpeg_tasks.keys():
+		if int(_jpeg_tasks[i]) == -1:
+			var t: ImageTexture = _tex.get(i)
+			if t != null:
+				_jpeg_tasks.erase(i)
+				out[i] = t.get_image().save_jpg_to_buffer(0.85)
+			elif _tex.has(i):
+				_jpeg_tasks.erase(i)
+				out[i] = PackedByteArray()
+			continue
 		if WorkerThreadPool.is_task_completed(_jpeg_tasks[i]):
 			WorkerThreadPool.wait_for_task_completion(_jpeg_tasks[i])
 			_jpeg_tasks.erase(i)
@@ -546,3 +578,223 @@ static func _epub_join(base: String, rel: String) -> String:
 		elif p != "." and p != "":
 			stack.append(p)
 	return "/".join(stack)
+
+
+# ---------------------------------------------------------------- EPUB: novels (text), drawn into pages by page_renderer
+
+func _open_text_epub(file_path: String) -> bool:
+	if renderer == null:
+		return false
+	var z := ZIPReader.new()
+	if z.open(file_path) != OK:
+		return false
+	var files := z.get_files()
+	var opf_path := _epub_opf(z, files)
+	if opf_path == "":
+		z.close()
+		return false
+	var opf := z.read_file(opf_path).get_string_from_utf8()
+	var base := opf_path.get_base_dir()
+	var items := _epub_items(opf)
+	var re_ref := RegEx.new()
+	re_ref.compile("<itemref\\s[^>]*?idref=\"([^\"]+)\"")
+	var book_title := ""
+	var mt := RegEx.new()
+	mt.compile("<dc:title[^>]*>([^<]+)</dc:title>")
+	var tm := mt.search(opf)
+	if tm != null:
+		book_title = _entities(tm.get_string(1)).strip_edges()
+	var chapters_bb: Array = []
+	var total_text := 0
+	for m in re_ref.search_all(opf):
+		var it: Dictionary = items.get(m.get_string(1), {})
+		if it.is_empty():
+			continue
+		var href := _epub_join(base, str(it["href"]))
+		if not files.has(href) or not str(it.get("media-type", "")).contains("html"):
+			continue
+		var html := z.read_file(href).get_string_from_utf8()
+		var conv := html_to_bbcode(html)
+		var plain: String = conv["plain"]
+		if plain.strip_edges().length() < 40:
+			continue                                   # cover pages, blank separators
+		total_text += plain.length()
+		chapters_bb.append({"title": conv["title"], "bbcode": conv["bbcode"]})
+	z.close()
+	if chapters_bb.is_empty() or total_text < 2000:
+		return false                                   # not a novel: let the picture-book route have it
+	text_mode = true
+	if book_title != "":
+		title = book_title
+	pages = []
+	chapters = []
+	spreads = []
+	for ci in chapters_bb.size():
+		var ch: Dictionary = chapters_bb[ci]
+		var starts: PackedInt32Array = renderer.paginate(ch["bbcode"])
+		var first := pages.size()
+		for k in starts.size():
+			pages.append(["text", "%d:%d" % [ci, k]])
+		_text_chapters.append({"bbcode": ch["bbcode"], "starts": starts})
+		var ctitle: String = str(ch["title"]) if str(ch["title"]) != "" else "Chapter %d" % (ci + 1)
+		chapters.append({"title": ctitle, "path": "", "first": first, "count": starts.size(), "section": "Chapters"})
+	# spreads run straight through: a novel's pages pair up left/right from the first page
+	var p := 0
+	while p < pages.size():
+		spreads.append([p, p + 1 if p + 1 < pages.size() else -1])
+		p += 2
+	error = ""
+	return true
+
+
+# the renderer asks where a page lives: [chapter bbcode, first wrapped line]
+func text_page_location(page: int) -> Array:
+	if page < 0 or page >= pages.size() or pages[page][0] != "text":
+		return []
+	var parts := str(pages[page][1]).split(":")
+	var ch: Dictionary = _text_chapters[int(parts[0])]
+	return [ch["bbcode"], int(ch["starts"][int(parts[1])])]
+
+
+func receive_text_page(page: int, img: Image) -> void:
+	if img == null:
+		_tex[page] = null
+	else:
+		_tex[page] = ImageTexture.create_from_image(img)
+
+
+static func _epub_opf(z: ZIPReader, files: PackedStringArray) -> String:
+	var opf_path := ""
+	if files.has("META-INF/container.xml"):
+		var c := z.read_file("META-INF/container.xml").get_string_from_utf8()
+		var m := RegEx.new()
+		m.compile("full-path=\"([^\"]+)\"")
+		var r := m.search(c)
+		if r != null:
+			opf_path = r.get_string(1)
+	if opf_path == "" or not files.has(opf_path):
+		for n in files:
+			if n.get_extension().to_lower() == "opf":
+				return n
+		return ""
+	return opf_path
+
+
+static func _epub_items(opf: String) -> Dictionary:
+	var items := {}
+	var re_item := RegEx.new()
+	re_item.compile("<item\\s[^>]*?>")
+	var re_attr := RegEx.new()
+	re_attr.compile("(id|href|media-type)=\"([^\"]*)\"")
+	for m in re_item.search_all(opf):
+		var a := {}
+		for am in re_attr.search_all(m.get_string()):
+			a[am.get_string(1)] = am.get_string(2)
+		if a.has("id") and a.has("href"):
+			items[a["id"]] = a
+	return items
+
+
+const ENTITIES := {"amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'", "nbsp": " ", "mdash": "—", "ndash": "–",
+	"hellip": "…", "lsquo": "‘", "rsquo": "’", "ldquo": "“", "rdquo": "”", "copy": "©", "eacute": "é", "egrave": "è",
+	"agrave": "à", "ouml": "ö", "uuml": "ü", "auml": "ä", "ccedil": "ç", "ntilde": "ñ", "shy": "", "thinsp": " ", "emsp": " ", "ensp": " "}
+
+
+static func _entities(t: String) -> String:
+	var re := RegEx.new()
+	re.compile("&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);")
+	var out := ""
+	var last := 0
+	for m in re.search_all(t):
+		out += t.substr(last, m.get_start() - last)
+		var e := m.get_string(1)
+		if e.begins_with("#x"):
+			out += char(("0x" + e.substr(2)).hex_to_int())
+		elif e.begins_with("#"):
+			out += char(int(e.substr(1)))
+		else:
+			out += str(ENTITIES.get(e, "&" + e + ";"))
+		last = m.get_end()
+	return out + t.substr(last)
+
+
+# A small HTML-to-BBCode pass for the tags novels use. Returns {"bbcode", "plain", "title"}.
+static func html_to_bbcode(html: String) -> Dictionary:
+	var body := html
+	var bm := RegEx.new()
+	bm.compile("(?is)<body[^>]*>(.*)</body>")
+	var r := bm.search(html)
+	if r != null:
+		body = r.get_string(1)
+	var strip := RegEx.new()
+	strip.compile("(?is)<(script|style|head)[^>]*>.*?</\\1>|<!--.*?-->")
+	body = strip.sub(body, "", true)
+	var out := ""
+	var plain := ""
+	var title := ""
+	var tag := RegEx.new()
+	tag.compile("(?s)<(/?)([a-zA-Z0-9]+)([^>]*)>")
+	var pos := 0
+	var heading := 0
+	var got_title := false
+	for m in tag.search_all(body):
+		var text := _entities(body.substr(pos, m.get_start() - pos))
+		pos = m.get_end()
+		text = text.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+		while text.contains("  "):
+			text = text.replace("  ", " ")
+		if text.strip_edges() != "" or (text != "" and out != "" and not out.ends_with("\n")):
+			var safe := text.replace("[", "[lb]")
+			out += safe
+			plain += text
+			if heading > 0 and not got_title:
+				title += text
+		var closing := m.get_string(1) == "/"
+		var name := m.get_string(2).to_lower()
+		var attrs := m.get_string(3)
+		match name:
+			"p", "div", "section", "article", "blockquote", "li", "tr", "dd", "dt", "figure", "figcaption", "pre":
+				if closing:
+					out = out.strip_edges(false, true) + "\n\n"
+					plain += "\n"
+				elif name == "li":
+					out += "• "
+			"br":
+				out += "\n"
+				if heading > 0 and not got_title:
+					title += " "
+			"h1", "h2", "h3", "h4", "h5", "h6":
+				if closing:
+					out = out.strip_edges(false, true) + "[/b][/font_size]\n\n"
+					heading = 0
+					if title.strip_edges() != "":
+						got_title = true
+				else:
+					out = out.strip_edges(false, true) + ("\n\n" if out != "" else "") + "[font_size=%d][b]" % (48 if name <= "h2" else 40)
+					heading = int(name.substr(1))
+			"i", "em", "cite", "q":
+				out += "[/i]" if closing else "[i]"
+			"b", "strong":
+				out += "[/b]" if closing else "[b]"
+			"u":
+				out += "[/u]" if closing else "[u]"
+			"s", "del", "strike":
+				out += "[/s]" if closing else "[s]"
+			"sup", "sub":
+				pass
+			"hr":
+				out = out.strip_edges(false, true) + "\n\n[center]* * *[/center]\n\n"
+			"img", "image", "svg":
+				pass
+			_:
+				pass
+	var tail := _entities(body.substr(pos)).strip_edges()
+	if tail != "":
+		out += tail.replace("[", "[lb]")
+		plain += tail
+	while out.contains("\n\n\n"):
+		out = out.replace("\n\n\n", "\n\n")
+	title = title.strip_edges()
+	if title.length() > 60:
+		title = title.left(57) + "…"
+	return {"bbcode": out.strip_edges(), "plain": plain, "title": title}
