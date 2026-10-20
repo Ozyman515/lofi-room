@@ -1,5 +1,5 @@
 {
- "version": 76,
+ "version": 77,
  "files": {
   ".godot/.gdignore": {
    "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
@@ -262,16 +262,16 @@
    "size": 0
   },
   "music/CREDITS.txt": {
-   "sha": "d9485487fedc47cbc02aa6c9b4905d8c4b6ef3f4d571ae2cd1b8deb192ccd542",
-   "size": 329
+   "sha": "2606ca69716b5a639d45357ae3357dcb0e76f05969538a4ff8a3621af5058050",
+   "size": 365
   },
   "music/README.txt": {
    "sha": "270a4507794fea0e7586e45f72f0be6d1615de92f7e69e2dd4613cba78e3ab2c",
    "size": 458
   },
-  "music/zephiramusic-tokyo-lofi.mp3": {
-   "sha": "f1bf300ac96fc3c8ffff06f4426979328b105d39ed31d0df4630f82df304f6fb",
-   "size": 5756928
+  "music/zephiramusic-tokyo-lofi.ogg": {
+   "sha": "d23062ae6bb474d25eeb5341430494d0e23fa34d25734d9c5010354c0755594e",
+   "size": 2839789
   },
   "net_avatars.gd": {
    "sha": "dea20b3c618b421b5ddd90f49296d95d519c770d852d93292882c878efd9ad76",
@@ -366,20 +366,23 @@
    "size": 35901
   },
   "updater.gd": {
-   "sha": "23e4dfe78f7fe67274a1a1a5f5fc2d4520235868083125f60df5dd56b0b73c64",
-   "size": 8811
+   "sha": "cf62927007046f98b725c000c7858141e4194abc2829f5067e5d2be8512d65d5",
+   "size": 9143
   },
   "vcr.gd": {
    "sha": "083ed5e90a42dd9dd3072bd92e7ee2f017f1aeb9f01ebda2f61e58c8f0713de9",
    "size": 40165
   },
   "version.txt": {
-   "sha": "461144ccfd56ee3cf0f9a9d80e520c5b872166b23092d5fd838ecbdb46d64dab",
+   "sha": "94d5a38598be77593d4781b8fbd74cb4e2cd05bb006b1b531988ab2db90de9c9",
    "size": 3
   },
   "weather.gd": {
    "sha": "6c09bdd5b9ffffd909a892bc177b43338da4ee5ca68b5ef95a96b6d16e70bb01",
    "size": 28545
   }
- }
+ },
+ "remove": [
+  "music/zephiramusic-tokyo-lofi.mp3"
+ ]
 }
