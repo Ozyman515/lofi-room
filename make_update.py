@@ -2,7 +2,7 @@
 """Writes update.json (SHA-256 of every updatable file). Run before each release:  python3 make_update.py <version>"""
 import hashlib, json, os, sys
 SKIP = (".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "carts/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/")
-SKIP_FILES = {"update.json", "make_update.py", ".gitattributes", ".gitignore", "project.godot", "CLAUDE.md"}  # project.godot: the editor rewrites it
+SKIP_FILES = {"update.json", "update.json.sig", "update_key.pub", "make_update.py", ".gitattributes", ".gitignore", "project.godot", "CLAUDE.md"}  # project.godot: the editor rewrites it; the key only changes with a fresh install
 ver = int(sys.argv[1])
 open("version.txt", "w").write("%d\n" % ver)
 files = {}
@@ -15,3 +15,16 @@ for d, _, fs in os.walk("."):
         files[p] = {"sha": hashlib.sha256(b).hexdigest(), "size": len(b)}
 json.dump({"version": ver, "files": dict(sorted(files.items()))}, open("update.json", "w"), indent=1)
 print(len(files), "files, version", ver)
+# the release must be signed or no copy of the room will install it:  godot --headless -s pack/sign_update.gd -- <private key>
+import subprocess
+godot = os.environ.get("GODOT")
+key = os.environ.get("LOFI_UPDATE_KEY")
+if godot and key:
+    r = subprocess.run([godot, "--headless", "--path", ".", "-s", "pack/sign_update.gd", "--", key], capture_output=True, text=True)
+    print([l for l in (r.stdout + r.stderr).splitlines() if "sign" in l.lower()][-1:] or r.returncode)
+    if r.returncode != 0 or not os.path.exists("update.json.sig"):
+        raise SystemExit("signing failed")
+else:
+    if os.path.exists("update.json.sig"):
+        os.remove("update.json.sig")
+    print("NOT SIGNED: set GODOT and LOFI_UPDATE_KEY (or run pack/sign_update.gd) before pushing, or nobody will get this update")

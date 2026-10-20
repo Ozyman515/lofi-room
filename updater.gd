@@ -3,6 +3,8 @@ const Plat := preload("res://platform.gd")
 ## Checks GitHub for a newer version of the room and installs only the files that changed.
 ## update.json (published with every release) lists each updatable file with its SHA-256; anything that differs
 ## from what is on disk is downloaded, verified and copied over. Carts, ROMs, saves and settings are never touched.
+## update.json itself must carry a valid signature (update.json.sig) from the release key whose public half ships
+## with the room as update_key.pub: a release nobody signed, or one tampered with on the way, is refused outright.
 
 signal changed
 
@@ -19,6 +21,7 @@ var _manifest := {}
 var _todo: Array = []          # relative paths to download
 var _stage_dir := "user://update_stage"
 var _http: HTTPRequest
+var _pending_body := PackedByteArray()     # update.json, kept until its signature has been checked
 var _total := 0
 var _toast: Label
 
@@ -60,8 +63,8 @@ func _state(s: String, m: String) -> void:
 func _ok_path(p: String) -> bool:
 	if p == "" or p.begins_with("/") or p.contains("..") or p.contains("\\") or p.contains(":"):
 		return false
-	if p == "project.godot" or p.ends_with(".uid"):
-		return false
+	if p == "project.godot" or p == "update_key.pub" or p.ends_with(".uid"):
+		return false                      # the signing key can only change with a fresh install
 	for s in SKIP_PREFIXES:
 		if p.begins_with(s):
 			return false
@@ -93,6 +96,25 @@ func _on_check_done(result: int, code: int, _h: PackedStringArray, body: PackedB
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 		_state("error", "Could not check for updates (offline?).")
 		return
+	# the signature travels separately; nothing is trusted until it checks out
+	_pending_body = body
+	if _http.request_completed.is_connected(_on_sig_done):
+		_http.request_completed.disconnect(_on_sig_done)
+	_http.request_completed.connect(_on_sig_done, CONNECT_ONE_SHOT)
+	if _http.request(base + "update.json.sig?t=%d" % int(Time.get_unix_time_from_system())) != OK:
+		_state("error", "Could not reach the update server.")
+
+
+func _on_sig_done(result: int, code: int, _h: PackedStringArray, sig_body: PackedByteArray) -> void:
+	var body := _pending_body
+	_pending_body = PackedByteArray()
+	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+		_state("error", "This update is not signed. Not installing it.")
+		return
+	if not _signature_ok(body, sig_body):
+		_state("error", "This update's signature does not check out. Not installing it.")
+		push_warning("update.json signature rejected")
+		return
 	var data: Variant = JSON.parse_string(body.get_string_from_utf8())
 	if typeof(data) != TYPE_DICTIONARY or not data.has("files"):
 		_state("error", "The update list looks wrong. Try again later.")
@@ -118,6 +140,20 @@ func _on_check_done(result: int, code: int, _h: PackedStringArray, body: PackedB
 	else:
 		_state("available", "Update available: version %d (%d files)." % [remote_version, _total])
 		show_toast("Update available: version %d.  Take a nap in the bed to install it and wake up in the new room (or use PC > Settings)." % remote_version, 14.0)
+
+
+# RSA (PKCS#1 v1.5, SHA-256) over the exact bytes of update.json, against the public key that ships with the room
+static func _signature_ok(body: PackedByteArray, sig_text: PackedByteArray) -> bool:
+	var pub := CryptoKey.new()
+	if pub.load("res://update_key.pub", true) != OK:
+		return false
+	var sig := Marshalls.base64_to_raw(sig_text.get_string_from_utf8().strip_edges())
+	if sig.is_empty():
+		return false
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	ctx.update(body)
+	return Crypto.new().verify(HashingContext.HASH_SHA256, ctx.finish(), sig, pub)
 
 
 func show_toast(msg: String, secs: float = 8.0) -> void:

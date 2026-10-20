@@ -20,3 +20,15 @@ Steps (done on the build machine, not needed by players):
 `.godot/imported`, `.godot/extension_list.cfg` and the two other small `.godot` files are committed and
 go out through the updater, because the exe build needs them and the editor regenerates identical ones.
 A new icon or a project-settings change still needs a fresh zip (the updater never touches `project.godot`).
+
+# Signed updates
+
+Every release is signed with a private key only the owner holds; the room ships the public half
+(`update_key.pub`) and refuses any `update.json` that doesn't verify against it, so a hijacked GitHub
+account can't push code to players.
+
+- Make the key once: `godot --headless -s pack/keygen.gd -- /safe/place/update_key.pem` (writes
+  `update_key.pub` into the project; commit that, back up the .pem, never commit it).
+- Release: `GODOT=godot LOFI_UPDATE_KEY=/safe/place/update_key.pem python3 make_update.py <n>` signs as it
+  goes, or run `godot --headless -s pack/sign_update.gd -- /safe/place/update_key.pem` after it.
+- Lost key: make a new pair and ship a fresh zip; copies with the old public key will stop updating.

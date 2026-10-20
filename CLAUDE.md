@@ -15,6 +15,8 @@ For anything new, check these before shipping:
 - Platform checks live in `platform.gd`.
 
 ## Project conventions
-- Pushing an update (`python3 make_update.py <n>`, commit, `git push origin HEAD:main`) only when the owner says so.
+- Pushing an update only when the owner says so: `GODOT=<godot> LOFI_UPDATE_KEY=<private key> python3 make_update.py <n>`,
+  commit, `git push origin HEAD:main`. Releases must be signed (update.json.sig) or no copy of the room installs them;
+  the private key is the owner's and never goes in the repo. `update_key.pub` only changes with a fresh install zip.
 - Run the parse check (load the project in Godot) before pushing anything that touches GDScript.
 - `tools/` is git-ignored and never shipped (it holds personal extras such as the cat model).
