@@ -67,7 +67,10 @@ function open(port) {
 	assert.strictEqual((await g1.next()).t, "host_away");
 	assert.strictEqual((await g2.next()).t, "host_away");
 	const host2 = await open(port);
-	host2.send({ t: "host", ver: 68, name: "Host", code });
+	// an impostor who knows the code can't take the room; the real host's token can
+	const bad = await open(port); bad.send({ t: "host", ver: 68, name: "Imp", code });
+	const badres = await bad.next(); assert.notStrictEqual(badres.code, code); bad.send({ t: "leave" });
+	host2.send({ t: "host", ver: 68, name: "Host", code, token: hosted.token });
 	assert.strictEqual((await host2.next()).code, code);
 	const again = [await host2.next(), await host2.next()].map((m) => m.id).sort();
 	assert.deepStrictEqual(again, [2, 3]);

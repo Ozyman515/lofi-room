@@ -8,19 +8,21 @@ var _asked := {}          # page -> time asked (ms)
 
 func open_remote(m: Dictionary, asker: Callable) -> void:
 	ask = asker
-	title = str(m.get("title", "Comic"))
+	title = str(m.get("title", "Comic")).left(60)
 	path = "remote:" + title
 	chapters = []
-	for c in m.get("chapters", []):
+	var cl = m.get("chapters", [])
+	for c in (cl if cl is Array else []).slice(0, 500):
 		if c is Dictionary:
-			chapters.append({"title": str(c.get("title", "")), "path": "", "first": int(c.get("first", 0)), "count": int(c.get("count", 0)), "section": str(c.get("section", "Issues"))})
-	var n := int(m.get("pages", 0))
+			chapters.append({"title": str(c.get("title", "")).left(80), "path": "", "first": clampi(int(c.get("first", 0)), 0, 5000), "count": clampi(int(c.get("count", 0)), 0, 5000), "section": "Extras" if str(c.get("section", "")) == "Extras" else "Issues"})
+	var n := clampi(int(m.get("pages", 0)), 0, 5000)
 	pages = []
 	for i in n:
 		pages.append(["", ""])
 	spreads = []
-	for sp in m.get("spreads", []):
-		if sp is Array and sp.size() == 2:
+	var sl = m.get("spreads", [])
+	for sp in (sl if sl is Array else []).slice(0, 5001):
+		if sp is Array and sp.size() == 2 and int(sp[0]) < n and int(sp[1]) < n:
 			spreads.append([int(sp[0]), int(sp[1])])
 	if spreads.is_empty() and n > 0:
 		spreads.append([-1, 0])
@@ -66,7 +68,7 @@ func receive(i: int, jpeg: PackedByteArray) -> void:
 		_tex[i] = null
 		return
 	var img := Image.new()
-	if img.load_jpg_from_buffer(jpeg) != OK:
+	if img.load_jpg_from_buffer(jpeg) != OK or img.get_width() > 2048 or img.get_height() > 2048:
 		_tex[i] = null
 		return
 	img.generate_mipmaps()

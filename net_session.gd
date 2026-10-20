@@ -24,6 +24,7 @@ signal kicked
 
 var state := State.OFFLINE
 var code := ""
+var host_token := ""                    # proves to the server that we are the host when taking a dropped room back
 var my_id := 0
 var my_name := ""
 var status := ""                         # short text for the phone screen
@@ -215,7 +216,7 @@ func _process(delta: float) -> void:
 
 func _on_ws_open() -> void:
 	if _want == "host":
-		_send_ws({"t": "host", "ver": Cfg.build_version(), "name": my_name, "code": _want_code})
+		_send_ws({"t": "host", "ver": Cfg.build_version(), "name": my_name, "code": _want_code, "token": host_token if _want_code != "" else ""})
 	else:
 		_set_state(State.JOINING, "Joining...")
 		_send_ws({"t": "join", "code": _want_code, "ver": Cfg.build_version(), "name": my_name})
@@ -225,6 +226,7 @@ func _on_server_msg(m: Dictionary) -> void:
 	match str(m.get("t", "")):
 		"hosted":
 			code = str(m.get("code", ""))
+			host_token = str(m.get("token", ""))
 			my_id = 1
 			_mp = WebRTCMultiplayerPeer.new()
 			_mp.create_server()

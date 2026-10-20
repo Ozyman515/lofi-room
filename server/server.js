@@ -13,6 +13,13 @@ const JOIN_PER_MIN = parseInt(process.env.JOIN_PER_MIN || "12", 10);   // join a
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";                    // no 0/O or 1/I
 const CODE_LEN = 6;
 const MAX_FRAME = 64 * 1024;
+const MAX_ROOMS = parseInt(process.env.MAX_ROOMS || "2000", 10);
+const MAX_CONNS = parseInt(process.env.MAX_CONNS || "4000", 10);
+const MAX_CONNS_PER_IP = parseInt(process.env.MAX_CONNS_PER_IP || "8", 10);
+const TRUST_PROXY = process.env.TRUST_PROXY === "1";             // only read X-Forwarded-For behind Caddy/nginx
+const IDLE_MS = 70000;                                            // no pong for this long = gone
+const clients = new Set();
+const perIp = new Map();
 const GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 const rooms = new Map();        // code -> { code, ver, host: Client|null, guests: Map(id -> Client), hostName, dropAt }
@@ -28,6 +35,7 @@ class Client {
 		this.frag = null;
 		this.alive = true;
 		this.pongAt = Date.now();
+		this.token = "";
 		this.role = null;       // "host" | "guest"
 		this.room = null;
 		this.id = 0;
@@ -35,6 +43,8 @@ class Client {
 		socket.on("data", (d) => this.onData(d));
 		socket.on("close", () => this.onClose());
 		socket.on("error", () => this.socket.destroy());
+		clients.add(this);
+		perIp.set(ip, (perIp.get(ip) || 0) + 1);
 	}
 
 	send(obj) {
@@ -77,9 +87,10 @@ class Client {
 			if (op === 0x8) { this.close(1000); return; }
 			if (op === 0x9) { this.sendFrame(0xA, payload); continue; }
 			if (op === 0xA) { this.pongAt = Date.now(); continue; }
-			if (op === 0x1 || op === 0x2) { this.frag = { op, parts: [payload] }; }
-			else if (op === 0x0 && this.frag) { this.frag.parts.push(payload); }
+			if (op === 0x1 || op === 0x2) { this.frag = { op, parts: [payload], size: payload.length }; }
+			else if (op === 0x0 && this.frag) { this.frag.parts.push(payload); this.frag.size += payload.length; }
 			else continue;
+			if (this.frag.size > MAX_FRAME) { this.close(1009); return; }       // endless continuation frames
 			if (fin) {
 				const whole = Buffer.concat(this.frag.parts);
 				const isText = this.frag.op === 0x1;
@@ -93,6 +104,9 @@ class Client {
 		if (this._closed) return;
 		this._closed = true;
 		this.alive = false;
+		clients.delete(this);
+		const n = (perIp.get(this.ip) || 1) - 1;
+		if (n > 0) perIp.set(this.ip, n); else perIp.delete(this.ip);
 		leave(this);
 	}
 }
@@ -163,20 +177,24 @@ function doHost(c, m) {
 	const ver = parseInt(m.ver, 10) || 0;
 	let room = null;
 	const want = typeof m.code === "string" ? m.code.toUpperCase() : "";
-	if (want && rooms.has(want) && !rooms.get(want).host) {      // taking a dropped room back (the host napped / reconnected)
-		room = rooms.get(want);
+	const old = want ? rooms.get(want) : null;
+	// taking a dropped room back (the host napped / reconnected) needs the secret token that room was given
+	if (old && !old.host && typeof m.token === "string" && m.token.length === old.token.length &&
+			crypto.timingSafeEqual(Buffer.from(m.token), Buffer.from(old.token))) {
+		room = old;
 		room.ver = ver;
 	} else {
+		if (rooms.size >= MAX_ROOMS) return c.send({ t: "error", code: "busy" });
 		const code = newCode();
 		if (!code) return c.send({ t: "error", code: "busy" });
-		room = { code, ver, host: null, guests: new Map(), hostName: "", dropAt: 0 };
+		room = { code, ver, host: null, guests: new Map(), hostName: "", dropAt: 0, token: crypto.randomBytes(18).toString("base64url") };
 		rooms.set(code, room);
 	}
 	room.host = c;
 	room.dropAt = 0;
 	room.hostName = cleanName(m.name);
 	c.role = "host"; c.room = room; c.id = 1; c.name = room.hostName;
-	c.send({ t: "hosted", code: room.code, id: 1, max: MAX_PLAYERS });
+	c.send({ t: "hosted", code: room.code, id: 1, max: MAX_PLAYERS, token: room.token });
 	for (const g of room.guests.values()) {                       // guests that waited for the host: tell the host about them again
 		c.send({ t: "peer_join", id: g.id, name: g.name });
 		g.send({ t: "host_back" });
@@ -233,15 +251,18 @@ server.on("upgrade", (req, socket) => {
 	if (!key || String(req.headers["upgrade"]).toLowerCase() !== "websocket") { socket.destroy(); return; }
 	const accept = crypto.createHash("sha1").update(key + GUID).digest("base64");
 	socket.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept + "\r\n\r\n");
-	const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+	const fwd = TRUST_PROXY ? String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() : "";
+	const ip = fwd || String(req.socket.remoteAddress || "");
+	if (clients.size >= MAX_CONNS || (perIp.get(ip) || 0) >= MAX_CONNS_PER_IP) { socket.destroy(); return; }
 	new Client(socket, ip);
 });
 
-const clients = new Set();
-server.on("upgrade", (req, socket) => { /* tracked below via keepalive sweep */ });
-
 setInterval(() => {            // keepalive + clean up rooms whose host never came back
 	const now = Date.now();
+	for (const c of clients) {
+		if (now - c.pongAt > IDLE_MS) { c.close(1001); continue; }
+		if (now - c.pongAt > IDLE_MS / 2) c.sendFrame(0x9, Buffer.alloc(0));
+	}
 	for (const [code, room] of rooms) {
 		if (!room.host && room.dropAt && now - room.dropAt > GRACE_MS) {
 			for (const g of room.guests.values()) { g.send({ t: "closed" }); g.close(1000); }

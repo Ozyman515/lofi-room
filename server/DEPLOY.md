@@ -17,6 +17,7 @@ traffic goes through it, so a tiny machine is enough (about 5 MB of RAM).
        [Service]
        ExecStart=/usr/bin/node /opt/lofi-rooms/server.js
        Environment=PORT=8787
+       Environment=TRUST_PROXY=1
        Restart=always
        User=nobody
        [Install]
@@ -52,4 +53,12 @@ the first 1,000 GB a month, then $0.05/GB. Put its details in the config:
 
 ## Settings (environment variables)
 `PORT` (8787), `MAX_PLAYERS` (4), `GRACE_MS` (90000: how long a host can come back to the same code),
-`JOIN_PER_MIN` (12 join tries per IP per minute). Test with `node test.js`.
+`JOIN_PER_MIN` (12 join tries per IP per minute), `MAX_ROOMS` (2000), `MAX_CONNS` (4000),
+`MAX_CONNS_PER_IP` (8), `TRUST_PROXY` (set to 1 only behind Caddy/nginx, so the real client address is used
+for the per-address limits; never when the server is reachable directly). Test with `node test.js`.
+
+## What the server knows and keeps
+Nothing is stored on disk. In memory, per connection: the address, the display name, the room code, the
+game version. Game traffic (poses, inputs, pictures, comic pages) never passes through it; players talk
+to each other directly over encrypted WebRTC. Players therefore see each other's addresses, like any
+peer-to-peer game.

@@ -128,8 +128,8 @@ func _apply(d: Dictionary, from: int) -> void:
 		"book_open", "book_list_entry":
 			if _known.has(id):
 				return
-			var owner := int(d.get("owner", from))
-			if owner == net.my_id:
+			var owner := from if from != 1 or net.is_host() else int(d.get("owner", from))     # a guest can only announce its own books; the host relays on behalf of others
+			if owner == net.my_id or owner < 1 or owner > 4:
 				return
 			var rc := RemoteComic.new()
 			rc.open_remote(d.get("meta", {}), func(page: int) -> void: _ask_page(id, owner, page))
@@ -239,7 +239,7 @@ func _send_page(to: int, id: String, page: int, jpeg: PackedByteArray) -> void:
 
 
 func _on_page_packet(from: int, payload: PackedByteArray) -> void:
-	if payload.size() < 4:
+	if payload.size() < 4 or payload.size() > 4 * 1024 * 1024:
 		return
 	var hl := payload.decode_u32(0)
 	if hl > 512 or payload.size() < 4 + hl:

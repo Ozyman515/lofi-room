@@ -199,8 +199,10 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 					"slap_ok":
 						my_last_slap = Time.get_ticks_msec()
 		Net.K_VIDEO:
+			if payload.size() > 2 * 1024 * 1024:
+				return                                  # no honest frame is that big
 			var img := Image.new()
-			if img.load_jpg_from_buffer(payload) == OK:
+			if img.load_jpg_from_buffer(payload) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
 				emu.remote_frame(img)
 		Net.K_AUDIO:
 			if payload.size() >= 8:
