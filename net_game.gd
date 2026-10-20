@@ -103,7 +103,7 @@ func _current_state() -> Dictionary:
 		if guest_pad[id]:
 			pads[id] = true
 	return {"k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
-		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on}
+		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow}
 
 
 func _publish_state() -> void:

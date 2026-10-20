@@ -260,6 +260,28 @@ func _is_guest() -> bool:
 	return net != null and net.state == net.State.JOINED
 
 
+# What guests may touch. The host's choice, kept in settings and sent to everyone with the room state.
+const GUEST_GROUPS := [["music", "Music, speakers and the monitor"], ["lights", "Lights and curtains"],
+	["tv", "TV, VCR and tapes"], ["games", "Console, arcade and carts"]]
+var guest_allow := {"music": false, "lights": false, "tv": false, "games": false}
+var guest_allow_seen := {}             # a guest's copy of the host's choice
+
+
+func _guest_may(it: Dictionary) -> bool:
+	if it.get("guest_ok", false):
+		return true
+	var g := str(it.get("group", ""))
+	if g == "":
+		return false
+	return bool(guest_allow_seen.get(g, false))
+
+
+func set_guest_allow(group: String, on: bool) -> void:
+	guest_allow[group] = on
+	_save_settings()
+	settings_changed.emit()
+
+
 # true (with a short message) when somebody else is playing: carts, console power and TV power stay put
 func _net_play_lock() -> bool:
 	if net_game != null and net_game.guests_playing():
@@ -293,6 +315,9 @@ func net_apply_game(d: Dictionary) -> void:
 		vcr.toggle_tv()
 	if bool(d.get("arcade", true)) != arcade_on:
 		set_arcade_on(bool(d.get("arcade", true)))
+	var ga = d.get("guests", {})
+	if ga is Dictionary:
+		guest_allow_seen = ga
 
 
 func _on_net_roster() -> void:
@@ -583,7 +608,7 @@ func _build_nightstand() -> void:
 	for tx in [-0.155, 0.155]:
 		_box(Vector3(tx, -0.035, -0.16), Vector3(0.012, 0.07, 0.31), tray_m, drawer_node)
 	_box(Vector3(0, -0.035, -0.315), Vector3(0.31, 0.07, 0.012), tray_m, drawer_node)
-	interactables.append({"node": face, "half": Vector3(0.18, 0.09, 0.04), "cb": _toggle_drawer, "hover": _glow_hover(face_m),
+	interactables.append({"node": face, "half": Vector3(0.18, 0.09, 0.04), "cb": _toggle_drawer, "hover": _glow_hover(face_m), "group": "games",
 		"label": func() -> String: return "CLOSE DRAWER" if drawer_open else "OPEN DRAWER"})
 	_lamp(Vector3(-0.5, 0.46, -1.7), 1.0)
 	# the diary, lying beside the lamp
@@ -655,7 +680,7 @@ func _build_desk() -> void:
 	monitor_led_m = _mat(Color(0.2, 1.0, 0.4), 0.4, 3.0)
 	_sphere(Vector3(1.45 + 0.27, 0.905, -1.695), 0.005, monitor_led_m, Vector3.ONE, null, 8)
 	interactables.append({"node": mb, "half": Vector3(0.05, 0.03, 0.04),
-		"label": _monitor_label, "egg_lock": true, "cb": _toggle_monitor, "hover": _glow_hover(mb_m)})
+		"label": _monitor_label, "egg_lock": true, "cb": _toggle_monitor, "hover": _glow_hover(mb_m), "group": "music"})
 	pc = PCPlayer.new()
 	pc.position = Vector3(1.45, 1.0, -1.7)
 	room.add_child(pc)
@@ -747,7 +772,7 @@ func _make_speaker(spk_name: String, pos: Vector3, yaw: float, tilt: float, size
 		"node": body,
 		"half": size / 2.0 + Vector3(0.03, 0.03, 0.03),
 		"label": _speaker_label.bind(idx, spk_name),
-		"cb": bank.toggle.bind(idx),
+		"cb": bank.toggle.bind(idx), "group": "music",
 		"hover": _glow_hover(body_m),
 	})
 	led.name = "LED"
@@ -1439,7 +1464,7 @@ func _light_group(gname: String, omnis: Array, mats: Array, click_node: Node3D, 
 	var gi := light_groups.size() - 1
 	if click_node != null:
 		interactables.append({"node": click_node, "half": half,
-			"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _noop_hover})
+			"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _noop_hover, "group": "lights"})
 
 
 func _noop_hover(_on: bool) -> void:
@@ -1519,7 +1544,7 @@ func _curtain_switch(pos: Vector3, side: String) -> void:
 	_sphere(pos + Vector3(0, 0.043, 0.018), 0.0045, led, Vector3.ONE, null, 8)
 	curtain_switch_leds.append(led)
 	interactables.append({"node": plate, "half": Vector3(0.07, 0.09, 0.06),
-		"label": _curtain_label, "egg_lock": true, "cb": toggle_curtains, "hover": _glow_hover(plate_m)})
+		"label": _curtain_label, "egg_lock": true, "cb": toggle_curtains, "hover": _glow_hover(plate_m), "group": "lights"})
 
 
 func _curtain_moving() -> bool:
@@ -2515,6 +2540,8 @@ func _build_tv() -> void:
 	vcr.setup(sm, tv_ui)
 	for vb in vcr.buttons:
 		vb["egg_lock"] = true                  # the VCR is out of action during the easter egg
+	for vb2 in vcr.buttons:
+		vb2["group"] = "tv"
 	interactables.append_array(vcr.buttons)
 	# control panel on the right: knobs, speaker slits
 	var px := w / 2.0 - 0.15
@@ -2525,7 +2552,7 @@ func _build_tv() -> void:
 		k.rotation.x = PI / 2.0
 		if is_ch:
 			_box(Vector3(px, ky + 0.02, fz + 0.03), Vector3(0.006, 0.026, 0.004), _mat(Color(0.15, 0.12, 0.18), 0.6), root)   # pointer mark
-			interactables.append({"node": k, "half": Vector3(0.055, 0.055, 0.05),
+			interactables.append({"node": k, "half": Vector3(0.055, 0.055, 0.05), "group": "tv",
 				"label": func() -> String: return "CHANNEL  [%s]" % CRT_NAMES[crt_mode],
 				"cb": func() -> void: set_crt_mode((crt_mode + 1) % 3), "hover": _glow_hover(ch_knob_m)})
 	for i in 8:
@@ -2543,7 +2570,7 @@ func _build_tv() -> void:
 	vcr.power_changed.connect(_on_tv_power.bind(led_m))
 	vcr.power_changed.connect(func(_on: bool): _apply_console())
 	interactables.append({"node": pw, "half": Vector3(0.05, 0.035, 0.04),
-		"label": _tv_label.bind("power"), "egg_lock": true,
+		"label": _tv_label.bind("power"), "egg_lock": true, "group": "tv",
 		"cb": func() -> void:
 			if not _net_play_lock():
 				vcr.toggle_tv(), "hover": _glow_hover(pw_m)})
@@ -2552,10 +2579,10 @@ func _build_tv() -> void:
 	var vd := _box(Vector3(px - 0.045, cy, fz + 0.01), Vector3(0.06, 0.04, 0.02), vd_m, root)
 	var vu := _box(Vector3(px + 0.045, cy, fz + 0.01), Vector3(0.06, 0.04, 0.02), vu_m, root)
 	interactables.append({"node": vd, "half": Vector3(0.04, 0.03, 0.04),
-		"label": _tv_label.bind("vol_down"),
+		"label": _tv_label.bind("vol_down"), "group": "tv",
 		"cb": vcr.volume_down, "hover": _glow_hover(vd_m)})
 	interactables.append({"node": vu, "half": Vector3(0.04, 0.03, 0.04),
-		"label": _tv_label.bind("vol_up"),
+		"label": _tv_label.bind("vol_up"), "group": "tv",
 		"cb": vcr.volume_up, "hover": _glow_hover(vu_m)})
 	for lab in [["PWR", cy + 0.45, 0.0], ["VOL  -  +", cy + 0.035, 0.0], ["CH", cy + 0.34, 0.0]]:
 		var l3 := Label3D.new()
@@ -2715,7 +2742,7 @@ func _build_console() -> void:
 	var knob_m := _mat(Color(0.88, 0.80, 0.55), 0.45)
 	console_knob = _box(Vector3(-0.157, 0.081, fz + 0.005), Vector3(0.028, 0.018, 0.011), knob_m, root)      # the power switch: slides right = ON
 	interactables.append({"node": console_knob, "half": Vector3(0.04, 0.03, 0.04),
-		"label": _console_label, "egg_lock": true, "cb": toggle_console, "hover": _glow_hover(knob_m)})
+		"label": _console_label, "egg_lock": true, "cb": toggle_console, "hover": _glow_hover(knob_m), "group": "games"})
 	_cart_text("POWER", 20, 0.0004, Color(0.3, 0.26, 0.2), Vector3(-0.157, 0.0645, fz + 0.0014), root)
 	# ---- the top: eject and reset buttons, the little display with its row of keys, and the cover over the cartridge slot
 	_cyl(Vector3(-0.152, CON_TOP + 0.002, 0.137), 0.028, 0.004, tan, root)
@@ -3187,7 +3214,7 @@ func _build_arcade() -> void:
 	var sw_plate := _box(Vector3(0.14, 0.32, -hw - 0.006), Vector3(0.06, 0.09, 0.012), _mat(Color(0.2, 0.2, 0.22), 0.5), root)
 	var sw := _box(Vector3(0.14, 0.32, -hw - 0.016), Vector3(0.028, 0.05, 0.012), sw_m, root)
 	sw.rotation.x = -0.25
-	interactables.append({"node": sw_plate, "half": Vector3(0.05, 0.07, 0.03), "egg_lock": true,
+	interactables.append({"node": sw_plate, "half": Vector3(0.05, 0.07, 0.03), "egg_lock": true, "group": "games",
 		"label": func() -> String: return "ARCADE POWER  [%s]" % ("ON" if arcade_on else "OFF"),
 		"cb": _toggle_arcade_power, "hover": _glow_hover(sw_m)})
 	# the step from the monitor up to the marquee, the roof, and the sloped back
@@ -3353,7 +3380,7 @@ func _build_carts() -> void:
 	egg_c.reparent(drawer_node, false)
 	egg_c.transform = Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))
 	for id in ["nes", "snes", "sgb", "gen", "neo", "egg"]:
-		interactables.append({"node": carts[id]["node"], "half": Vector3(0.085, 0.065, 0.03), "egg_lock": true,
+		interactables.append({"node": carts[id]["node"], "half": Vector3(0.085, 0.065, 0.03), "egg_lock": true, "group": "games",
 			"label": _cart_label.bind(id), "cb": _cart_click.bind(id)})
 
 
@@ -3524,6 +3551,8 @@ func _load_prefs() -> void:
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
 		slap_minutes = int(cfg.get_value("settings", "slap_minutes", 30))
+		for gk in guest_allow:
+			guest_allow[gk] = bool(cfg.get_value("guests", gk, false))
 		if not bool(cfg.get_value("settings", "arcade_on", true)):
 			set_arcade_on(false)
 		if bool(cfg.get_value("settings", "phone_hidden", false)):
@@ -3584,6 +3613,8 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "phone_hidden", phone_hidden)
 	cfg.set_value("settings", "slap_minutes", slap_minutes)
 	cfg.set_value("settings", "arcade_on", arcade_on)
+	for g in guest_allow:
+		cfg.set_value("guests", g, guest_allow[g])
 	cfg.save(SETTINGS_FILE)
 
 
@@ -4246,7 +4277,7 @@ func _update_pointer(delta: float) -> void:
 		hint_label.text = str((lbl as Callable).call()) if lbl is Callable else str(lbl)
 		if egg_active and found_item.get("egg_lock", false):
 			hint_label.text += "  [LOCKED]"
-		elif _is_guest() and not found_item.get("guest_ok", false):
+		elif _is_guest() and not _guest_may(found_item):
 			hint_label.text += "  [HOST ONLY]"
 		# the closer you are, the smaller the sign (so it never fills the view); from ~1.2 m away it is full size
 		var k := clampf(found_t / 1.2, 0.2, 1.0)
@@ -4296,6 +4327,9 @@ func _pointer_press(hand: int) -> bool:
 	if hover_hand != hand:
 		return false
 	if hover_screen != null:
+		if _is_guest() and hover_screen == monitor_ui and not (guest_allow_seen.get("music", false) or guest_allow_seen.get("lights", false)):
+			_net_say("The host hasn't opened the PC up to guests.")
+			return true
 		down_screen = hover_screen
 		ptr_down = true
 		hover_screen.send_button(hover_pos, true)
@@ -4303,8 +4337,8 @@ func _pointer_press(hand: int) -> bool:
 	if not hover_item.is_empty():
 		if egg_active and hover_item.get("egg_lock", false):
 			return true                       # locked while the alert is on
-		if _is_guest() and not hover_item.get("guest_ok", false):
-			_net_say("Only the host can change the room.")
+		if _is_guest() and not _guest_may(hover_item):
+			_net_say("The host hasn't opened that up to guests.")
 			return true
 		var cb: Callable = hover_item["cb"]
 		cb.call()

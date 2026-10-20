@@ -40,6 +40,7 @@ var _ct_window: PanelContainer
 var _dbg_window: PanelContainer
 var _room_window: PanelContainer
 var _room_slap_btns: Array[Button] = []
+var _room_guest_btns := {}
 var _dbg_seat_btns: Array[Button] = []
 var _dbg_phone_btn: Button
 var _ct_dev := "key"
@@ -540,8 +541,19 @@ func _build_room_window() -> void:
 		b.pressed.connect(func() -> void: _main.set_slap_minutes(mins))
 		row.add_child(b)
 		_room_slap_btns.append(b)
+	var gt := Label.new()
+	gt.text = "What guests may change in your room:"
+	gt.add_theme_font_size_override("font_size", 17)
+	v.add_child(gt)
+	for gg in _main.GUEST_GROUPS:
+		var gb := Button.new()
+		gb.custom_minimum_size = Vector2(0, 40)
+		var key: String = gg[0]
+		gb.pressed.connect(func() -> void: _main.set_guest_allow(key, not _main.guest_allow[key]))
+		v.add_child(gb)
+		_room_guest_btns[key] = gb
 	var hint := Label.new()
-	hint.text = "This is the host's setting: it applies to everyone in your room, you included."
+	hint.text = "These are the host's settings: they apply to everyone in your room. Beds, naps and the bookshelf are never shared."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", 15)
 	v.add_child(hint)
@@ -561,6 +573,9 @@ func _room_refresh() -> void:
 		var txt := "Never" if mins < 0 else ("%d h" % (mins / 60) if mins >= 60 else "%d min" % mins)
 		var on: bool = mins == _main.slap_minutes
 		_room_slap_btns[i].text = ("[ %s ]" if on else "%s") % txt
+	for gg in _main.GUEST_GROUPS:
+		if _room_guest_btns.has(gg[0]):
+			_room_guest_btns[gg[0]].text = "%s   [%s]" % [gg[1], "GUESTS MAY" if _main.guest_allow[gg[0]] else "HOST ONLY"]
 
 
 # ---- debug window: things that are handy while testing the room
