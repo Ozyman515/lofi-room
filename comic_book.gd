@@ -6,7 +6,7 @@ extends RefCounted
 
 const Plat := preload("res://platform.gd")
 const IMAGE_EXTS := ["png", "jpg", "jpeg", "webp", "bmp", "tga"]
-const BOOK_EXTS := ["cbz", "zip"]
+const BOOK_EXTS := ["cbz", "zip", "pdf", "epub"]
 
 var path := ""
 var title := ""
@@ -102,6 +102,13 @@ func _list_pages(file_path: String) -> Array:
 		return []
 	var head := f.get_buffer(4)
 	f.close()
+	if head.size() >= 4 and head[0] == 0x25 and head[1] == 0x50 and head[2] == 0x44 and head[3] == 0x46:     # %PDF
+		return _list_pdf_pages(file_path)
+	if file_path.get_extension().to_lower() == "epub":
+		var ep := _list_epub_pages(file_path)
+		if not ep.is_empty():
+			return ep
+		# not a picture book: fall through and treat it as a zip of images (fixed-layout comics often work that way)
 	if head.size() >= 4 and head[0] == 0x52 and head[1] == 0x61 and head[2] == 0x72 and head[3] == 0x21:
 		error = "This one is a RAR comic (.cbr).\nConvert it to .cbz on the PC first."
 		return []
@@ -216,6 +223,8 @@ func _collect() -> void:
 
 
 static func _decode(zip_path: String, name: String, max_dim: int) -> Image:
+	if name.begins_with("pdf:"):
+		return _decode_pdf_image(zip_path, name, max_dim)
 	var z := ZIPReader.new()
 	if z.open(zip_path) != OK:
 		return null
@@ -299,3 +308,239 @@ func meta() -> Dictionary:
 	for c in chapters:
 		ch.append({"title": c["title"], "first": c["first"], "count": c["count"], "section": c.get("section", "Issues")})
 	return {"title": title, "pages": pages.size(), "spreads": spreads, "chapters": ch}
+
+
+# ---------------------------------------------------------------- PDF: the pictures inside, in file order
+# Godot has no PDF renderer, but scanned comics and manga PDFs are just a JPEG per page wrapped in PDF.
+# We pull those out (DCTDecode), plus plain zlib-packed RGB/grey images (FlateDecode). Text PDFs give nothing.
+
+const PDF_CHUNK := 8 * 1024 * 1024
+const PDF_OVERLAP := 64 * 1024
+
+
+func _list_pdf_pages(path: String) -> Array:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		error = "Can't open this file."
+		return []
+	var size := f.get_length()
+	var out: Array = []
+	var seen := {}
+	var pos := 0
+	while pos < size:
+		f.seek(pos)
+		var chunk := f.get_buffer(mini(PDF_CHUNK, size - pos))
+		# binary data has NUL bytes that cut a String short, so the search runs on the hex form (two chars per byte)
+		var hx := chunk.hex_encode()
+		var at := 0
+		while true:
+			var i := hx.find(HEX_SUBTYPE, at)
+			if i < 0 or i % 2 == 1:
+				if i < 0:
+					break
+				at = i + 1
+				continue
+			at = i + HEX_SUBTYPE.length()
+			# the dictionary this belongs to: back to "obj", forward to "stream"
+			var dstart := _hex_rfind(hx, HEX_OBJ, i)
+			var dend := _hex_find(hx, HEX_STREAM, i)
+			if dstart < 0 or dend < 0 or dend - dstart > 8000:
+				continue
+			var d := hx.substr(dstart, dend - dstart).hex_decode().get_string_from_ascii()
+			dstart /= 2
+			dend /= 2
+			if not d.contains("/Image") or d.contains("/SMask ") and d.find("/Type") < 0:
+				continue
+			var filt := ""
+			if d.contains("/DCTDecode"):
+				filt = "dct"
+			elif d.contains("/FlateDecode"):
+				filt = "flate"
+			else:
+				continue
+			var w := _pdf_int(d, "/Width")
+			var h := _pdf_int(d, "/Height")
+			if w <= 0 or h <= 0 or w * h < 120000:
+				continue              # icons and thumbnails
+			var cs := "rgb"
+			if d.contains("/DeviceGray") or d.contains("/CalGray"):
+				cs = "gray"
+			elif d.contains("/DeviceCMYK"):
+				cs = "cmyk"
+			if filt == "flate" and (cs == "cmyk" or _pdf_int(d, "/BitsPerComponent") != 8 or d.contains("/Predictor")):
+				continue
+			var data_start := dend + 6
+			if data_start < chunk.size() and chunk[data_start] == 0x0D:
+				data_start += 1
+			if data_start < chunk.size() and chunk[data_start] == 0x0A:
+				data_start += 1
+			var length := _pdf_int(d, "/Length")
+			var abs_start := pos + data_start
+			if length <= 0 or d.contains("/Length " + str(length) + " 0 R"):
+				length = -1        # indirect: measure to "endstream" when decoding
+			if seen.has(abs_start):
+				continue
+			seen[abs_start] = true
+			out.append("pdf:%d:%d:%s:%d:%d:%s" % [abs_start, length, filt, w, h, cs])
+		pos += PDF_CHUNK - PDF_OVERLAP
+	f.close()
+	if out.is_empty():
+		error = "No picture pages in this PDF.\nText PDFs aren't supported yet."
+		return []
+	out.sort_custom(func(a: String, b: String) -> bool: return int(a.split(":")[1]) < int(b.split(":")[1]))
+	return out
+
+
+const HEX_SUBTYPE := "2f53756274797065"     # "/Subtype"
+const HEX_OBJ := "6f626a"                   # "obj"
+const HEX_STREAM := "73747265616d"          # "stream"
+const HEX_ENDSTREAM := "656e6473747265616d" # "endstream"
+
+
+# find/rfind on hex text, only at even positions (byte boundaries)
+static func _hex_find(hx: String, pat: String, from: int) -> int:
+	var i := hx.find(pat, from)
+	while i >= 0 and i % 2 == 1:
+		i = hx.find(pat, i + 1)
+	return i
+
+
+static func _hex_rfind(hx: String, pat: String, from: int) -> int:
+	var i := hx.rfind(pat, from)
+	while i >= 0 and i % 2 == 1:
+		i = hx.rfind(pat, i - 1)
+	return i
+
+
+static func _pdf_int(d: String, key: String) -> int:
+	var i := d.find(key)
+	if i < 0:
+		return -1
+	var j := i + key.length()
+	while j < d.length() and d[j] == " ":
+		j += 1
+	var k := j
+	while k < d.length() and d[k].is_valid_int():
+		k += 1
+	return int(d.substr(j, k - j)) if k > j else -1
+
+
+static func _decode_pdf_image(path: String, desc: String, max_dim: int) -> Image:
+	var parts := desc.split(":")
+	if parts.size() < 7:
+		return null
+	var start := int(parts[1])
+	var length := int(parts[2])
+	var filt := parts[3]
+	var w := int(parts[4])
+	var h := int(parts[5])
+	var cs := parts[6]
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	f.seek(start)
+	var data: PackedByteArray
+	if length > 0:
+		data = f.get_buffer(length)
+	else:
+		# length unknown: read generously and cut at "endstream"
+		var buf := f.get_buffer(mini(64 * 1024 * 1024, f.get_length() - start))
+		var e := _hex_find(buf.hex_encode(), HEX_ENDSTREAM, 0)
+		data = buf.slice(0, e / 2 if e > 0 else buf.size())
+	f.close()
+	var img := Image.new()
+	if filt == "dct":
+		if img.load_jpg_from_buffer(data) != OK:
+			return null
+	else:
+		var raw := data.decompress_dynamic(w * h * 4 + 1024, FileAccess.COMPRESSION_DEFLATE)
+		var chans := 1 if cs == "gray" else 3
+		if raw.size() < w * h * chans:
+			return null
+		img = Image.create_from_data(w, h, false, Image.FORMAT_L8 if chans == 1 else Image.FORMAT_RGB8, raw.slice(0, w * h * chans))
+	if img.get_width() == 0:
+		return null
+	var big := maxi(img.get_width(), img.get_height())
+	if big > max_dim:
+		var k := float(max_dim) / float(big)
+		img.resize(int(img.get_width() * k), int(img.get_height() * k), Image.INTERPOLATE_LANCZOS)
+	if img.get_format() != Image.FORMAT_RGB8 and img.get_format() != Image.FORMAT_RGBA8:
+		img.convert(Image.FORMAT_RGBA8)
+	return img
+
+
+# ---------------------------------------------------------------- EPUB: picture books (fixed-layout comics) in reading order
+# The OPF file lists the chapters in order; each chapter page is a bit of HTML with one image in it.
+
+func _list_epub_pages(path: String) -> Array:
+	var z := ZIPReader.new()
+	if z.open(path) != OK:
+		return []
+	var files := z.get_files()
+	var opf_path := ""
+	if files.has("META-INF/container.xml"):
+		var c := z.read_file("META-INF/container.xml").get_string_from_utf8()
+		var m := RegEx.new()
+		m.compile("full-path=\"([^\"]+)\"")
+		var r := m.search(c)
+		if r != null:
+			opf_path = r.get_string(1)
+	if opf_path == "" or not files.has(opf_path):
+		for n in files:
+			if n.get_extension().to_lower() == "opf":
+				opf_path = n
+				break
+	if opf_path == "":
+		z.close()
+		return []
+	var opf := z.read_file(opf_path).get_string_from_utf8()
+	var base := opf_path.get_base_dir()
+	var items := {}
+	var re_item := RegEx.new()
+	re_item.compile("<item\\s[^>]*?>")
+	var re_attr := RegEx.new()
+	re_attr.compile("(id|href|media-type)=\"([^\"]*)\"")
+	for m in re_item.search_all(opf):
+		var a := {}
+		for am in re_attr.search_all(m.get_string()):
+			a[am.get_string(1)] = am.get_string(2)
+		if a.has("id") and a.has("href"):
+			items[a["id"]] = a
+	var re_ref := RegEx.new()
+	re_ref.compile("<itemref\\s[^>]*?idref=\"([^\"]+)\"")
+	var out: Array = []
+	var re_img := RegEx.new()
+	re_img.compile("<(?:img|image)\\s[^>]*?(?:src|href|xlink:href)=\"([^\"]+)\"")
+	for m in re_ref.search_all(opf):
+		var it: Dictionary = items.get(m.get_string(1), {})
+		if it.is_empty():
+			continue
+		var href := _epub_join(base, str(it["href"]))
+		if not files.has(href):
+			continue
+		var mt := str(it.get("media-type", ""))
+		if mt.begins_with("image/"):
+			out.append(href)
+			continue
+		var html := z.read_file(href).get_string_from_utf8()
+		var im := re_img.search(html)
+		if im != null:
+			var ip := _epub_join(href.get_base_dir(), im.get_string(1).uri_decode())
+			if files.has(ip) and IMAGE_EXTS.has(ip.get_extension().to_lower()):
+				out.append(ip)
+	z.close()
+	return out
+
+
+static func _epub_join(base: String, rel: String) -> String:
+	if rel.begins_with("/"):
+		return rel.substr(1)
+	var parts := (base.path_join(rel) if base != "" else rel).split("/")
+	var stack: Array = []
+	for p in parts:
+		if p == "..":
+			if not stack.is_empty():
+				stack.pop_back()
+		elif p != "." and p != "":
+			stack.append(p)
+	return "/".join(stack)

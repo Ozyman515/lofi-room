@@ -300,6 +300,50 @@ func set_debug_seats(n: int) -> void:
 	settings_changed.emit()
 
 
+# ---- slapping: point at a friend holding a controller and knock it out of their hands (once per cooldown)
+
+const SLAP_CHOICES := [-1, 5, 15, 30, 60, 120]      # minutes; -1 = never
+var slap_minutes := 30
+
+
+static func slap_minutes_of(mins: int) -> int:
+	return maxi(mins, 0) * 60
+
+
+static func fmt_wait(secs: int) -> String:
+	if secs >= 90:
+		return "%d min" % int(ceil(secs / 60.0))
+	return "%d s" % secs
+
+
+func set_slap_minutes(mins: int) -> void:
+	slap_minutes = mins
+	_save_settings()
+	settings_changed.emit()
+
+
+func slap_label(pid: int) -> String:
+	var who := str(net.roster.get(pid, {}).get("name", "them"))
+	if net_game.slap_minutes() < 0:
+		return "%s IS PLAYING  (slapping is off in this room)" % who.to_upper()
+	var wait: int = net_game.slap_wait()
+	if wait > 0:
+		return "%s IS PLAYING  (you can slap again in %s)" % [who.to_upper(), fmt_wait(wait)]
+	return "SLAP THE CONTROLLER OUT OF %s'S HANDS" % who.to_upper()
+
+
+func try_slap(pid: int) -> void:
+	if net_game != null:
+		net_game.slap(pid)
+
+
+# somebody slapped the controller out of my hands
+func get_slapped(by: String) -> void:
+	if game_mode:
+		_put_pad()
+		updater.show_toast("%s slapped the controller out of your hands!" % by, 5.0)
+
+
 # Debug: hide the wall phone (it's also absent when the WebRTC plugin isn't loaded)
 var phone_hidden := false
 
@@ -967,6 +1011,8 @@ func _hold_book(bk: Node3D) -> void:
 	bk.held_by_me = true
 	bk._update_toc()
 	book_hint_t = 8.0
+	_book_placed = false
+	book_zoom = false
 	if net_books != null and bk.net_id != "":
 		net_books._my_book_taken(bk)
 	var xf := _book_target()
@@ -975,19 +1021,45 @@ func _hold_book(bk: Node3D) -> void:
 
 # where a held book floats: in front of the face, a little low, tilted up toward the eyes
 func _book_target() -> Transform3D:
-	return _book_pose_for(head.global_transform)
+	return _held_book_target()
 
 
-func _book_pose_for(hx: Transform3D) -> Transform3D:
+func _book_pose_for(hx: Transform3D, zoomed := false) -> Transform3D:
 	var fwd := -hx.basis.z
 	fwd.y = 0.0
 	if fwd.length() < 0.01:
 		fwd = Vector3.FORWARD
 	fwd = fwd.normalized()
-	var pos := hx.origin + fwd * 0.6 + Vector3(0.0, -0.14, 0.0)
+	var dist := 0.42 if zoomed else 0.6
+	var drop := -0.06 if zoomed else -0.14
+	var pos := hx.origin + fwd * dist + Vector3(0.0, drop, 0.0)
 	var basis := Basis.looking_at(fwd, Vector3.UP)      # local -z looks where you look, so +z (the pages) faces you
-	basis = basis * Basis(Vector3.RIGHT, -0.3)          # tilted back so the pages face up toward your eyes
+	basis = basis * Basis(Vector3.RIGHT, -0.15 if zoomed else -0.3)      # tilted back so the pages face up toward your eyes
 	return Transform3D(basis, pos)
+
+
+# The held book only follows you once you look well away from it, so you can aim at the contents page
+# (and at the pages themselves) without dragging it along.
+var book_zoom := false
+var _book_yaw := 0.0            # the yaw the book was last placed at
+var _book_placed := false
+
+
+func _held_book_target() -> Transform3D:
+	var fwd := -head.global_transform.basis.z
+	fwd.y = 0.0
+	var yaw := atan2(fwd.x, fwd.z) if fwd.length() > 0.01 else _book_yaw
+	var dead := 0.22 if book_zoom else 0.42         # radians of free look before the book comes along
+	if not _book_placed or absf(angle_difference(yaw, _book_yaw)) > dead:
+		_book_placed = true
+		_book_yaw = yaw
+	var hx := Transform3D(Basis(Vector3.UP, _book_yaw) * Basis(Vector3.UP, PI), head.global_position)   # a head looking along _book_yaw
+	return _book_pose_for(hx, book_zoom)
+
+
+func toggle_book_zoom() -> void:
+	book_zoom = not book_zoom
+	_book_placed = false
 
 
 func _put_book() -> void:
@@ -1550,7 +1622,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif held_book != null and (event.keycode == KEY_LEFT or event.keycode == KEY_PAGEUP):
 			_book_page(-1)
 		elif event.keycode == KEY_V:
-			_cycle_view()
+			if held_book != null:
+				toggle_book_zoom()
+			else:
+				_cycle_view()
 		elif event.keycode == KEY_M:
 			if game_mode and emu != null:
 				emu.to_menu()          # back to the game list without taking the cart out
@@ -1927,6 +2002,9 @@ func _on_button(button_name: String, hand: int) -> void:
 			return
 		if button_name == "by_button":
 			_book_page(-1)
+			return
+		if button_name == "primary_click" or button_name == "secondary_click":
+			toggle_book_zoom()
 			return
 	if button_name == "trigger_click":
 		if _pointer_press(hand):
@@ -3132,6 +3210,7 @@ func _load_prefs() -> void:
 			weather.snap()
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
+		slap_minutes = int(cfg.get_value("settings", "slap_minutes", 30))
 		if bool(cfg.get_value("settings", "phone_hidden", false)):
 			phone_hidden = true
 			if net_phone != null:
@@ -3188,6 +3267,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "resume_games", emu.resume_games if emu != null else true)
 	cfg.set_value("settings", "cart_wash", cart_wash)
 	cfg.set_value("settings", "phone_hidden", phone_hidden)
+	cfg.set_value("settings", "slap_minutes", slap_minutes)
 	cfg.save(SETTINGS_FILE)
 
 
@@ -3858,9 +3938,9 @@ func _update_pointer(delta: float) -> void:
 		hint_label.global_position = found_point + Vector3(0.0, 0.02 + 0.08 * k, 0.0)
 		hint_label.visible = true
 	elif held_book != null and book_hint_t > 0.0:
-		hint_label.text = ("A / B  =  NEXT / PREVIOUS PAGE     GRIP  =  PUT IT DOWN" if xr_active else "ARROWS OR WHEEL  =  TURN PAGES     G  =  PUT IT DOWN")
+		hint_label.text = ("A / B  =  NEXT / PREVIOUS PAGE     STICK CLICK  =  ZOOM     GRIP  =  PUT IT DOWN" if xr_active else "ARROWS OR WHEEL  =  TURN PAGES     V  =  ZOOM     G  =  PUT IT DOWN")
 		hint_label.scale = Vector3.ONE * 0.45
-		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.3, 0.0)
+		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.42 if book_zoom else -0.3, 0.0)
 		hint_label.visible = true
 	elif game_mode and pad_hint_t > 0.0:
 		hint_label.text = "%s:  %s  =  %s" % ["ARCADE" if held_pad_idx == -1 else "CONTROLLER", "GRIP" if xr_active else "E", "STEP AWAY" if held_pad_idx == -1 else "PUT IT DOWN"]

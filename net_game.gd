@@ -15,6 +15,10 @@ var main: Node3D
 var emu: Node
 
 var guest_pad := {}                     # host side: guest id -> pad held
+var pads_seen := {}                     # everyone: id -> true for players holding a pad (from the host's state)
+var slap_minutes_seen := 30             # the host's slap cooldown, as last announced
+var _last_slap := {}                    # host side: slapper id -> ms of their last slap
+var my_last_slap := 0                   # ms of my own last (accepted) slap, for the countdown on the label
 var guest_mask := {}                    # host side: guest id -> buttons
 var p2_id := 0                          # the guest currently driving the second port
 var _last_video := 0
@@ -92,8 +96,14 @@ func _process(delta: float) -> void:
 # ---- host -> guests
 
 func _current_state() -> Dictionary:
+	var pads := {}
+	if main.game_mode:
+		pads[1] = true
+	for id in guest_pad:
+		if guest_pad[id]:
+			pads[id] = true
 	return {"k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
-		"run": emu.state == emu.State.RUNNING}
+		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes}
 
 
 func _publish_state() -> void:
@@ -164,6 +174,8 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 				var d = Net.read_var(payload)
 				if d is Dictionary and d.get("k", "") == "pad":
 					_guest_pad(from, bool(d.get("held", false)))
+				elif d is Dictionary and d.get("k", "") == "slap":
+					_host_slap(from, int(d.get("target", 0)))
 			Net.K_INPUT:
 				if payload.size() >= 2 and from == p2_id:
 					emu.set_remote_buttons(payload.decode_u16(0))
@@ -173,8 +185,19 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 	match kind:
 		Net.K_EVENT:
 			var d = Net.read_var(payload)
-			if d is Dictionary and d.get("k", "") == "game":
-				_apply_state(d)
+			if d is Dictionary:
+				match str(d.get("k", "")):
+					"game":
+						_apply_state(d)
+					"slapped":
+						main.get_slapped(str(d.get("by", "Someone")))
+					"slap_news":
+						main.updater.show_toast("%s slapped the controller out of %s's hands!" % [str(d.get("by", "?")), str(d.get("to", "?"))], 5.0)
+					"slap_wait":
+						my_last_slap = Time.get_ticks_msec() - (main.slap_minutes_of(slap_minutes_seen) - int(d.get("secs", 0))) * 1000
+						main.updater.show_toast("You can slap again in %s." % main.fmt_wait(int(d.get("secs", 0))), 4.0)
+					"slap_ok":
+						my_last_slap = Time.get_ticks_msec()
 		Net.K_VIDEO:
 			var img := Image.new()
 			if img.load_jpg_from_buffer(payload) == OK:
@@ -201,6 +224,78 @@ func _guest_pad(id: int, held: bool) -> void:
 
 
 func _apply_state(d: Dictionary) -> void:
+	var p = d.get("pads", {})
+	pads_seen = p if p is Dictionary else {}
+	slap_minutes_seen = int(d.get("slap", 30))
 	main.net_apply_game(d)
 	if not bool(d.get("run", false)):
 		emu.remote_stopped()
+
+
+# ---- slapping the controller out of somebody's hands
+
+func holds_pad(id: int) -> bool:
+	if net.is_host():
+		return main.game_mode if id == net.my_id else bool(guest_pad.get(id, false))
+	return bool(pads_seen.get(id, false))
+
+
+func slap_minutes() -> int:
+	return main.slap_minutes if net.is_host() else slap_minutes_seen
+
+
+# seconds until I may slap again (0 = now)
+func slap_wait() -> int:
+	var cd: int = main.slap_minutes_of(slap_minutes())
+	if cd <= 0:
+		return 0
+	var left: int = cd - (Time.get_ticks_msec() - my_last_slap) / 1000
+	return maxi(0, left) if my_last_slap > 0 else 0
+
+
+func slap(target: int) -> void:
+	if not net.is_online() or target == net.my_id:
+		return
+	if net.is_host():
+		_host_slap(net.my_id, target)
+	else:
+		net.send_var(1, Net.K_EVENT, {"k": "slap", "target": target})
+
+
+# the host decides: the slapper's cooldown, and whether the target really holds a pad
+func _host_slap(from: int, target: int) -> void:
+	var cd: int = main.slap_minutes_of(main.slap_minutes)
+	if main.slap_minutes < 0:
+		return
+	var now := Time.get_ticks_msec()
+	var left: int = cd - (now - int(_last_slap.get(from, -1000000000))) / 1000
+	if _last_slap.has(from) and left > 0:
+		_tell(from, {"k": "slap_wait", "secs": left})
+		return
+	if not holds_pad(target) or target == from:
+		return
+	_last_slap[from] = now
+	var by := str(net.roster.get(from, {}).get("name", "Someone"))
+	var to := str(net.roster.get(target, {}).get("name", "someone"))
+	_tell(from, {"k": "slap_ok"})
+	if target == net.my_id:
+		main.get_slapped(by)
+	else:
+		net.send_var(target, Net.K_EVENT, {"k": "slapped", "by": by})
+	for id in net.roster:
+		if id != target:
+			_tell(id, {"k": "slap_news", "by": by, "to": to})
+
+
+func _tell(id: int, d: Dictionary) -> void:
+	if id == net.my_id:
+		match str(d["k"]):
+			"slap_wait":
+				my_last_slap = _last_slap.get(id, Time.get_ticks_msec())
+				main.updater.show_toast("You can slap again in %s." % main.fmt_wait(int(d.get("secs", 0))), 4.0)
+			"slap_news":
+				main.updater.show_toast("%s slapped the controller out of %s's hands!" % [str(d.get("by", "?")), str(d.get("to", "?"))], 5.0)
+			"slap_ok":
+				my_last_slap = Time.get_ticks_msec()
+	else:
+		net.send_var(id, Net.K_EVENT, d)

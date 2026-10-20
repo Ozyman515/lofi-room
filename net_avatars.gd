@@ -14,6 +14,7 @@ var main: Node3D
 var avatars := {}                # id -> Avatar
 var _poses := {}                 # id -> PackedFloat32Array (latest known)
 var _t := 0.0
+var _items := {}                 # id -> the slap interactable
 
 
 class Avatar extends Node3D:
@@ -103,6 +104,9 @@ func _sync_roster() -> void:
 			avatars[id].queue_free()
 			avatars.erase(id)
 			_poses.erase(id)
+			if _items.has(id):
+				main.interactables.erase(_items[id])
+				_items.erase(id)
 	if not net.is_online():
 		return
 	for id in net.roster:
@@ -113,6 +117,13 @@ func _sync_roster() -> void:
 		a.build(str(net.roster[id].get("name", "?")), net.roster[id].get("color", Color(1, 0.5, 0.8)))
 		avatars[id] = a
 		a.visible = false
+		# pointing at somebody who holds a controller offers a slap
+		var pid: int = id
+		var it := {"node": a.head, "half": Vector3(0.16, 0.16, 0.16), "guest_ok": true,
+			"when": func() -> bool: return a.visible and main.net_game != null and main.net_game.holds_pad(pid),
+			"label": func() -> String: return main.slap_label(pid), "cb": func() -> void: main.try_slap(pid)}
+		main.interactables.append(it)
+		_items[id] = it
 	for id in avatars:
 		avatars[id].tag.text = str(net.roster.get(id, {}).get("name", "?"))
 

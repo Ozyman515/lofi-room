@@ -38,6 +38,8 @@ var _st_reticle_btn: Button
 var _st_color_btns: Array[Button] = []
 var _ct_window: PanelContainer
 var _dbg_window: PanelContainer
+var _room_window: PanelContainer
+var _room_slap_btns: Array[Button] = []
 var _dbg_seat_btns: Array[Button] = []
 var _dbg_phone_btn: Button
 var _ct_dev := "key"
@@ -359,6 +361,8 @@ func _wx_hide() -> void:
 		_ct_listen = ""
 	if _dbg_window != null:
 		_dbg_window.visible = false
+	if _room_window != null:
+		_room_window.visible = false
 
 
 func _toggle_weather() -> void:
@@ -390,6 +394,8 @@ func _toggle_settings() -> void:
 		_ct_listen = ""
 	if _dbg_window != null:
 		_dbg_window.visible = false
+	if _room_window != null:
+		_room_window.visible = false
 	if _st_window.visible:
 		_window.visible = false
 		_spk_window.visible = false
@@ -424,6 +430,10 @@ func _build_settings_window() -> void:
 	ctl_btn.text = "  Controls...  "
 	ctl_btn.pressed.connect(_open_controls_window)
 	head.add_child(ctl_btn)
+	var room_btn := Button.new()
+	room_btn.text = "  Friends...  "
+	room_btn.pressed.connect(_open_room_window)
+	head.add_child(room_btn)
 	var dbg_btn := Button.new()
 	dbg_btn.text = "  Debug...  "
 	dbg_btn.pressed.connect(_open_debug_window)
@@ -486,6 +496,71 @@ func _build_settings_window() -> void:
 	_st_refresh()
 	_build_controls_window()
 	_build_debug_window()
+	_build_room_window()
+
+
+# ---- friends window: what guests may do in your room
+
+func _build_room_window() -> void:
+	_room_window = PanelContainer.new()
+	_room_window.offset_left = 150.0
+	_room_window.offset_top = 6.0
+	_room_window.offset_right = 874.0
+	_room_window.offset_bottom = 545.0
+	_room_window.visible = false
+	ui.root.add_child(_room_window)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_room_window.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var t := Label.new()
+	t.text = "Friends in the room"
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var back := Button.new()
+	back.text = "  Back  "
+	back.pressed.connect(func() -> void:
+		_room_window.visible = false
+		_st_window.visible = true
+		_st_refresh())
+	head.add_child(back)
+	var note := Label.new()
+	note.text = "Slapping the controller out of somebody's hands. Each person can do it once per:"
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 17)
+	v.add_child(note)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	v.add_child(row)
+	for mins in _main.SLAP_CHOICES:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(0, 42)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(func() -> void: _main.set_slap_minutes(mins))
+		row.add_child(b)
+		_room_slap_btns.append(b)
+	var hint := Label.new()
+	hint.text = "This is the host's setting: it applies to everyone in your room, you included."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 15)
+	v.add_child(hint)
+	_room_refresh()
+	_main.settings_changed.connect(_room_refresh)
+
+
+func _open_room_window() -> void:
+	_st_window.visible = false
+	_room_window.visible = true
+	_room_refresh()
+
+
+func _room_refresh() -> void:
+	for i in _room_slap_btns.size():
+		var mins: int = _main.SLAP_CHOICES[i]
+		var txt := "Never" if mins < 0 else ("%d h" % (mins / 60) if mins >= 60 else "%d min" % mins)
+		var on: bool = mins == _main.slap_minutes
+		_room_slap_btns[i].text = ("[ %s ]" if on else "%s") % txt
 
 
 # ---- debug window: things that are handy while testing the room
