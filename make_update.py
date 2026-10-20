@@ -13,7 +13,9 @@ for d, _, fs in os.walk("."):
             continue
         b = open(p, "rb").read()
         files[p] = {"sha": hashlib.sha256(b).hexdigest(), "size": len(b)}
-json.dump({"version": ver, "files": dict(sorted(files.items()))}, open("update.json", "w"), indent=1)
+# files that older copies still have and should lose (the updater deletes them if present)
+REMOVE = ["music/zephiramusic-tokyo-lofi.mp3"]
+json.dump({"version": ver, "files": dict(sorted(files.items())), "remove": REMOVE}, open("update.json", "w"), indent=1)
 print(len(files), "files, version", ver)
 # the release must be signed or no copy of the room will install it:  godot --headless -s pack/sign_update.gd -- <private key>
 import subprocess

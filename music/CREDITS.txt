@@ -5,4 +5,4 @@ ROOM SONGS - CREDITS
   Source:  https://pixabay.com/music/lofi-tokyo-lofi-604786/
   Artist:  https://pixabay.com/users/zephiramusic-54643547/
   Licence: Pixabay Content License (https://pixabay.com/service/terms/)
-  File:    zephiramusic-tokyo-lofi.mp3  (downloaded 2026-10-18)
+  File:    zephiramusic-tokyo-lofi.ogg  (downloaded 2026-10-18 as mp3, re-encoded to Ogg Vorbis q5)

@@ -19,6 +19,7 @@ var local_version := 0
 var remote_version := 0
 var _manifest := {}
 var _todo: Array = []          # relative paths to download
+var _remove: Array = []        # files a release says to delete (e.g. a song that changed format)
 var _stage_dir := "user://update_stage"
 var _http: HTTPRequest
 var _pending_body := PackedByteArray()     # update.json, kept until its signature has been checked
@@ -122,6 +123,10 @@ func _on_sig_done(result: int, code: int, _h: PackedStringArray, sig_body: Packe
 	_manifest = data["files"]
 	remote_version = int(data.get("version", 0))
 	_todo.clear()
+	_remove.clear()
+	for r in data.get("remove", []):
+		if _ok_path(str(r)):
+			_remove.append(str(r))
 	if remote_version <= local_version:
 		_total = 0
 		_state("current", "You are up to date (version %d)." % local_version)       # never go back to an older list
@@ -206,6 +211,10 @@ func install() -> void:
 		if DirAccess.copy_absolute(src, dest_abs) != OK:
 			return _fail("Could not write " + path + " (is it open?)")
 		DirAccess.remove_absolute(src)
+	for path in _remove:
+		var gone: String = root.path_join(path)
+		if FileAccess.file_exists(gone):
+			DirAccess.remove_absolute(gone)
 	_todo.clear()
 	local_version = _read_version()
 	_state("done", "Updated to version %d. Take a nap in the bed to wake up in the new room (or close and reopen)." % remote_version)
