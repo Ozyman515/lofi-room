@@ -914,10 +914,33 @@ func _fill_shelf() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var next_book := 0
+	# the most recently read books stand face-out at the front of the eye-level boards, showing their covers
+	var faced := {}
+	var recent := _recent_books(3)
 	for i in [3, 2, 4, 1, 0]:          # comics fill the eye-level boards first
 		var z := z0 + 0.05
 		var gap_chance := 0.12 if i < 3 else 0.35
+		if i == 3 or i == 2:
+			for rp in recent:
+				if faced.has(rp) or z > z1 - 0.3:
+					continue
+				var rb := _library_entry(rp)
+				if rb.is_empty():
+					continue
+				faced[rp] = true
+				var ch := 0.27 if i == 3 else 0.24
+				var cw := ch * 0.66
+				var node := _face_out_book(rb, Vector3(2.30, _shelf_boards[i] + 0.015 + ch / 2.0, z + cw / 2.0 + 0.01), cw, ch)
+				_shelf_nodes.append(node)
+				var it := {"node": node, "half": Vector3(0.035, ch / 2.0, cw / 2.0 + 0.004), "guest_ok": true,
+					"label": _book_label.bind(rb), "cb": _open_book.bind(str(rb["path"]))}
+				interactables.append(it)
+				_shelf_items.append(it)
+				z += cw + 0.05
 		while z < z1 - 0.1:
+			if next_book < library.size() and faced.has(str(library[next_book]["path"])):
+				next_book += 1
+				continue
 			if next_book < library.size():
 				# a real comic: the spine carries its name, pointing at it says READ
 				var b: Dictionary = library[next_book]
@@ -962,6 +985,100 @@ func _fill_shelf() -> void:
 		interactables.append(it)
 		_shelf_items.append(it)
 	_shelf_mtime = FileAccess.get_modified_time(books_dir())
+
+
+# the books in the diary, newest first
+func _recent_books(n: int) -> Array:
+	var out: Array = []
+	for e in load("res://diary.gd").entries():
+		if e["kind"] == "book" and e.has("path"):
+			out.append(str(e["path"]))
+			if out.size() >= n:
+				break
+	return out
+
+
+func _library_entry(path: String) -> Dictionary:
+	for b in library:
+		if str(b["path"]) == path:
+			return b
+	return {}
+
+
+# a book standing face-out, its cover (the first page) on the front; the cover picture arrives when it has been cached
+func _face_out_book(b: Dictionary, pos: Vector3, w: float, h: float) -> Node3D:
+	var root := Node3D.new()
+	root.position = pos
+	root.rotation.y = -PI / 2.0 + 0.12            # face into the room, leaning a touch
+	room.add_child(root)
+	var m: Material = _shelf_book_mats[hash(str(b["title"])) % _shelf_book_mats.size()]
+	_box(Vector3(0, 0, -0.012), Vector3(w, h, 0.02), m, root)        # the block of pages
+	var q := QuadMesh.new()
+	q.size = Vector2(w, h)
+	var cm := StandardMaterial3D.new()
+	cm.albedo_color = Color(0.2, 0.12, 0.2)
+	cm.roughness = 0.7
+	cm.disable_fog = true
+	var cover := MeshInstance3D.new()
+	cover.mesh = q
+	cover.material_override = cm
+	cover.position = Vector3(0, 0, 0.0005)
+	root.add_child(cover)
+	# until (or unless) a cover picture turns up, the title is printed on the front like a plain hardback
+	var tl := Label3D.new()
+	tl.text = str(b["title"])
+	tl.font_size = 36
+	tl.pixel_size = 0.00045
+	tl.width = w / 0.00045 - 20
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tl.outline_size = 0
+	tl.modulate = Color(0.95, 0.85, 0.6)
+	tl.position = Vector3(0, h * 0.18, 0.0012)
+	root.add_child(tl)
+	_cover_for(str(b["path"]), func(tex: Texture2D) -> void:
+		if tex != null and is_instance_valid(cover):
+			cm.albedo_color = Color.WHITE
+			cm.albedo_texture = tex
+			tl.visible = false
+			cm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS)
+	return root
+
+
+# Cover thumbnails live in user://covers/<md5>.png so the shelf never decodes a comic twice.
+var _cover_jobs := {}
+
+
+func _cover_for(path: String, done: Callable) -> void:
+	var key := path.md5_text()
+	var cache := "user://covers/%s.png" % key
+	if FileAccess.file_exists(cache):
+		var img := Image.load_from_file(ProjectSettings.globalize_path(cache))
+		if img != null:
+			done.call(ImageTexture.create_from_image(img))
+			return
+	DirAccess.make_dir_recursive_absolute("user://covers")
+	var task := WorkerThreadPool.add_task(func() -> void:
+		var c = ComicBook.new()
+		var img: Image = null
+		if c.open(path) and c.page_count() > 0 and not c.text_mode:
+			img = ComicBook._decode(c.pages[0][0], c.pages[0][1], 512)
+		if img != null:
+			img.save_png(ProjectSettings.globalize_path(cache))
+		c.close())
+	_cover_jobs[task] = [cache, done]
+
+
+func _poll_covers() -> void:
+	for task in _cover_jobs.keys():
+		if WorkerThreadPool.is_task_completed(task):
+			WorkerThreadPool.wait_for_task_completion(task)
+			var job: Array = _cover_jobs[task]
+			_cover_jobs.erase(task)
+			if FileAccess.file_exists(job[0]):
+				var img := Image.load_from_file(ProjectSettings.globalize_path(job[0]))
+				if img != null:
+					(job[1] as Callable).call(ImageTexture.create_from_image(img))
 
 
 static func _spine_text(t: String, h: float) -> String:
@@ -1130,6 +1247,7 @@ func _put_book() -> void:
 	var yaw := atan2(fwd.x, fwd.z)
 	bk.global_transform = Transform3D(Basis(Vector3.UP, yaw + PI) * Basis(Vector3.RIGHT, -PI / 2.0), p)   # open, pages up, the top away from you
 	bk._save_bookmark()
+	_shelf_mtime = -1                          # the "recently read" row may have changed: rebuild next time the shelf is looked at
 	if net_books != null:
 		net_books._my_book_put(bk)
 
@@ -1161,6 +1279,7 @@ func _update_book(delta: float) -> void:
 			if av.visible:
 				_glide(bk, _book_pose_for(av.head.global_transform), k)
 	_check_shelf(delta)
+	_poll_covers()
 	_update_diary(delta)
 
 
