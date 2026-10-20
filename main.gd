@@ -934,11 +934,17 @@ func _open_book(path: String) -> void:
 		updater.show_toast(err, 6.0)
 		return
 	room.add_child(bk)
+	_add_book(bk)
+	_hold_book(bk)
+
+
+func _add_book(bk: Node3D) -> void:
 	books.append(bk)
+	if bk.toc != null:
+		screens.append(bk.toc)
 	interactables.append({"node": bk, "half": Vector3(0.3, 0.22, 0.03), "guest_ok": true,
 		"when": func() -> bool: return bk.lying,
 		"label": func() -> String: return "PICK UP  " + bk.title, "cb": _hold_book.bind(bk)})
-	_hold_book(bk)
 
 
 func _hold_book(bk: Node3D) -> void:
@@ -949,6 +955,7 @@ func _hold_book(bk: Node3D) -> void:
 	held_book = bk
 	bk.lying = false
 	bk.held_by_me = true
+	bk._update_toc()
 	book_hint_t = 8.0
 	var xf := _book_target()
 	bk.global_transform = Transform3D(xf.basis, xf.origin - xf.basis.z * 0.3)
@@ -974,6 +981,7 @@ func _put_book() -> void:
 	held_book = null
 	bk.held_by_me = false
 	bk.lying = true
+	bk._update_toc()
 	var fwd := -head.global_transform.basis.z
 	fwd.y = 0.0
 	fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD

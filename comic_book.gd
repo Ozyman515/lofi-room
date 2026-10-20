@@ -11,7 +11,8 @@ const BOOK_EXTS := ["cbz", "zip"]
 var path := ""
 var title := ""
 var error := ""
-var chapters: Array = []        # [{"title": String, "path": String, "first": int (global page index), "count": int}]
+var chapters: Array = []        # [{"title": String, "path": String, "first": int (global page index), "count": int, "section": String}]
+const EXTRA_WORDS := ["annual", "special", "one-shot", "oneshot", "one shot", "preview", "extra", "giant", "ashcan", "sketchbook", "companion", "prelude", "epilogue", "directors cut", "director's cut", "variant", "fcbd", "free comic book day", "halloween", "holiday"]
 var pages: Array = []           # global page index -> [zip path, entry name]
 var spreads: Array = []         # spread index -> [left page, right page] (-1 = blank); every chapter opens with its cover alone
 
@@ -35,6 +36,13 @@ func open(file_path: String) -> bool:
 			return false
 	else:
 		files = [file_path]
+	# the regular run first, then the annuals, specials and one-shots as their own section
+	if files.size() > 1:
+		var main: Array = []
+		var extras: Array = []
+		for f in files:
+			(extras if is_extra(f.get_file()) else main).append(f)
+		files = main + extras
 	for f in files:
 		var entries := _list_pages(f)
 		if entries.is_empty():
@@ -44,7 +52,11 @@ func open(file_path: String) -> bool:
 		var first := pages.size()
 		for e in entries:
 			pages.append([f, e])
-		chapters.append({"title": nice_title(f), "path": f, "first": first, "count": entries.size()})
+		var ct := nice_title(f)
+		if files.size() > 1 and ct.length() > title.length() + 1 and ct.to_lower().begins_with(title.to_lower()):
+			ct = ct.substr(title.length()).strip_edges(true, false).trim_prefix("-").strip_edges()     # "#002" instead of "Series #002"
+		chapters.append({"title": ct, "path": f, "first": first, "count": entries.size(),
+			"section": "Extras" if (files.size() > 1 and is_extra(f.get_file())) else "Issues"})
 		spreads.append([-1, first])
 		var p := first + 1
 		while p < first + entries.size():
@@ -56,6 +68,14 @@ func open(file_path: String) -> bool:
 		return false
 	error = ""
 	return true
+
+
+static func is_extra(file_name: String) -> bool:
+	var n := file_name.to_lower()
+	for w in EXTRA_WORDS:
+		if n.contains(w):
+			return true
+	return false
 
 
 # the .cbz files directly inside a folder, in reading order
@@ -235,3 +255,47 @@ func close() -> void:
 	_tasks.clear()
 	_tex.clear()
 	_results.clear()
+
+
+# ---------------------------------------------------------------- the owner's side of sharing: pages as JPEG for the network
+
+var _jpeg_tasks := {}       # page -> task id
+var _jpeg_results := {}     # page -> PackedByteArray
+
+
+func request_jpeg(i: int) -> void:
+	if i < 0 or i >= pages.size() or _jpeg_tasks.has(i):
+		return
+	var zp: String = pages[i][0]
+	var name: String = pages[i][1]
+	_jpeg_tasks[i] = WorkerThreadPool.add_task(func() -> void:
+		var img := _decode(zp, name, 1400)
+		var bytes := PackedByteArray()
+		if img != null:
+			if img.get_format() == Image.FORMAT_RGBA8:
+				img.convert(Image.FORMAT_RGB8)
+			bytes = img.save_jpg_to_buffer(0.78)
+		_mutex.lock()
+		_jpeg_results[i] = bytes
+		_mutex.unlock())
+
+
+# {page: bytes} for the pages whose JPEG is ready (empty bytes = could not be read)
+func take_jpegs() -> Dictionary:
+	var out := {}
+	for i in _jpeg_tasks.keys():
+		if WorkerThreadPool.is_task_completed(_jpeg_tasks[i]):
+			WorkerThreadPool.wait_for_task_completion(_jpeg_tasks[i])
+			_jpeg_tasks.erase(i)
+			_mutex.lock()
+			out[i] = _jpeg_results.get(i, PackedByteArray())
+			_jpeg_results.erase(i)
+			_mutex.unlock()
+	return out
+
+
+func meta() -> Dictionary:
+	var ch: Array = []
+	for c in chapters:
+		ch.append({"title": c["title"], "first": c["first"], "count": c["count"], "section": c.get("section", "Issues")})
+	return {"title": title, "pages": pages.size(), "spreads": spreads, "chapters": ch}
