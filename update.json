@@ -1,5 +1,5 @@
 {
- "version": 74,
+ "version": 75,
  "files": {
   ".godot/.gdignore": {
    "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
@@ -278,24 +278,24 @@
    "size": 5996
   },
   "net_books.gd": {
-   "sha": "39db78a72b37512a61959a70ace03b6a5d13aa6578301898b1db075e47ccfdee",
-   "size": 8972
+   "sha": "7c3f81a995ddbf565f3ec9441cc385aeaf2498c203afd9967954fd2bb9de1093",
+   "size": 9157
   },
   "net_config.gd": {
    "sha": "e64afb899e11096b5b66bf1bd64e6a2976b8bae35b6897088600cb28a7c99fc4",
    "size": 1663
   },
   "net_game.gd": {
-   "sha": "d9588d34a77d4c0fa704486b211bb9dfdf955122a554670f684213f816eb26d5",
-   "size": 9136
+   "sha": "8859870b31ef9d64b887effb21d863934b8025453d6c9747037ba78e5320e4cf",
+   "size": 9307
   },
   "net_phone.gd": {
    "sha": "52f11752e846e1945845b11d9d9504e3efbddba3b66ed18888d263dfe4a5e219",
    "size": 7950
   },
   "net_session.gd": {
-   "sha": "b268a993956ab0d985b1a0e94408a54ac81a678ec0a5c0135eb353575df6d4d5",
-   "size": 10921
+   "sha": "4749a3ac07da3de0c71cebe6676d77245c9df9ea7e3f5db05537afb78b751b5c",
+   "size": 11126
   },
   "openxr_action_map.tres": {
    "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
@@ -314,8 +314,8 @@
    "size": 853
   },
   "remote_comic.gd": {
-   "sha": "c5157cf9767acf502f015c013957b8acad18e8d5f00be1b513ea39c7e4c3c628",
-   "size": 2073
+   "sha": "56d58672c3991797e2e8563357e91273ec4f5b88f1aecef58047f0144847c818",
+   "size": 2370
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
@@ -374,7 +374,7 @@
    "size": 40165
   },
   "version.txt": {
-   "sha": "93a73825c1b761d11bf2b3f4dff760d07888d3fde05dcf55f1da84aa6041a5a8",
+   "sha": "84b9bb077be0d8a29d0d01ef350d718b77c2ec5f40c3ab90502b1b4b5016c550",
    "size": 3
   },
   "weather.gd": {
