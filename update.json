@@ -1,9 +1,73 @@
 {
- "version": 73,
+ "version": 74,
  "files": {
+  ".godot/.gdignore": {
+   "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+   "size": 1
+  },
+  ".godot/extension_list.cfg": {
+   "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
+   "size": 84
+  },
+  ".godot/global_script_class_cache.cfg": {
+   "sha": "a439164fada1559568ff1d65f69f13eaae4a28901915c9aee5753c33d796eb13",
+   "size": 204
+  },
+  ".godot/imported/VLCMedia.svg-78a447e1b7c3343f152a0aa6a65c3d3a.ctex": {
+   "sha": "aa093b037e1c08369de1790280e66298a77679732abf15cc8575e8308f5fafd4",
+   "size": 438
+  },
+  ".godot/imported/VLCMedia.svg-78a447e1b7c3343f152a0aa6a65c3d3a.editor.ctex": {
+   "sha": "b134f14e41e8251f790c56af61b1f55ad50fa3f4a11cc5473450e6566ad28a80",
+   "size": 394
+  },
+  ".godot/imported/VLCMedia.svg-78a447e1b7c3343f152a0aa6a65c3d3a.editor.meta": {
+   "sha": "048a769aaf35c159b1254060032da09de53d400f6df04892921d14ed23bc6094",
+   "size": 76
+  },
+  ".godot/imported/VLCMedia.svg-78a447e1b7c3343f152a0aa6a65c3d3a.md5": {
+   "sha": "e0d9599b836e99c1c7cb0f045c267804fde475b1f7b7bfd8a16332cec506c791",
+   "size": 91
+  },
+  ".godot/imported/VLCMediaPlayer.svg-ea78dc0fdc9f898e4acd2f61e2acdc18.ctex": {
+   "sha": "ecd10ffb4deb1defecc4ad2764725568d7d0fb71b0f619112e499f1628d1f015",
+   "size": 296
+  },
+  ".godot/imported/VLCMediaPlayer.svg-ea78dc0fdc9f898e4acd2f61e2acdc18.editor.ctex": {
+   "sha": "2ae8df5ccdada18b727721c70dbe1a88d01a0716f616dbcf1187da61b695f5c5",
+   "size": 276
+  },
+  ".godot/imported/VLCMediaPlayer.svg-ea78dc0fdc9f898e4acd2f61e2acdc18.editor.meta": {
+   "sha": "048a769aaf35c159b1254060032da09de53d400f6df04892921d14ed23bc6094",
+   "size": 76
+  },
+  ".godot/imported/VLCMediaPlayer.svg-ea78dc0fdc9f898e4acd2f61e2acdc18.md5": {
+   "sha": "ed82901b6d10abeb6ecf94a5fa9d8066e0b37832246e00d39b05f3434f8289f0",
+   "size": 91
+  },
+  ".godot/imported/icon.png-487276ed1e3a0c39cad0279d744ee560.ctex": {
+   "sha": "72e1bc6c684dae43221cec038eb9968eddfdbee3ff0324cfd5fbef31bbfee3d0",
+   "size": 86342
+  },
+  ".godot/imported/icon.png-487276ed1e3a0c39cad0279d744ee560.md5": {
+   "sha": "a540168eba62350835f203d461252d0d20ca47c23570ed24f9c06cef7582c015",
+   "size": 91
+  },
+  ".godot/imported/poster.png-3c90a3ba96f265258e4b751ee25f4e05.ctex": {
+   "sha": "d2f6384f38c88468a9c705a739123561846dc4a982df391f2c9de24da199022e",
+   "size": 1708504
+  },
+  ".godot/imported/poster.png-3c90a3ba96f265258e4b751ee25f4e05.md5": {
+   "sha": "4152f23b47db40263b48f974490f1796e16fb2ced7456bf0924d79ee650975fd",
+   "size": 91
+  },
+  ".godot/uid_cache.bin": {
+   "sha": "faa9ce9264aa5b4e6bad00c6f228079849db942880ada586e5c35cc8da2a8812",
+   "size": 1448
+  },
   "README.md": {
-   "sha": "433ccbdd8234e177a7094311e453d75264ff2e81ccadf327946e4baeebf4c7c7",
-   "size": 15292
+   "sha": "d71519304bc32c02daa8837e01b0d7a6ba80c4a5afc0b259b2897834a5e0aa47",
+   "size": 15601
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -21,9 +85,17 @@
    "sha": "683b72ded617a02ba1c3a32494b7c14136bc77661918f8cbeadd691d8cdda631",
    "size": 2576
   },
+  "addons/godot-vlc/icons/VLCMedia.svg.import": {
+   "sha": "219ab55ca77074e9f81adf556d2e7dd648bfb6fee2089f4985fd37549c5a1d04",
+   "size": 1073
+  },
   "addons/godot-vlc/icons/VLCMediaPlayer.svg": {
    "sha": "a0f0bb7a9151c9ee6be85db102fb8a3963523705bf5f1c15bb8ac3932b2e26c3",
    "size": 2910
+  },
+  "addons/godot-vlc/icons/VLCMediaPlayer.svg.import": {
+   "sha": "cf44ecf69fc10af8b66ee6b05c0538250515516722aa4502426982bad0ef3421",
+   "size": 1092
   },
   "addons/webrtc/LICENSE.libdatachannel": {
    "sha": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
@@ -153,6 +225,10 @@
    "sha": "43e43ba8135f89da9e159ab0ba0a743020f4e6ef76ec35a6d2e42bf5d6cca5f3",
    "size": 123268
   },
+  "icon.png.import": {
+   "sha": "7f0839333b107ca25051b8c98f2a83a42523d6e158d2713230bb95589ea6ec5a",
+   "size": 915
+  },
   "incense.gd": {
    "sha": "5f6b45bc90ed587121b93dc79b7347d2b7bd9dc80fc03c92e68c2851d4a84dca",
    "size": 8732
@@ -281,20 +357,24 @@
    "sha": "088ffe0f37c263f4bd9d0460883e044c797633d6cd5d952449ebebe6537c05ce",
    "size": 2368730
   },
+  "textures/poster.png.import": {
+   "sha": "3e6dec8605d3e7ce8b3a6eab20d5a3690e2b918d50dfb1fdaa967716798ab453",
+   "size": 931
+  },
   "tornado_event.gd": {
    "sha": "b4c5550b12094a4d37b46ea6579d0cbf10e9f601ea969479542e2a4beabeaaae",
    "size": 35901
   },
   "updater.gd": {
-   "sha": "b51d61158dfcd0689e1d10f5fccd1a995e0ad86ca3ed1ed152581b8db7032d32",
-   "size": 6660
+   "sha": "cb391efa5e130146e392d83386534e4129fbaea2d077fb330e40871f6e004fd7",
+   "size": 6898
   },
   "vcr.gd": {
    "sha": "083ed5e90a42dd9dd3072bd92e7ee2f017f1aeb9f01ebda2f61e58c8f0713de9",
    "size": 40165
   },
   "version.txt": {
-   "sha": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+   "sha": "93a73825c1b761d11bf2b3f4dff760d07888d3fde05dcf55f1da84aa6041a5a8",
    "size": 3
   },
   "weather.gd": {
