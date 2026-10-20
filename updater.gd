@@ -7,7 +7,7 @@ const Plat := preload("res://platform.gd")
 signal changed
 
 var base := "https://raw.githubusercontent.com/Ozyman515/lofi-room/main/"
-const SKIP_PREFIXES := ["carts/", ".godot/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/"]
+const SKIP_PREFIXES := ["carts/", ".godot/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/"]
 
 var state := "idle"            # idle, checking, current, available, downloading, done, error
 var message := ""

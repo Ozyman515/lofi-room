@@ -6,3 +6,4 @@ tools/
 addons/godot-vlc/bin/
 carts/emulator.log
 __pycache__/
+books

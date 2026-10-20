@@ -473,6 +473,8 @@ func _build_window() -> void:
 
 const BedModel := preload("res://bed_model.gd")
 const BeanbagModel := preload("res://beanbag_model.gd")
+const Book := preload("res://book.gd")
+const ComicBook := preload("res://comic_book.gd")
 const Incense := preload("res://incense.gd")
 var incense: Node3D
 const BED_POS := Vector3(-1.65, 0.0, -0.9)
@@ -757,21 +759,249 @@ func _build_shelf() -> void:
 	for c in palette:
 		book_mats.append(_mat(c, 0.8))
 
+	_shelf_z0 = z0
+	_shelf_z1 = z1
+	_shelf_boards = boards
+	_shelf_book_mats = book_mats
+	_fill_shelf()
+	_plant(Vector3(2.34, 2.215, 0.0), 0.6)
+
+
+# ---------------------------------------------------------------- comics on the shelf
+
+var _shelf_z0 := 0.0
+var _shelf_z1 := 0.0
+var _shelf_boards: Array = []
+var _shelf_book_mats: Array = []
+var _shelf_nodes: Array = []           # everything standing on the boards (rebuilt when the folder changes)
+var _shelf_items: Array = []           # interactables that belong to the shelf
+var _shelf_mtime := -1
+var _shelf_check_t := 0.0
+var library: Array = []                # [{"title", "path", "size"}], what is in the books folder
+var books: Array = []                  # Book nodes in the room (held or lying about)
+var held_book: Node3D
+var book_hint_t := 0.0
+
+
+static func books_dir() -> String:
+	var d: String
+	if Plat.is_android():
+		d = ProjectSettings.globalize_path("user://books")
+	else:
+		d = ProjectSettings.globalize_path("res://books") if FileAccess.file_exists("res://project.godot") else OS.get_executable_path().get_base_dir().path_join("books")
+	if not DirAccess.dir_exists_absolute(d):
+		DirAccess.make_dir_recursive_absolute(d)
+	return d
+
+
+# A .cbz is a book; a folder of .cbz files is one book whose issues are chapters.
+func _scan_library() -> void:
+	library.clear()
+	var dir := books_dir()
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	d.list_dir_begin()
+	var n := d.get_next()
+	while n != "":
+		if not n.begins_with("."):
+			var p := dir.path_join(n)
+			if d.current_is_dir():
+				var issues: Array = ComicBook.issues_in(p)
+				if not issues.is_empty():
+					var total := 0
+					for f in issues:
+						total += _file_size(f)
+					library.append({"title": ComicBook.nice_title(p), "path": p, "size": total, "issues": issues.size()})
+			elif ComicBook.BOOK_EXTS.has(n.get_extension().to_lower()):
+				library.append({"title": ComicBook.nice_title(p), "path": p, "size": _file_size(p), "issues": 1})
+		n = d.get_next()
+	d.list_dir_end()
+	library.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return ComicBook._nat_key(str(a["title"])) < ComicBook._nat_key(str(b["title"])))
+
+
+static func _file_size(p: String) -> int:
+	var f := FileAccess.open(p, FileAccess.READ)
+	if f == null:
+		return 0
+	var n := f.get_length()
+	f.close()
+	return n
+
+
+func _fill_shelf() -> void:
+	for n in _shelf_nodes:
+		n.queue_free()
+	_shelf_nodes.clear()
+	for it in _shelf_items:
+		interactables.erase(it)
+	_shelf_items.clear()
+	_scan_library()
+	var z0 := _shelf_z0
+	var z1 := _shelf_z1
+	var spine := _mat(Color(0.95, 0.9, 1.0), 0.6)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
-	for i in 5:
-		var gap_chance := 0.12 if i < 3 else 0.35
+	var next_book := 0
+	for i in [3, 2, 4, 1, 0]:          # comics fill the eye-level boards first
 		var z := z0 + 0.05
+		var gap_chance := 0.12 if i < 3 else 0.35
 		while z < z1 - 0.1:
+			if next_book < library.size():
+				# a real comic: the spine carries its name, pointing at it says READ
+				var b: Dictionary = library[next_book]
+				next_book += 1
+				var w := clampf(0.03 + float(b["size"]) / (1024.0 * 1024.0) * 0.0002, 0.03, 0.08)
+				var h := 0.27 if i < 3 else 0.24
+				var m: Material = _shelf_book_mats[hash(str(b["title"])) % _shelf_book_mats.size()]
+				var bx := _box(Vector3(2.35, _shelf_boards[i] + 0.015 + h / 2.0, z + w / 2.0), Vector3(0.2, h, w), m)
+				_shelf_nodes.append(bx)
+				var lb := Label3D.new()
+				lb.text = _spine_text(str(b["title"]), h)
+				lb.font_size = 40
+				lb.pixel_size = 0.00042
+				lb.outline_size = 0
+				lb.modulate = Color(0.98, 0.94, 0.9)
+				lb.position = Vector3(2.247, _shelf_boards[i] + 0.015 + h / 2.0, z + w / 2.0)
+				lb.rotation = Vector3(0.0, -PI / 2.0, -PI / 2.0)     # reads top to bottom along the spine, facing the room
+				room.add_child(lb)
+				_shelf_nodes.append(lb)
+				var it := {"node": bx, "half": Vector3(0.1, h / 2.0, w / 2.0 + 0.002), "guest_ok": true,
+					"label": _book_label.bind(b), "cb": _open_book.bind(str(b["path"]))}
+				interactables.append(it)
+				_shelf_items.append(it)
+				z += w + 0.004
+				continue
 			if rng.randf() < gap_chance:
 				z += rng.randf_range(0.08, 0.2)
 				continue
-			var w := rng.randf_range(0.03, 0.06)
-			var h := rng.randf_range(0.18, 0.34)
-			var m: Material = book_mats[rng.randi() % book_mats.size()]
-			_box(Vector3(2.35, boards[i] + 0.015 + h / 2.0, z + w / 2.0), Vector3(0.2, h, w), m)
-			z += w + 0.003
-	_plant(Vector3(2.34, 2.215, 0.0), 0.6)
+			var w2 := rng.randf_range(0.03, 0.06)
+			var h2 := rng.randf_range(0.18, 0.34)
+			var m2: Material = _shelf_book_mats[rng.randi() % _shelf_book_mats.size()]
+			_shelf_nodes.append(_box(Vector3(2.35, _shelf_boards[i] + 0.015 + h2 / 2.0, z + w2 / 2.0), Vector3(0.2, h2, w2), m2))
+			z += w2 + 0.003
+	if library.is_empty():
+		# nothing yet: pointing anywhere at the shelf says where comics go
+		var hit := _box(Vector3(2.28, 1.1, (z0 + z1) / 2.0), Vector3(0.1, 2.1, z1 - z0), spine)
+		hit.visible = false
+		_shelf_nodes.append(hit)
+		var it := {"node": hit, "half": Vector3(0.05, 1.05, (z1 - z0) / 2.0), "guest_ok": true,
+			"label": func() -> String: return "PUT COMICS (.CBZ, OR A FOLDER OF THEM) IN THE BOOKS FOLDER",
+			"cb": func() -> void: updater.show_toast("Comics go in:  " + books_dir(), 10.0)}
+		interactables.append(it)
+		_shelf_items.append(it)
+	_shelf_mtime = FileAccess.get_modified_time(books_dir())
+
+
+static func _spine_text(t: String, h: float) -> String:
+	var max_chars := int(h / 0.0115)
+	return t if t.length() <= max_chars else t.left(max_chars - 1) + "…"
+
+
+func _book_label(b: Dictionary) -> String:
+	var t: String = str(b["title"])
+	if int(b["issues"]) > 1:
+		t += "  (%d issues)" % int(b["issues"])
+	return "READ  " + t
+
+
+# the shelf follows the folder: a new file shows up the next time you look at the shelf
+func _check_shelf(delta: float) -> void:
+	_shelf_check_t -= delta
+	if _shelf_check_t > 0.0:
+		return
+	_shelf_check_t = 3.0
+	if hover_item.is_empty() or not _shelf_items.has(hover_item):
+		return
+	if FileAccess.get_modified_time(books_dir()) != _shelf_mtime:
+		_fill_shelf()
+
+
+# ---- the book in the room
+
+func _open_book(path: String) -> void:
+	if held_book != null and held_book.comic != null and held_book.comic.path == path:
+		return
+	# the same book may already lie somewhere in the room: pick that one up instead of opening a second copy
+	for b in books:
+		if b.comic != null and b.comic.path == path:
+			_hold_book(b)
+			return
+	var bk: Node3D = Book.new()
+	var err: String = bk.open_file(path)
+	if err != "":
+		bk.free()
+		updater.show_toast(err, 6.0)
+		return
+	room.add_child(bk)
+	books.append(bk)
+	interactables.append({"node": bk, "half": Vector3(0.3, 0.22, 0.03), "guest_ok": true,
+		"when": func() -> bool: return bk.lying,
+		"label": func() -> String: return "PICK UP  " + bk.title, "cb": _hold_book.bind(bk)})
+	_hold_book(bk)
+
+
+func _hold_book(bk: Node3D) -> void:
+	if held_book == bk:
+		return
+	if held_book != null:
+		_put_book()
+	held_book = bk
+	bk.lying = false
+	bk.held_by_me = true
+	book_hint_t = 8.0
+	var xf := _book_target()
+	bk.global_transform = Transform3D(xf.basis, xf.origin - xf.basis.z * 0.3)
+
+
+# where a held book floats: in front of the face, a little low, tilted up toward the eyes
+func _book_target() -> Transform3D:
+	var fwd := -head.global_transform.basis.z
+	fwd.y = 0.0
+	if fwd.length() < 0.01:
+		fwd = Vector3.FORWARD
+	fwd = fwd.normalized()
+	var pos := head.global_position + fwd * 0.6 + Vector3(0.0, -0.14, 0.0)
+	var basis := Basis.looking_at(fwd, Vector3.UP)      # local -z looks where you look, so +z (the pages) faces you
+	basis = basis * Basis(Vector3.RIGHT, -0.3)          # tilted back so the pages face up toward your eyes
+	return Transform3D(basis, pos)
+
+
+func _put_book() -> void:
+	var bk := held_book
+	if bk == null:
+		return
+	held_book = null
+	bk.held_by_me = false
+	bk.lying = true
+	var fwd := -head.global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD
+	var p := head.global_position + fwd * 0.6
+	if not _walkable(p.x, p.z):
+		p = head.global_position + fwd * 0.25
+	p.y = 0.012
+	var yaw := atan2(fwd.x, fwd.z)
+	bk.global_transform = Transform3D(Basis(Vector3.UP, yaw + PI) * Basis(Vector3.RIGHT, -PI / 2.0), p)   # open, pages up, the top away from you
+	bk._save_bookmark()
+
+
+func _update_book(delta: float) -> void:
+	if held_book != null:
+		var t := _book_target()
+		var k := 1.0 - exp(-10.0 * delta)
+		var cur := held_book.global_transform
+		held_book.global_transform = Transform3D(cur.basis.get_rotation_quaternion().slerp(t.basis.get_rotation_quaternion(), k), cur.origin.lerp(t.origin, k))
+	_check_shelf(delta)
+
+
+func _book_page(dir: int) -> void:
+	if held_book == null:
+		return
+	if dir > 0:
+		held_book.next_spread()
+	else:
+		held_book.prev_spread()
 
 
 # ---------------------------------------------------------------- decor
@@ -1150,6 +1380,7 @@ func _aim_hits(ui: ScreenUI) -> bool:
 
 func _process(delta: float) -> void:
 	pad_hint_t = maxf(0.0, pad_hint_t - delta)
+	book_hint_t = maxf(0.0, book_hint_t - delta)
 	if leave_prompt:
 		leave_t -= delta
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
@@ -1158,6 +1389,7 @@ func _process(delta: float) -> void:
 		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not game_mode and not _aim_at_playing_tv() and not (hover_screen != null and hover_screen.cursor_allowed)
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
 	_update_held_pad(delta)
+	_update_book(delta)
 	if emu != null:
 		emu.set_volume(float(vcr.tv_volume) / 10.0 if (vcr.tv_on or slot_cart == "neo") else 0.0)
 		if game_mode:
@@ -1257,6 +1489,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				_put_pad()
 			else:
 				_toggle_sit()
+		elif held_book != null and event.keycode == KEY_G:
+			_put_book()
+		elif held_book != null and (event.keycode == KEY_RIGHT or event.keycode == KEY_PAGEDOWN):
+			_book_page(1)
+		elif held_book != null and (event.keycode == KEY_LEFT or event.keycode == KEY_PAGEUP):
+			_book_page(-1)
 		elif event.keycode == KEY_V:
 			_cycle_view()
 		elif event.keycode == KEY_M:
@@ -1283,6 +1521,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				hover_screen.send_scroll(hover_pos, true)
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				hover_screen.send_scroll(hover_pos, false)
+		elif event.pressed and held_book != null:
+			if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_book_page(1)
+			elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_book_page(-1)
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and cam_t >= 1.0:
 		desktop_cam.rotation.y -= event.relative.x * 0.003
@@ -1620,6 +1863,17 @@ func _on_button(button_name: String, hand: int) -> void:
 		if button_name == "grip_click":
 			_put_pad()
 		return
+	if held_book != null:
+		# reading: A/X turns forward, B/Y back, grip puts the book down; the trigger still points at things
+		if button_name == "grip_click":
+			_put_book()
+			return
+		if button_name == "ax_button":
+			_book_page(1)
+			return
+		if button_name == "by_button":
+			_book_page(-1)
+			return
 	if button_name == "trigger_click":
 		if _pointer_press(hand):
 			return
@@ -3548,6 +3802,11 @@ func _update_pointer(delta: float) -> void:
 		var k := clampf(found_t / 1.2, 0.2, 1.0)
 		hint_label.scale = Vector3.ONE * k
 		hint_label.global_position = found_point + Vector3(0.0, 0.02 + 0.08 * k, 0.0)
+		hint_label.visible = true
+	elif held_book != null and book_hint_t > 0.0:
+		hint_label.text = ("A / B  =  NEXT / PREVIOUS PAGE     GRIP  =  PUT IT DOWN" if xr_active else "ARROWS OR WHEEL  =  TURN PAGES     G  =  PUT IT DOWN")
+		hint_label.scale = Vector3.ONE * 0.45
+		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.3, 0.0)
 		hint_label.visible = true
 	elif game_mode and pad_hint_t > 0.0:
 		hint_label.text = "%s:  %s  =  %s" % ["ARCADE" if held_pad_idx == -1 else "CONTROLLER", "GRIP" if xr_active else "E", "STEP AWAY" if held_pad_idx == -1 else "PUT IT DOWN"]
