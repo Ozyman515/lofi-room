@@ -11,7 +11,7 @@ extends Node3D
 const CozyCat := preload("res://cozy_cat.gd")
 const CatFrames := preload("res://cat_frames.gd")
 const CFG := "user://lofi_room.cfg"
-const DEFAULT_NAMES := {"tux": "Tux", "calico": "Callie"}     # until the owner picks the real ones
+const DEFAULT_NAMES := {"tux": "Kitty", "calico": "Lola"}     # the black one is Kitty, the calico Lola
 const Diary := preload("res://diary.gd")
 
 const CALICO_CHANCE := 0.10

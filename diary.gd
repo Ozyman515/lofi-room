@@ -69,7 +69,7 @@ static func entries() -> Array:
 			var n := int(c.get("pets", 0))
 			var names := ConfigFile.new()
 			names.load("user://lofi_room.cfg")
-			var nm := str(names.get_value("cats", "name_" + k, "Tux" if k == "tux" else "Callie"))
+			var nm := str(names.get_value("cats", "name_" + k, "Kitty" if k == "tux" else "Lola"))
 			out.append({"kind": "cat", "title": nm,
 				"detail": "petted %d time%s" % [n, "" if n == 1 else "s"], "when": int(c.get("last", 0)), "sort": int(c.get("last", 0))})
 	var rc := ConfigFile.new()
