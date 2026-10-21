@@ -36,6 +36,9 @@ var host_away := false
 var _ws: WebSocketPeer
 var _mp: WebRTCMultiplayerPeer
 var _conns := {}                         # id -> WebRTCPeerConnection
+var _relayed := {}                       # id -> true: no direct link, packets go through the room server instead
+const DIRECT_WAIT_MS := 7000             # how long a direct link gets before falling back to the server
+const RELAY_BACKLOG := 512 * 1024        # skip unreliable packets (video, poses) while this much is still unsent
 var _pending_sig := {}                   # id -> queued signals that arrived before the connection existed
 var _connecting_since := {}              # id -> ms
 var _ping_t := 0.0
@@ -102,6 +105,13 @@ func send_to(id: int, kind: int, payload: PackedByteArray, reliable := true) -> 
 		for pid in peer_ids():
 			send_to(pid, kind, payload, reliable)
 		return
+	if _relayed.has(id):
+		if not reliable and _ws.get_current_outbound_buffered_amount() > RELAY_BACKLOG:
+			return                      # a slow link drops a frame rather than falling behind
+		var r := PackedByteArray([id, kind])
+		r.append_array(payload)
+		_ws.send(r, WebSocketPeer.WRITE_MODE_BINARY)
+		return
 	if _connecting_since.has(id) or not _conns.has(id):
 		return                          # not linked up yet (or gone)
 	_mp.transfer_mode = MultiplayerPeer.TRANSFER_MODE_RELIABLE if reliable else MultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED
@@ -133,6 +143,9 @@ func _start(what: String, c: String) -> void:
 	my_name = Cfg.player_name()
 	_closing = false
 	_ws = WebSocketPeer.new()
+	_ws.inbound_buffer_size = 4 * 1024 * 1024      # relayed game packets are bigger than handshake messages
+	_ws.outbound_buffer_size = 4 * 1024 * 1024
+	_ws.max_queued_packets = 8192
 	var err := _ws.connect_to_url(Cfg.server_url())
 	if err != OK:
 		_fail("Can't reach the room server.")
@@ -158,6 +171,7 @@ func _teardown() -> void:
 	for id in _conns:
 		_conns[id].close()
 	_conns.clear()
+	_relayed.clear()
 	_pending_sig.clear()
 	_connecting_since.clear()
 	if _mp != null:
@@ -189,8 +203,11 @@ func _process(delta: float) -> void:
 				_ws_open = true
 				_on_ws_open()
 			while _ws.get_available_packet_count() > 0:
-				var txt := _ws.get_packet().get_string_from_utf8()
-				var m = JSON.parse_string(txt)
+				var raw := _ws.get_packet()
+				if not _ws.was_string_packet():
+					_on_relayed(raw)
+					continue
+				var m = JSON.parse_string(raw.get_string_from_utf8())
 				if m is Dictionary:
 					_on_server_msg(m)
 				if _ws == null:
@@ -306,6 +323,8 @@ func _make_conn(id: int, offerer: bool) -> void:
 		_send_ws({"t": "sig", "to": id, "data": {"k": "sdp", "type": type, "sdp": sdp}}))
 	c.ice_candidate_created.connect(func(media: String, index: int, cname: String) -> void:
 		_log("link %d: my candidate %s" % [id, _cand_kind(cname)])
+		if OS.get_environment("LOFI_NO_DIRECT") == "1":
+			return                      # testing: pretend the networks block a direct link
 		_send_ws({"t": "sig", "to": id, "data": {"k": "ice", "m": media, "i": index, "n": cname}}))
 	_conns[id] = c
 	_connecting_since[id] = Time.get_ticks_msec()
@@ -370,15 +389,48 @@ func _check_timeouts() -> void:
 			continue
 		if _mp.has_peer(id) and _mp.get_peer(id).get("connected", false):
 			_connecting_since.erase(id)
+			_log("link %d: direct" % id)
 			_on_peer_up(id)
-		elif now - int(_connecting_since[id]) > 20000:
-			_connecting_since.erase(id)
-			_log("link %d: no connection after 20 s (state %d)" % [id, _conns[id].get_connection_state()])
-			if is_host():
-				_drop_peer(id)
-			else:
-				_fail("Couldn't connect to the host.")
-				return
+		elif now - int(_connecting_since[id]) > DIRECT_WAIT_MS:
+			_log("link %d: no direct link after %d s (state %d), going through the server" % [id, DIRECT_WAIT_MS / 1000, _conns[id].get_connection_state()])
+			_use_relay(id)
+			_send_relay_hello(id)
+
+
+# the direct link didn't come up: talk to this player through the room server from now on
+func _use_relay(id: int) -> void:
+	if _relayed.has(id):
+		return
+	_relayed[id] = true
+	_connecting_since.erase(id)
+	if _conns.has(id):
+		_conns[id].close()
+	if _mp != null and _mp.has_peer(id):
+		_mp.remove_peer(id)
+	_on_peer_up(id)
+
+
+func _send_relay_hello(id: int) -> void:
+	_ws.send(PackedByteArray([id, 0]), WebSocketPeer.WRITE_MODE_BINARY)
+
+
+# [from id] [kind] payload, from the server (it fills in the real sender)
+func _on_relayed(raw: PackedByteArray) -> void:
+	if raw.size() < 2:
+		return
+	var from := int(raw[0])
+	if is_host():
+		if not roster.has(from) or from == 1:
+			return
+	elif from != 1 or state == State.CONNECTING:
+		return
+	if not _relayed.has(from):
+		_log("link %d: the other side went through the server, following" % from)
+		_use_relay(from)
+		if int(raw[1]) == 0:
+			_send_relay_hello(from)
+	if int(raw[1]) != 0:
+		_on_packet(from, int(raw[1]), raw.slice(2))
 
 
 func _on_peer_up(id: int) -> void:
@@ -389,6 +441,7 @@ func _on_peer_up(id: int) -> void:
 
 
 func _drop_peer(id: int) -> void:
+	_relayed.erase(id)
 	if _conns.has(id):
 		_conns[id].close()
 		_conns.erase(id)
@@ -404,6 +457,8 @@ func _drop_peer(id: int) -> void:
 
 
 func _on_peer_gone(id: int) -> void:
+	if _relayed.has(id):
+		return                          # we closed the direct attempt ourselves
 	_drop_peer(id)
 
 

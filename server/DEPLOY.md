@@ -62,3 +62,14 @@ Nothing is stored on disk. In memory, per connection: the address, the display n
 game version. Game traffic (poses, inputs, pictures, comic pages) never passes through it; players talk
 to each other directly over encrypted WebRTC. Players therefore see each other's addresses, like any
 peer-to-peer game.
+
+## Updating the server later
+On the droplet:
+
+    curl -fsSL https://raw.githubusercontent.com/Ozyman515/lofi-room/main/server/server.js -o /opt/lofi-rooms/server.js && systemctl restart lofi-rooms && curl -s http://127.0.0.1:8787/health
+
+## When players can't link directly
+The room first tries a direct link (WebRTC, with the TURN relay from `setup_turn.sh` if installed). If nothing
+connects within 7 seconds, game packets go through this server over the same secure websocket instead
+(capped at RELAY_BPS bytes a second per player, 4 MB/s by default). Each PC writes what happened to `net.log`
+in its save folder (%APPDATA%\Godot\app_userdata\Lofi Room on Windows).

@@ -8,7 +8,8 @@ function open(port) {
 	return new Promise((resolve, reject) => {
 		const ws = new WebSocket("ws://127.0.0.1:" + port);
 		const q = []; let waiter = null;
-		ws.onmessage = (e) => { const m = JSON.parse(e.data); if (waiter) { const w = waiter; waiter = null; w(m); } else q.push(m); };
+		ws.binaryType = "arraybuffer";
+		ws.onmessage = (e) => { const m = typeof e.data === "string" ? JSON.parse(e.data) : { bin: [...new Uint8Array(e.data)] }; if (waiter) { const w = waiter; waiter = null; w(m); } else q.push(m); };
 		ws.onopen = () => resolve({ ws,
 			send: (o) => ws.send(JSON.stringify(o)),
 			next: () => new Promise((r, rej) => { if (q.length) return r(q.shift()); waiter = r; setTimeout(() => rej(new Error("timeout")), 2000); }),
@@ -56,6 +57,14 @@ function open(port) {
 	// a guest can't talk to another guest
 	g2.send({ t: "sig", to: 4, data: { sneaky: true } });
 	g1.send({ t: "ping" }); assert.strictEqual((await g1.next()).t, "pong");
+
+	// relayed game packets: host -> guest and guest -> host carry the real sender; guest -> guest is refused
+	host.ws.send(new Uint8Array([3, 5, 9, 9]));
+	assert.deepStrictEqual((await g2.next()).bin, [1, 5, 9, 9]);
+	g2.ws.send(new Uint8Array([1, 6, 7]));
+	assert.deepStrictEqual((await host.next()).bin, [3, 6, 7]);
+	g2.ws.send(new Uint8Array([2, 6, 7]));
+	g1.send({ t: "ping" }); assert.strictEqual((await g1.next()).t, "pong");   // nothing binary reached guest 2's neighbour
 
 	// kick
 	host.send({ t: "kick", id: 4 });

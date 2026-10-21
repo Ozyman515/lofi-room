@@ -1,5 +1,6 @@
 // Lofi Room matchmaking server: hands out invite codes and passes the WebRTC handshake between the host and guests.
-// It never carries game traffic (the game picture, sound and controls go straight between the players).
+// Game traffic normally goes straight between the players; when their networks won't allow that, it falls back
+// to binary messages through this server ([to id] + packet in, [from id] + packet out), host <-> guests only.
 // No dependencies: Node 18+.   Run:  node server.js        (PORT=8787 by default)
 // Put it behind HTTPS (wss://) in production, e.g. Caddy / Cloudflare / fly.io / any host that terminates TLS for you.
 "use strict";
@@ -12,7 +13,10 @@ const GRACE_MS = parseInt(process.env.GRACE_MS || "90000", 10);        // a host
 const JOIN_PER_MIN = parseInt(process.env.JOIN_PER_MIN || "12", 10);   // join attempts per address per minute
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";                    // no 0/O or 1/I
 const CODE_LEN = 6;
-const MAX_FRAME = 64 * 1024;
+const MAX_FRAME = 64 * 1024;                 // text (handshake) messages
+const MAX_BIN = 1024 * 1024;                 // relayed game packets (a comic page can be a few hundred KB)
+const RELAY_BPS = parseInt(process.env.RELAY_BPS || String(4 * 1024 * 1024), 10);   // per player, bytes a second
+const RELAY_BACKLOG = 4 * 1024 * 1024;       // a receiver this far behind starts losing packets instead of piling up
 const MAX_ROOMS = parseInt(process.env.MAX_ROOMS || "2000", 10);
 const MAX_CONNS = parseInt(process.env.MAX_CONNS || "4000", 10);
 const MAX_CONNS_PER_IP = parseInt(process.env.MAX_CONNS_PER_IP || "8", 10);
@@ -49,6 +53,8 @@ class Client {
 		this.room = null;
 		this.id = 0;
 		this.name = "";
+		this.budget = RELAY_BPS;
+		this.budgetAt = Date.now();
 		socket.on("data", (d) => this.onData(d));
 		socket.on("close", () => this.onClose());
 		socket.on("error", () => this.socket.destroy());
@@ -87,7 +93,7 @@ class Client {
 			let len = b[1] & 0x7f, off = 2;
 			if (len === 126) { if (b.length < 4) return; len = b.readUInt16BE(2); off = 4; }
 			else if (len === 127) { if (b.length < 10) return; len = Number(b.readBigUInt64BE(2)); off = 10; }
-			if (len > MAX_FRAME || !masked) { this.close(1009); return; }       // clients must mask; keep frames small
+			if (len > MAX_BIN || !masked) { this.close(1009); return; }       // clients must mask; keep frames small
 			if (b.length < off + 4 + len) return;
 			const mask = b.subarray(off, off + 4);
 			const payload = Buffer.from(b.subarray(off + 4, off + 4 + len));
@@ -99,12 +105,13 @@ class Client {
 			if (op === 0x1 || op === 0x2) { this.frag = { op, parts: [payload], size: payload.length }; }
 			else if (op === 0x0 && this.frag) { this.frag.parts.push(payload); this.frag.size += payload.length; }
 			else continue;
-			if (this.frag.size > MAX_FRAME) { this.close(1009); return; }       // endless continuation frames
+			if (this.frag.size > (this.frag.op === 0x1 ? MAX_FRAME : MAX_BIN)) { this.close(1009); return; }   // endless continuation frames
 			if (fin) {
 				const whole = Buffer.concat(this.frag.parts);
 				const isText = this.frag.op === 0x1;
 				this.frag = null;
-				if (isText && whole.length <= MAX_FRAME) onMessage(this, whole.toString("utf8"));
+				if (isText) onMessage(this, whole.toString("utf8"));
+				else relay(this, whole);
 			}
 		}
 	}
@@ -239,6 +246,24 @@ function doSig(c, m) {
 	} else if (c.role === "guest" && to === 1 && room.host) {      // guests only talk to the host (star shape)
 		room.host.send({ t: "sig", from: c.id, data: m.data });
 	}
+}
+
+// a game packet for a player whose direct link didn't come up
+function relay(c, data) {
+	const room = c.room;
+	if (!room || data.length < 2) return;
+	const now = Date.now();
+	c.budget = Math.min(RELAY_BPS, c.budget + (now - c.budgetAt) * RELAY_BPS / 1000);
+	c.budgetAt = now;
+	if (c.budget < data.length) return;                         // over the speed limit: dropped
+	c.budget -= data.length;
+	const to = data[0];
+	let target = null;
+	if (c.role === "host") target = room.guests.get(to) || null;
+	else if (c.role === "guest" && to === 1) target = room.host;   // guests only talk to the host (star shape)
+	if (!target || !target.alive || target.socket.writableLength > RELAY_BACKLOG) return;
+	data[0] = c.id;                                              // the receiver learns who really sent it
+	target.sendFrame(0x2, data);
 }
 
 function doKick(c, m) {
