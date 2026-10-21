@@ -1,8 +1,19 @@
-ROOM SONGS - CREDITS
-====================
+SONGS IN THE ROOM - CREDITS
+===========================
 
 "Tokyo Lofi" by ZephiraMusic
-  Source:  https://pixabay.com/music/lofi-tokyo-lofi-604786/
-  Artist:  https://pixabay.com/users/zephiramusic-54643547/
-  Licence: Pixabay Content License (https://pixabay.com/service/terms/)
-  File:    zephiramusic-tokyo-lofi.ogg  (downloaded 2026-10-18 as mp3, re-encoded to Ogg Vorbis q5)
+  Plays on:  the room's speakers (the default song)
+  Source:    https://pixabay.com/music/lofi-tokyo-lofi-604786/
+  Artist:    https://pixabay.com/users/zephiramusic-54643547/
+  Licence:   Pixabay Content License (https://pixabay.com/service/terms/)
+  File:      music/zephiramusic-tokyo-lofi.ogg  (downloaded 2026-10-18 as mp3, re-encoded to Ogg Vorbis q5)
+
+"Gritty Noir (ASMR Noir Jazz)" by KonstantinPazuzuStudio
+  Plays on:  somewhere in the room, late at night (a secret)
+  Source:    https://pixabay.com/music/crime-scene-gritty-noir-asmr-noir-jazz-520243/
+  Artist:    https://pixabay.com/users/konstantinpazuzustudio-53945084/
+  Licence:   Pixabay Content License (https://pixabay.com/service/terms/)
+  File:      noir/konstantinpazuzustudio-gritty-noir.ogg  (Pixabay audio file 520243, downloaded 2026-10-21 as mp3,
+             re-encoded to Ogg Vorbis q5)
+
+Thank you to both artists.

@@ -3,7 +3,7 @@ extends Node3D
 ## the TV's channel knob after midnight (12 to 4 am) while the TV is on with nothing playing.
 ## The room turns into an old detective film: the colour drains away, the other lights go out and the desk
 ## lamp is the only light, striped shadows of blinds fall across the floor and wall, rain pours, the incense
-## fills the room with smoke, and a slow sax plays instead of the lofi music. On the desk: a typewriter (in
+## fills the room with smoke, and "Gritty Noir" by KonstantinPazuzuStudio plays instead of the lofi music. On the desk: a typewriter (in
 ## place of the keyboard) that types up tonight's case, a revolver, one round, a whiskey (in place of the mug,
 ## click it to take a sip) and a lit cigarette, with a fedora, an open case file and a badge.
 ## Switch the desk lamp off and it all comes back. In a shared room the host's Noir Night is everybody's.
@@ -11,7 +11,8 @@ extends Node3D
 const Props := preload("res://noir_props.gd")
 const Plat := preload("res://platform.gd")
 
-const MUSIC := "res://noir/noir_sax.ogg"
+const MUSIC := "res://noir/konstantinpazuzustudio-gritty-noir.ogg"
+const MUSIC_CREDIT := "Now playing:  Gritty Noir (ASMR Noir Jazz)  by KonstantinPazuzuStudio"      # music/CREDITS.txt
 const FADE := 2.5                     # seconds for the colour to drain / come back
 const SAT := 0.06                     # how much colour is left
 const DESK_Y := 0.785
@@ -120,6 +121,7 @@ func start() -> void:
 	_music.volume_db = -80.0
 	if _music.stream != null:
 		_music.play()
+		main.updater.show_toast(MUSIC_CREDIT, 6.0)
 	# the desk
 	_sips = 0
 	_glasses = 0

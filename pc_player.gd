@@ -442,6 +442,10 @@ func _build_settings_window() -> void:
 	dbg_btn.text = "  Debug...  "
 	dbg_btn.pressed.connect(_open_debug_window)
 	head.add_child(dbg_btn)
+	var cr_btn := Button.new()
+	cr_btn.text = "  Credits...  "
+	cr_btn.pressed.connect(_open_credits_window)
+	head.add_child(cr_btn)
 	var close := Button.new()
 	close.text = " x "
 	close.pressed.connect(_toggle_settings)
@@ -500,6 +504,7 @@ func _build_settings_window() -> void:
 	_st_refresh()
 	_build_controls_window()
 	_build_debug_window()
+	_build_credits_window()
 	_build_room_window()
 
 
@@ -615,6 +620,53 @@ func _room_refresh() -> void:
 
 
 # ---- debug window: things that are handy while testing the room
+
+# ---- credits: the artists whose songs play in the room (music/CREDITS.txt)
+
+var _cr_window: PanelContainer
+
+
+func _build_credits_window() -> void:
+	_cr_window = PanelContainer.new()
+	_cr_window.offset_left = 150.0
+	_cr_window.offset_top = 6.0
+	_cr_window.offset_right = 874.0
+	_cr_window.offset_bottom = 545.0
+	_cr_window.visible = false
+	ui.root.add_child(_cr_window)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_cr_window.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var t := Label.new()
+	t.text = "Credits"
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var back := Button.new()
+	back.text = "  Back  "
+	back.pressed.connect(func() -> void:
+		_cr_window.visible = false
+		_st_window.visible = true
+		_st_refresh())
+	head.add_child(back)
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var body := Label.new()
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_font_size_override("font_size", 16)
+	var txt := FileAccess.get_file_as_string("res://music/CREDITS.txt")
+	body.text = txt if txt != "" else "Music credits are in music/CREDITS.txt."
+	sc.add_child(body)
+
+
+func _open_credits_window() -> void:
+	_st_window.visible = false
+	_cr_window.visible = true
+
 
 func _build_debug_window() -> void:
 	_dbg_window = PanelContainer.new()
