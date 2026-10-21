@@ -1,5 +1,5 @@
 {
- "version": 94,
+ "version": 95,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "06eb9ed07abf15e93bfdb77dddab75b14d0b311004cdbe6ec46302e8e20c4396",
-   "size": 15662
+   "sha": "00b98f6a765ba70648d9dddf025293201126634e1feb7aaaa97ab95a398d10e8",
+   "size": 16149
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -254,8 +254,8 @@
    "size": 8732
   },
   "kaiju.gd": {
-   "sha": "87dee9c644f4c49a5bfb8099e22f4c6384d7c4e4197c024c0d792c560759b8c1",
-   "size": 10512
+   "sha": "d54486c297fb5243ebb310c3a3c2933bab52c72bcb07e9d371174ebba3e90c41",
+   "size": 10684
   },
   "kaiju_model.gd": {
    "sha": "9794c8b1d09e9fdeb8ca33d9b01c610ad22e9876e50c940723656733d266a710",
@@ -266,8 +266,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "bf368a7099a1a2267afadc1ad3aec9f1a59f534d3e704f207096e40d7a3d1716",
-   "size": 188196
+   "sha": "8440f5ed3ceb3459e1d3f763fc8e8c1ce0a9543d83d94c32fe8819467528eb9b",
+   "size": 192098
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -358,8 +358,8 @@
    "size": 56337
   },
   "padmap.gd": {
-   "sha": "0b678e4fb84251d74304846e80524014c8ad8c8d0d1ecdcc53b9fddcebdb3284",
-   "size": 11217
+   "sha": "4da375def134a30bfbe257c595af543a2a2cdcef7c51dcd379abefdb43208cb8",
+   "size": 12297
   },
   "page_renderer.gd": {
    "sha": "b8ae3b2d3958a7e876a92544b563bf3f1d96a6fac3ff3b1846a1fb811a75bf2f",
@@ -466,7 +466,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "6fc16b03d8c15b9885876848a301a01816cccaf7b48e74f2b51db99c007a3bd5",
+   "sha": "d867d3f88fa20d7cb936ecd93651adeedf473a6177218cd0987f462ff5511cb6",
    "size": 3
   },
   "weather.gd": {

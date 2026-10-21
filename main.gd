@@ -1837,8 +1837,9 @@ func _process(delta: float) -> void:
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
 			_cancel_leave()          # walked away or waited too long: the sign goes
 	if reticle != null:
-		reticle.visible = reticle_on and not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not game_mode and not _aim_at_playing_tv() and not (hover_screen != null and hover_screen.cursor_allowed)
+		reticle.visible = reticle_on and not xr_active and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or pad_in_use) and not game_mode and not _aim_at_playing_tv() and not (hover_screen != null and hover_screen.cursor_allowed)
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
+	_room_pad_tick(delta)
 	_update_held_pad(delta)
 	_update_book(delta)
 	if emu != null:
@@ -1908,6 +1909,104 @@ func _process(delta: float) -> void:
 				_end_focus(false)
 			var yaw := desktop_cam.global_rotation.y
 			_try_move(Vector3(v.x, 0.0, -v.y).rotated(Vector3.UP, yaw) * MOVE_SPEED * delta)
+
+
+# ---- a gamepad (DualSense, DualShock, Xbox...) in the room on a PC
+# left stick walks, right stick looks; R2 or CROSS / A is the click; CIRCLE / B sits and stands (or puts a
+# controller or book down); TRIANGLE / Y zooms like V; SQUARE / X puts a book down; L1 / R1 and the d-pad
+# left / right turn pages; d-pad up / down scrolls a screen. While you hold a console pad the gamepad plays.
+const PAD_LOOK_SPEED := 2.4            # radians a second at full tilt
+const PAD_DEAD := 0.18
+var pad_in_use := false                # the gamepad moved recently (shows the crosshair without the mouse)
+var _pad_prev := {}
+var _pad_idle := 0.0
+
+
+func _room_pad_tick(delta: float) -> void:
+	if xr_active or padmap == null:
+		return
+	var d := padmap.pad_device()
+	if d < 0:
+		pad_in_use = false
+		return
+	var ls := Vector2(Input.get_joy_axis(d, JOY_AXIS_LEFT_X), Input.get_joy_axis(d, JOY_AXIS_LEFT_Y))
+	var rs := Vector2(Input.get_joy_axis(d, JOY_AXIS_RIGHT_X), Input.get_joy_axis(d, JOY_AXIS_RIGHT_Y))
+	ls = Vector2.ZERO if ls.length() < PAD_DEAD else ls * ((ls.length() - PAD_DEAD) / (1.0 - PAD_DEAD)) / ls.length()
+	rs = Vector2.ZERO if rs.length() < PAD_DEAD else rs * ((rs.length() - PAD_DEAD) / (1.0 - PAD_DEAD)) / rs.length()
+	var any := ls != Vector2.ZERO or rs != Vector2.ZERO
+	_pad_idle = 0.0 if any else _pad_idle + delta
+	if any:
+		pad_in_use = true
+	if game_mode or sleeping:
+		_pad_edges(d, true)                 # the console has the gamepad; only keep the edge state current
+		return
+	# look
+	if rs != Vector2.ZERO and cam_t >= 1.0:
+		desktop_cam.rotation.y -= rs.x * PAD_LOOK_SPEED * delta
+		pitch = clampf(pitch - rs.y * PAD_LOOK_SPEED * 0.75 * delta, -1.2, 1.2)
+		desktop_cam.rotation.x = pitch
+	# walk
+	if ls != Vector2.ZERO and not seated:
+		if focus_level > 0:
+			_end_focus(false)
+		var yaw := desktop_cam.global_rotation.y
+		_try_move(Vector3(ls.x, 0.0, ls.y).rotated(Vector3.UP, yaw) * MOVE_SPEED * delta)
+	_pad_edges(d, false)
+
+
+func _pad_edges(d: int, quiet: bool) -> void:
+	var now := {
+		"click": Input.is_joy_button_pressed(d, JOY_BUTTON_A) or Input.get_joy_axis(d, JOY_AXIS_TRIGGER_RIGHT) > 0.5,
+		"back": Input.is_joy_button_pressed(d, JOY_BUTTON_B),
+		"zoom": Input.is_joy_button_pressed(d, JOY_BUTTON_Y),
+		"drop": Input.is_joy_button_pressed(d, JOY_BUTTON_X),
+		"next": Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_SHOULDER) or Input.is_joy_button_pressed(d, JOY_BUTTON_DPAD_RIGHT),
+		"prev": Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_SHOULDER) or Input.is_joy_button_pressed(d, JOY_BUTTON_DPAD_LEFT),
+		"up": Input.is_joy_button_pressed(d, JOY_BUTTON_DPAD_UP),
+		"down": Input.is_joy_button_pressed(d, JOY_BUTTON_DPAD_DOWN),
+	}
+	var was := _pad_prev
+	_pad_prev = now
+	if quiet:
+		return
+	var pressed := func(k: String) -> bool: return bool(now[k]) and not bool(was.get(k, true))
+	if bool(now["click"]) != bool(was.get("click", false)):
+		if now["click"]:
+			pad_in_use = true
+			_pointer_press(2)
+		else:
+			_pointer_release(2)
+	if pressed.call("back"):
+		if held_book != null:
+			_put_book()
+		elif diary != null and diary.open_book:
+			put_diary()
+		else:
+			_toggle_sit()
+	if pressed.call("drop"):
+		if held_book != null:
+			_put_book()
+		elif diary != null and diary.open_book:
+			put_diary()
+	if pressed.call("zoom"):
+		if held_book != null:
+			toggle_book_zoom()
+		else:
+			_cycle_view()
+	if pressed.call("next") and held_book != null:
+		_book_page(1)
+	if pressed.call("prev") and held_book != null:
+		_book_page(-1)
+	if hover_screen != null:
+		if pressed.call("up"):
+			hover_screen.send_scroll(hover_pos, true)
+		if pressed.call("down"):
+			hover_screen.send_scroll(hover_pos, false)
+	elif not hover_item.is_empty() and hover_item.has("player"):
+		if pressed.call("up"):
+			player_scroll(int(hover_item["player"]), true)
+		if pressed.call("down"):
+			player_scroll(int(hover_item["player"]), false)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1994,6 +2093,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_book_page(-1)
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and cam_t >= 1.0:
+		pad_in_use = false
 		desktop_cam.rotation.y -= event.relative.x * 0.003
 		pitch = clampf(pitch - event.relative.y * 0.003, -1.2, 1.2)
 		desktop_cam.rotation.x = pitch

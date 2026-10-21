@@ -119,9 +119,29 @@ func _parse(s: String) -> Array:
 
 # ---------------------------------------------------------------- reading the pad
 
+# The pad to read: a recognised gamepad first (a DualSense / DualShock, an Xbox pad...), so an unmapped extra
+# device (a wheel, a motion-sensor node, a virtual pad) never steals the controls.
 func pad_device() -> int:
 	var j := Input.get_connected_joypads()
+	for d in j:
+		if Input.is_joy_known(int(d)):
+			return int(d)
 	return int(j[0]) if not j.is_empty() else -1
+
+
+# PlayStation pads get their own button names (Cross, Circle, L1, Options...)
+func is_playstation() -> bool:
+	var d := pad_device()
+	if d < 0:
+		return false
+	var n := Input.get_joy_name(d).to_lower()
+	return n.contains("dualsense") or n.contains("dualshock") or n.contains("ps5") or n.contains("ps4") \
+		or n.contains("playstation") or n.contains("wireless controller")
+
+
+const PS_BUTTON_NAMES := {0: "CROSS", 1: "CIRCLE", 2: "SQUARE", 3: "TRIANGLE", 4: "CREATE / SHARE", 5: "PS BUTTON",
+	6: "OPTIONS", 7: "L3", 8: "R3", 9: "L1", 10: "R1", 11: "D-PAD UP", 12: "D-PAD DOWN", 13: "D-PAD LEFT",
+	14: "D-PAD RIGHT", 15: "MIC BUTTON", 20: "TOUCHPAD"}
 
 
 func has_gamepad() -> bool:
@@ -302,6 +322,8 @@ func name_of(b: String) -> String:
 		"k":
 			return OS.get_keycode_string(p[1]).to_upper()
 		"b":
+			if is_playstation():
+				return str(PS_BUTTON_NAMES.get(p[1], PAD_BUTTON_NAMES.get(p[1], "BUTTON %d" % p[1])))
 			return str(PAD_BUTTON_NAMES.get(p[1], "BUTTON %d" % p[1]))
 		"a":
 			var ax: int = p[1]
@@ -311,8 +333,8 @@ func name_of(b: String) -> String:
 				1: return "LEFT STICK " + ("DOWN" if plus else "UP")
 				2: return "RIGHT STICK " + ("RIGHT" if plus else "LEFT")
 				3: return "RIGHT STICK " + ("DOWN" if plus else "UP")
-				4: return "LEFT TRIGGER"
-				5: return "RIGHT TRIGGER"
+				4: return "L2" if is_playstation() else "LEFT TRIGGER"
+				5: return "R2" if is_playstation() else "RIGHT TRIGGER"
 			return "AXIS %d" % ax
 		"v":
 			return ("LEFT " if p[1] == "L" else "RIGHT ") + str(VR_NAMES.get(p[2], p[2]))

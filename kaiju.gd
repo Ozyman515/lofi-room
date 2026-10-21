@@ -154,6 +154,8 @@ func _footfall() -> void:
 	_rattle.play()
 	_shake = 0.06 * near
 	_flicker_t = 0.25 * near
+	if main.padmap != null and main.padmap.pad_device() >= 0:
+		Input.start_joy_vibration(main.padmap.pad_device(), 0.5 * near, 1.0 * near, 0.3)      # the gamepad shakes too
 	if main.xr_active:
 		for hand in [main.left_hand, main.right_hand]:
 			if hand != null:
