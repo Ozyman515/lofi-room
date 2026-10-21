@@ -195,6 +195,7 @@ var sit_label: Label3D
 
 
 func _ready() -> void:
+	_relaunch_ack.call_deferred()             # once the room is built: proof this copy really started
 	updater = Updater.new()
 	updater.name = "Updater"
 	add_child(updater)
@@ -2379,7 +2380,7 @@ func _go_to_sleep() -> void:
 	_save_prefs_tick()
 	pc.save_music_dir()
 	await get_tree().create_timer(0.9).timeout
-	if not _relaunch():
+	if not await _relaunch():
 		_sleep_text.text = "Could not restart the room"
 		bed_made = true
 		_save_prefs_tick()
@@ -2407,15 +2408,53 @@ func _relaunch() -> bool:
 	if wm == DisplayServer.WINDOW_MODE_FULLSCREEN or wm == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		args.append("--fullscreen")
 	args.append_array(relaunch_extra)
+	# the new copy writes a little "I'm up" file; this one only closes once it has seen it, so a copy that fails
+	# to start can never leave you with no room at all
+	var token := "%d_%d" % [OS.get_process_id(), Time.get_ticks_msec()]
+	args.append_array(["--", "lofi_relaunch=" + token])
 	if dry_relaunch:
 		print("RELAUNCH ", OS.get_executable_path(), " ", args)
 		return false
+	var ok_file := "user://relaunch_%s.ok" % token
+	_relaunch_log("starting: %s %s" % [OS.get_executable_path(), " ".join(args)])
 	var pid := OS.create_process(OS.get_executable_path(), args)
 	if pid <= 0:
+		_relaunch_log("could not start it (create_process returned %d)" % pid)
 		return false
-	print("RELAUNCH pid ", pid)
-	get_tree().quit()
-	return true
+	_relaunch_log("started pid %d, waiting for it" % pid)
+	var waited := 0.0
+	while waited < 25.0:
+		await get_tree().create_timer(0.25).timeout
+		waited += 0.25
+		if FileAccess.file_exists(ok_file):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(ok_file))
+			_relaunch_log("it is up after %.1f s; closing this copy" % waited)
+			get_tree().quit()
+			return true
+		if not OS.is_process_running(pid):
+			_relaunch_log("it closed by itself after %.1f s (exit code %d)" % [waited, OS.get_process_exit_code(pid)])
+			return false
+	_relaunch_log("no sign of it after 25 s")
+	OS.kill(pid)
+	return false
+
+
+func _relaunch_log(line: String) -> void:
+	var path := "user://relaunch.log"
+	var f := FileAccess.open(path, FileAccess.READ_WRITE if FileAccess.file_exists(path) else FileAccess.WRITE)
+	if f == null:
+		return
+	f.seek_end()
+	f.store_line("%s  %s" % [Time.get_datetime_string_from_system(), line])
+
+
+# a copy started by _relaunch tells the old one it made it
+func _relaunch_ack() -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("lofi_relaunch="):
+			var f := FileAccess.open("user://relaunch_%s.ok" % a.trim_prefix("lofi_relaunch="), FileAccess.WRITE)
+			if f != null:
+				f.store_string("ok")
 
 
 # Meta Quest 3: ask for 90 Hz and let the runtime lower the resolution toward the edges of the lenses.

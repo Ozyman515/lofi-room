@@ -739,6 +739,14 @@ func _build_debug_window() -> void:
 		if _main.ufo != null:
 			_main.ufo.request_visit())
 	v.add_child(ub)
+	var nb := Button.new()
+	nb.text = "Noir Night with the grey visitor"
+	nb.custom_minimum_size = Vector2(0, 42)
+	nb.pressed.connect(func() -> void:
+		if _main.noir != null and not _main.noir.active:
+			_main.noir.force_visitor = true
+			_main.noir.request_start())
+	v.add_child(nb)
 	for opt in [["Call the tux", "tux"], ["Calico: rug", "rug"], ["Calico: beanbag", "beanbag"], ["Calico: console", "console"], ["No cats", "none"]]:
 		var cb := Button.new()
 		cb.text = opt[0]

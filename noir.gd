@@ -49,8 +49,20 @@ var _desk_lamp := -1
 var _rng := RandomNumberGenerator.new()
 
 
+const VISITOR_CHANCE := 0.33         # how often the grey visitor is sitting on the bed when Noir Night starts
+var visitor: Node3D
+var force_visitor := false
+
+
 func setup(m: Node3D) -> void:
 	main = m
+	visitor = load("res://stressed_alien.gd").new()
+	visitor.name = "NoirVisitor"
+	main.room.add_child(visitor)
+	visitor.build()
+	visitor.position = Vector3(-0.95, 0.0, -0.75)        # on the edge of the bed, facing the desk lamp
+	visitor.rotation.y = PI / 2.0
+	visitor.visible = false
 	_rng.randomize()
 	process_priority = 50             # after the incense, which also sets the colour
 	for gi in main.light_groups.size():
@@ -132,6 +144,9 @@ func start() -> void:
 		var pimg := Image.load_from_file(POSTER)
 		if pimg != null and not pimg.is_empty():
 			main.poster.show_override(pimg)
+	# sometimes there's somebody on the edge of the bed, having a worse night than you
+	visitor.visible = force_visitor or randf() < VISITOR_CHANCE
+	force_visitor = false
 	# the desk
 	_sips = 0
 	_glasses = 0
@@ -166,6 +181,7 @@ func stop() -> void:
 		return
 	active = false
 	main.weather.end_noir()
+	visitor.visible = false
 	if main.poster != null:
 		main.poster.clear_override()
 	if bool(_saved.get("console", false)) and not main.console_on:
