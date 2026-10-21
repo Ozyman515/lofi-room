@@ -1,5 +1,5 @@
 {
- "version": 93,
+ "version": 94,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -253,13 +253,21 @@
    "sha": "5f6b45bc90ed587121b93dc79b7347d2b7bd9dc80fc03c92e68c2851d4a84dca",
    "size": 8732
   },
+  "kaiju.gd": {
+   "sha": "87dee9c644f4c49a5bfb8099e22f4c6384d7c4e4197c024c0d792c560759b8c1",
+   "size": 10512
+  },
+  "kaiju_model.gd": {
+   "sha": "9794c8b1d09e9fdeb8ca33d9b01c610ad22e9876e50c940723656733d266a710",
+   "size": 10100
+  },
   "lofi_theme.gd": {
    "sha": "3ecf7eb4936ed43b2e90831ded4ab8cf3ef049b5437e4b70c238582f618e6917",
    "size": 3474
   },
   "main.gd": {
-   "sha": "86000e6a7f677ee9b9058f1490464f78ee17556421f14fddaccc41d3b7193d1f",
-   "size": 187911
+   "sha": "bf368a7099a1a2267afadc1ad3aec9f1a59f534d3e704f207096e40d7a3d1716",
+   "size": 188196
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -310,8 +318,8 @@
    "size": 1670
   },
   "net_game.gd": {
-   "sha": "f1964786a83a31263419fd10eedfdc5a24d185262152f7fb976accbcc741afa8",
-   "size": 20018
+   "sha": "58d10e936b26b165a858d51468aca73203aeef9b744d0502037212d2294b11de",
+   "size": 20146
   },
   "net_phone.gd": {
    "sha": "402b3c30fffcddb19d92d6cb125e8fd161372b5310e4120bd59f4ee2ac085ece",
@@ -358,8 +366,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "ee0fa5d273215e52d1dca524d5be75907e8e68caf08c78d5aba3c81f1d87618c",
-   "size": 47207
+   "sha": "9cf3083fc5a964030b0db2eef9098dbc06256f9134c29c3e805049c12d2df655",
+   "size": 47427
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -458,7 +466,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "d6ba4fb19951b0a0175af857ec4891947aaf65d7de043c48a38b2daf2df0a329",
+   "sha": "6fc16b03d8c15b9885876848a301a01816cccaf7b48e74f2b51db99c007a3bd5",
    "size": 3
   },
   "weather.gd": {
