@@ -232,7 +232,7 @@ func _ready() -> void:
 
 # ---------------------------------------------------------------- multiplayer
 
-const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(0.7, 0.0, 0.2), Vector3(-0.3, 0.0, 0.1), Vector3(0.9, 0.0, 1.6)]
+const GUEST_SPAWNS := [Vector3(0.45, 0.0, 1.85), Vector3(0.7, 0.0, 0.2), Vector3(-0.3, 0.0, 0.1), Vector3(0.9, 0.0, 1.6)]
 
 
 func _build_multiplayer() -> void:
@@ -1459,6 +1459,7 @@ func _build_decor() -> void:
 	_cyl(Vector3(rug_c.x, 0.01, rug_c.z), 1.3, 0.02, _mat(Color(0.30, 0.10, 0.34), 1.0))
 	_cyl(Vector3(rug_c.x, 0.012, rug_c.z), 1.15, 0.02, _mat(Color(0.42, 0.15, 0.42), 1.0))
 	_build_beanbags()
+	_build_recliner()
 	_build_dresser()
 	# fairy lights: three strands, kept restrained
 	var bulb := _mat(WARM, 0.5, 3.0)
@@ -1735,7 +1736,7 @@ func _make_hand(tracker_name: String) -> XRController3D:
 func _setup_player() -> void:
 	origin = XROrigin3D.new()
 	origin.name = "XROrigin3D"
-	origin.position = Vector3(0.2, 0.0, 1.0)
+	origin.position = Vector3(0.45, 0.0, 1.85)
 	add_child(origin)
 
 	var xr_cam := XRCamera3D.new()
@@ -1852,6 +1853,7 @@ func _process(delta: float) -> void:
 				if down and not _pad_stick_prev:
 					_put_pad()
 				_pad_stick_prev = down
+	_recliner_tick()
 	_update_lighting(delta)
 	_update_focus_anim(delta)
 	_update_pointer(delta)
@@ -2131,6 +2133,11 @@ func _walkable(x: float, z: float) -> bool:
 		for r in LOUNGE_BLOCKERS:
 			if r.has_point(Vector2(l.x, l.z)):
 				return false
+	if recliner != null:
+		var rc := Vector2(recliner.global_position.x, recliner.global_position.z)
+		var fwd := Vector2(-sin(recliner.rotation.y), -cos(recliner.rotation.y))
+		if Vector2(x, z).distance_to(rc) < 0.55 or (recliner.reclined and Vector2(x, z).distance_to(rc + fwd * 0.55) < 0.4):
+			return false
 	for i in beanbags.size():
 		if beanbags[i].visible and Vector2(x, z).distance_to(Vector2(beanbags[i].global_position.x, beanbags[i].global_position.z)) < 0.55:
 			return false
@@ -2181,6 +2188,87 @@ func _build_beanbags() -> void:
 		ball.scale = Vector3.ONE * 1.12
 		beanbags.append(root)
 	set_beanbag_count(1)
+
+
+# ---- the recliner on the rug: swivels in 45 degree steps, leans back, starts facing the window
+
+const RECLINER_POS := Vector3(-0.2, 0.0, 0.9)
+const RECLINER_YAW := 0.38               # facing the middle of the window, over the foot of the bed
+var recliner: Node3D
+var recliner_seat := -1
+var _rec_base_y := 0.0
+var _rec_view_k := 0.0
+
+
+func _build_recliner() -> void:
+	recliner = load("res://recliner.gd").new()
+	recliner.name = "Recliner"
+	recliner.position = RECLINER_POS
+	room.add_child(recliner)
+	recliner.build()
+	recliner.rotation.y = RECLINER_YAW
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_FILE) == OK:
+		recliner.rotation.y = float(cfg.get_value("room", "recliner_yaw", RECLINER_YAW))
+		recliner.reclined = bool(cfg.get_value("room", "recliner_back", false))
+	recliner_seat = seat_nodes.size()
+	seat_nodes.append(recliner)
+	seat_eye.append(0.98)
+	seat_swivel.append(false)
+	recliner.turned.connect(_on_recliner_turned)
+	for side in [-1, 1]:
+		var sd: int = side
+		interactables.append({"node": recliner.arm_node(sd), "half": Vector3(0.12, 0.1, 0.12), "guest_ok": true,
+			"label": func() -> String: return "TURN THE RECLINER  " + ("LEFT" if sd < 0 else "RIGHT"),
+			"cb": func() -> void: recliner.turn(-1 if sd < 0 else 1)})
+	interactables.append({"node": recliner.lever_node(), "half": Vector3(0.06, 0.12, 0.08), "guest_ok": true,
+		"label": func() -> String: return "SIT UP" if recliner.reclined else "LEAN BACK",
+		"cb": func() -> void:
+			recliner.toggle_recline()
+			_save_recliner()})
+
+
+func _on_recliner_turned(dy: float) -> void:
+	_save_recliner.call_deferred()
+	if not (seated and cur_seat == recliner_seat):
+		return
+	# turning in it turns you with it
+	if xr_active:
+		var pivot := head.global_position
+		pivot.y = 0.0
+		var tw := create_tween()
+		var done := [0.0]
+		tw.tween_method(func(k: float) -> void:
+			var step: float = dy * k - float(done[0])
+			done[0] = dy * k
+			origin.global_translate(-pivot)
+			origin.global_rotate(Vector3.UP, step)
+			origin.global_translate(pivot), 0.0, 1.0, 0.45)
+	else:
+		var tw2 := create_tween()
+		tw2.tween_property(desktop_cam, "rotation:y", desktop_cam.rotation.y + dy, 0.45).set_trans(Tween.TRANS_SINE)
+
+
+func _save_recliner() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_FILE)
+	cfg.set_value("room", "recliner_yaw", wrapf(recliner.rotation.y, -PI, PI))
+	cfg.set_value("room", "recliner_back", recliner.reclined)
+	cfg.save(SETTINGS_FILE)
+
+
+# sitting down in it: face the way it faces; leaning back lowers you a little and tips the view up
+func _recliner_tick() -> void:
+	if recliner == null or not seated or cur_seat != recliner_seat:
+		_rec_view_k = 0.0
+		return
+	var k: float = recliner.recline_amount()
+	origin.global_position.y = _rec_base_y - 0.1 * k
+	if not xr_active:
+		pitch += (0.22 * k - 0.22 * _rec_view_k)
+		pitch = clampf(pitch, -1.2, 1.2)
+		desktop_cam.rotation.x = pitch
+	_rec_view_k = k
 
 
 func set_beanbag_count(n: int) -> void:
@@ -2503,6 +2591,13 @@ func _toggle_sit() -> void:
 	origin.global_position.y = clampf(seat_eye[idx] - head.position.y, -1.0, 0.2)
 	seated = true
 	cur_seat = idx
+	if idx == recliner_seat:
+		_rec_base_y = origin.global_position.y
+		_rec_view_k = 0.0
+		if not xr_active:
+			desktop_cam.rotation.y = recliner.rotation.y      # settle in facing the way it faces
+			pitch = 0.0
+			desktop_cam.rotation.x = 0.0
 
 
 # ---------------------------------------------------------------- optional 3D assets
