@@ -2232,6 +2232,15 @@ func _fade_veil(to: float, secs: float) -> void:
 	await tw.finished
 
 
+# a nap from somewhere else (Noir Night's third whiskey), with its own words on the way out
+func go_to_sleep(message: String) -> void:
+	_nap_message = message
+	_go_to_sleep()
+
+
+var _nap_message := ""
+
+
 func _go_to_sleep() -> void:
 	if sleeping or egg_active or updater == null or updater.busy():
 		return
@@ -2249,7 +2258,7 @@ func _go_to_sleep() -> void:
 			sleeping = false
 			updater.show_toast(updater.message if updater.state == "error" else "There was nothing to install.")
 			return
-	_sleep_text.text = "Waking up from your nap in the new room..." if updater.state == "done" else "Waking up from your nap..."
+	_sleep_text.text = "Waking up from your nap in the new room..." if updater.state == "done" else ("Waking up from your nap..." if _nap_message == "" else _nap_message)
 	if emu != null:
 		emu._stop_host()                      # the running game saves its place first
 	bed_made = false                          # you slept in it, so the new room has an unmade bed

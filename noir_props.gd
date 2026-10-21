@@ -355,3 +355,31 @@ static func typewriter() -> Node3D:
 	text.position = Vector3(0, 0.225, 0.001)
 	sheet.add_child(text)
 	return w
+
+
+# a bottle of whiskey; its liquid is the MeshInstance3D named "Liquid" (scale its height to show how much is left)
+static func bottle() -> Node3D:
+	var b := Node3D.new()
+	var glass := _glass(Color(0.35, 0.22, 0.12), 0.35)
+	var whisky := StandardMaterial3D.new()
+	whisky.albedo_color = Color(0.55, 0.22, 0.03, 0.85)
+	whisky.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	whisky.roughness = 0.05
+	whisky.disable_fog = true
+	var liquid := _part(_cyl(0.034, 0.034, 0.15, 24), whisky, Vector3(0, 0.083, 0), Vector3.ZERO, b)
+	liquid.name = "Liquid"
+	_part(_cyl(0.037, 0.037, 0.17, 24), glass, Vector3(0, 0.085, 0), Vector3.ZERO, b)        # the body
+	_part(_cyl(0.014, 0.037, 0.04, 24), glass, Vector3(0, 0.19, 0), Vector3.ZERO, b)         # shoulders
+	_part(_cyl(0.013, 0.013, 0.07, 16), glass, Vector3(0, 0.245, 0), Vector3.ZERO, b)        # neck
+	_part(_cyl(0.015, 0.015, 0.022, 16), _m(Color(0.12, 0.08, 0.06), 0.6), Vector3(0, 0.29, 0), Vector3.ZERO, b)   # cork cap
+	var label := _part(_cyl(0.0375, 0.0375, 0.07, 24), _m(Color(0.88, 0.82, 0.66), 0.9), Vector3(0, 0.09, 0), Vector3.ZERO, b)
+	label.scale = Vector3(1.0, 1.0, 1.0)
+	var t := Label3D.new()
+	t.text = "OLD\nGUMSHOE"
+	t.font_size = 26
+	t.pixel_size = 0.0005
+	t.outline_size = 0
+	t.modulate = Color(0.25, 0.1, 0.05)
+	t.position = Vector3(0, 0.09, 0.0385)
+	b.add_child(t)
+	return b

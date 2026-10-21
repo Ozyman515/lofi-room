@@ -27,6 +27,9 @@ var _whisky: MeshInstance3D
 var _surface: MeshInstance3D
 var _ice: MeshInstance3D
 var _sips := 0
+var _glasses := 0                     # glasses finished tonight; the third one sends you to sleep
+const GLASSES_TO_NAP := 3
+var _bottle_liquid: MeshInstance3D
 var _blinds: Array[MeshInstance3D] = []
 var _music: AudioStreamPlayer
 var _clack: AudioStreamPlayer3D
@@ -119,7 +122,9 @@ func start() -> void:
 		_music.play()
 	# the desk
 	_sips = 0
+	_glasses = 0
 	_set_whisky()
+	_set_bottle()
 	_desk.visible = true
 	main.keyboard_node.visible = false
 	main.mug_node.visible = false
@@ -202,7 +207,7 @@ func _build_desk() -> void:
 		"when": func() -> bool: return active,
 		"label": func() -> String: return "THE TYPEWRITER  (a new case)", "cb": func() -> void: new_case()})
 	# the still life by the lamp, where the mug was
-	var still := Props.build(_desk, Vector3(2.0, DESK_Y, -1.5), -0.35)
+	var still := Props.build(_desk, Vector3(1.97, DESK_Y, -1.43), -0.35)
 	var glass: Node3D = still.get_node("Tumbler")
 	_whisky = glass.get_node("Whisky")
 	_surface = glass.get_node("Surface")
@@ -210,6 +215,14 @@ func _build_desk() -> void:
 	main.interactables.append({"node": glass, "half": Vector3(0.05, 0.11, 0.05), "guest_ok": true,
 		"when": func() -> bool: return active,
 		"label": func() -> String: return "A SIP OF WHISKEY" if _sips < 3 else "THE GLASS IS EMPTY", "cb": _sip})
+	# the bottle, beside the glass: pour another
+	var bottle := Props.bottle()
+	bottle.position = Vector3(2.25, DESK_Y, -1.42)
+	_desk.add_child(bottle)
+	_bottle_liquid = bottle.get_node("Liquid")
+	main.interactables.append({"node": bottle, "half": Vector3(0.05, 0.16, 0.05), "guest_ok": true,
+		"when": func() -> bool: return active,
+		"label": _bottle_label, "cb": _pour})
 	# the detective's things on the other side of the typewriter
 	var hat := Props.fedora()
 	hat.position = Vector3(0.95, DESK_Y, -1.62)
@@ -230,6 +243,48 @@ func _sip() -> void:
 		return
 	_sips += 1
 	_set_whisky()
+	if _sips >= 3:
+		_glasses += 1
+		_set_bottle()
+		if _glasses >= GLASSES_TO_NAP:
+			_pass_out()
+		elif _glasses == GLASSES_TO_NAP - 1:
+			main.updater.show_toast("The room tilts a little.", 3.0)
+
+
+func _bottle_label() -> String:
+	if _glasses >= GLASSES_TO_NAP:
+		return "OLD GUMSHOE  (that's enough for tonight)"
+	if _glasses >= GLASSES_TO_NAP - 1 and _sips >= 3:
+		return "POUR ONE MORE  (the last)"
+	if _sips >= 3:
+		return "POUR ANOTHER"
+	return "OLD GUMSHOE  (finish your glass first)"
+
+
+func _pour() -> void:
+	if _sips < 3 or _glasses >= GLASSES_TO_NAP:
+		return
+	_sips = 0
+	_set_whisky()
+	_set_bottle()
+
+
+func _set_bottle() -> void:
+	# full for the first glass's refill, a little lower with each one poured
+	var poured := _glasses + (1 if _sips < 3 and _glasses > 0 else 0)
+	var k := clampf(1.0 - poured * 0.3, 0.1, 1.0)
+	_bottle_liquid.scale = Vector3(1.0, k, 1.0)
+	_bottle_liquid.position.y = 0.008 + 0.075 * k
+
+
+# three glasses down: the desk lamp blurs and you wake up from a nap (the room starts fresh, colour and all)
+func _pass_out() -> void:
+	await get_tree().create_timer(1.5).timeout
+	if not active:
+		return
+	stop()                            # put the lights, music and weather back first, so the new room wakes up normal
+	main.go_to_sleep("You dozed off at the desk. The rain is still falling...")
 
 
 func _set_whisky() -> void:
