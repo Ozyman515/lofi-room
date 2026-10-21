@@ -348,11 +348,11 @@ static func typewriter() -> Node3D:
 	text.pixel_size = 0.00042
 	text.outline_size = 0
 	text.modulate = Color(0.08, 0.07, 0.08)
-	text.width = 440.0
+	text.width = 420.0                           # 0.176 m of the sheet's 0.21
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	text.position = Vector3(0, 0.225, 0.001)
+	text.position = Vector3(-0.088, 0.228, 0.001)
 	sheet.add_child(text)
 	return w
 

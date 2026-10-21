@@ -173,7 +173,41 @@ static func fit_size(aspect: float) -> Vector2:
 	return Vector2(w, h)
 
 
+# ---- a poster that takes over for a while (Noir Night's), with whatever was there kept underneath
+
+var _override_on := false
+var _under: Array = []                        # [texture, size] to put back
+
+
+func show_override(img: Image) -> void:
+	if not _override_on:
+		_under = [_mat.albedo_texture, _pic_mesh.size]
+	_override_on = true
+	var shown := img.duplicate() as Image
+	if shown.get_format() != Image.FORMAT_RGBA8 and shown.get_format() != Image.FORMAT_RGB8:
+		shown.convert(Image.FORMAT_RGBA8)
+	shown.generate_mipmaps()
+	_apply_tex(ImageTexture.create_from_image(shown), fit_size(float(img.get_width()) / float(img.get_height())))
+	close_picker()
+
+
+func clear_override() -> void:
+	if not _override_on:
+		return
+	_override_on = false
+	if _under.size() == 2:
+		_apply_tex(_under[0], _under[1])
+	_under = []
+
+
 func _set_texture(tex: Texture2D, size: Vector2) -> void:
+	if _override_on:
+		_under = [tex, size]                       # changes wait underneath until the override ends
+		return
+	_apply_tex(tex, size)
+
+
+func _apply_tex(tex: Texture2D, size: Vector2) -> void:
 	_mat.albedo_texture = tex
 	_mat.emission_texture = tex
 	_pic_mesh.size = size
@@ -268,7 +302,7 @@ func close_picker() -> void:
 
 
 func toggle_picker() -> void:
-	if remote_from != "":
+	if remote_from != "" or _override_on:
 		return                                     # the host's poster: nothing to pick here
 	if picking:
 		close_picker()
@@ -284,6 +318,8 @@ func _on_chosen(path: String) -> void:
 
 
 func label() -> String:
+	if _override_on:
+		return "THE CITY NEVER SLEEPS"
 	if remote_from != "":
 		return "%s'S POSTER" % remote_from.to_upper()
 	if picking:

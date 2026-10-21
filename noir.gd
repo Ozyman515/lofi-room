@@ -12,6 +12,7 @@ const Props := preload("res://noir_props.gd")
 const Plat := preload("res://platform.gd")
 
 const MUSIC := "res://noir/konstantinpazuzustudio-gritty-noir.ogg"
+const POSTER := "res://noir/noir_poster.png"
 const MUSIC_CREDIT := "Now playing:  Gritty Noir (ASMR Noir Jazz)  by KonstantinPazuzuStudio"      # music/CREDITS.txt
 const FADE := 2.5                     # seconds for the colour to drain / come back
 const SAT := 0.06                     # how much colour is left
@@ -105,6 +106,10 @@ func start() -> void:
 		_saved["lights"].append(main.is_light_on(gi))
 		main.set_light(gi, gi == _desk_lamp)
 	main.weather.begin_noir()
+	# as little electricity as possible: the monitor, the arcade and the TV go off (the console too, unless
+	# somebody is playing on it); they come back on afterwards
+	if not _remote:
+		_power_down()
 	# smoke: light the incense if it isn't
 	_lit_incense = main.incense != null and not main.incense.lit
 	if _lit_incense:
@@ -122,6 +127,11 @@ func start() -> void:
 	if _music.stream != null:
 		_music.play()
 		main.updater.show_toast(MUSIC_CREDIT, 6.0)
+	# the poster: a dark-deco city in the rain
+	if main.poster != null:
+		var pimg := Image.load_from_file(POSTER)
+		if pimg != null and not pimg.is_empty():
+			main.poster.show_override(pimg)
 	# the desk
 	_sips = 0
 	_glasses = 0
@@ -136,11 +146,36 @@ func start() -> void:
 	set_process(true)
 
 
+func _power_down() -> void:
+	_saved["monitor"] = main.monitor_on
+	main._set_monitor(false)
+	_saved["arcade"] = main.arcade_on
+	if main.arcade_on and not (main.game_mode and main.held_pad_idx == -1):
+		main.set_arcade_on(false)
+	_saved["tv"] = main.vcr.tv_on
+	_saved["console"] = main.console_on
+	var playing: bool = main.game_mode or (main.net_game != null and main.net_game.guests_playing())
+	if main.console_on and not playing and main.slot_cart != "neo" and main.slot_cart != "egg":
+		main.toggle_console()
+	if main.vcr.tv_on and not main.console_on:
+		main.vcr.toggle_tv()
+
+
 func stop() -> void:
 	if not active:
 		return
 	active = false
 	main.weather.end_noir()
+	if main.poster != null:
+		main.poster.clear_override()
+	if bool(_saved.get("console", false)) and not main.console_on:
+		main.toggle_console()
+	if bool(_saved.get("tv", false)) and not main.vcr.tv_on:
+		main.vcr.toggle_tv()
+	if bool(_saved.get("arcade", false)) and not main.arcade_on:
+		main.set_arcade_on(true)
+	if bool(_saved.get("monitor", false)):
+		main._set_monitor(true)
 	var lights: Array = _saved.get("lights", [])
 	for gi in mini(lights.size(), main.light_groups.size()):
 		main.set_light(gi, bool(lights[gi]))
@@ -227,8 +262,8 @@ func _build_desk() -> void:
 		"label": _bottle_label, "cb": _pour})
 	# the detective's things on the other side of the typewriter
 	var hat := Props.fedora()
-	hat.position = Vector3(0.95, DESK_Y, -1.62)
-	hat.rotation.y = 0.5
+	hat.position = Vector3(1.12, 1.375, -1.72)         # hung on the monitor's top left corner
+	hat.rotation = Vector3(0.1, 0.4, 0.28)
 	_desk.add_child(hat)
 	var file := Props.case_file()
 	file.position = Vector3(1.0, DESK_Y, -1.33)
