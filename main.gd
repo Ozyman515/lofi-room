@@ -80,6 +80,7 @@ var arcade_marquee_m: StandardMaterial3D
 var arcade_marquee_label: Label3D
 var poster: Node3D                     # poster.gd: the picture on the right wall
 var noir: Node3D                       # noir.gd: Noir Night (an easter egg)
+var kaiju: Node3D                      # kaiju.gd: a giant monster walks past the window (an easter egg)
 var keyboard_node: Node3D              # the desk's keyboard and mug (Noir Night swaps in a typewriter and a whiskey)
 var mug_node: Node3D
 var cats: Node3D                       # cats.gd: the tuxedo (shake the treats) and the calico (drops by now and then)
@@ -338,6 +339,8 @@ func net_apply_game(d: Dictionary) -> void:
 	var ga = d.get("guests", {})
 	if ga is Dictionary:
 		guest_allow_seen = ga
+	if kaiju != null and d.has("kaiju"):
+		kaiju.apply_remote(int(d.get("kaiju", 0)))
 	if noir != null and d.has("noir"):
 		noir.apply_remote(bool(d.get("noir", false)))
 	var cd = d.get("cats", null)
@@ -1681,6 +1684,10 @@ func _build_weather() -> void:
 	cats.name = "Cats"
 	add_child(cats)
 	cats.setup(self)
+	kaiju = load("res://kaiju.gd").new()
+	kaiju.name = "Kaiju"
+	add_child(kaiju)
+	kaiju.setup(self)
 	noir = load("res://noir.gd").new()
 	noir.name = "NoirNight"
 	add_child(noir)

@@ -725,6 +725,13 @@ func _build_debug_window() -> void:
 	var crow := HBoxContainer.new()
 	crow.add_theme_constant_override("separation", 8)
 	v.add_child(crow)
+	var kb := Button.new()
+	kb.text = "Kaiju: walk past the window now"
+	kb.custom_minimum_size = Vector2(0, 42)
+	kb.pressed.connect(func() -> void:
+		if _main.kaiju != null:
+			_main.kaiju.request_walk())
+	v.add_child(kb)
 	for opt in [["Call the tux", "tux"], ["Calico: rug", "rug"], ["Calico: beanbag", "beanbag"], ["Calico: console", "console"], ["No cats", "none"]]:
 		var cb := Button.new()
 		cb.text = opt[0]
