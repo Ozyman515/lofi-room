@@ -1,5 +1,5 @@
 {
- "version": 90,
+ "version": 91,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -157,6 +157,14 @@
    "sha": "e6a4b35c85f7becde478ad51ee4b9633965363cecd3a0ad32d375e25a9e96ea5",
    "size": 14999
   },
+  "cat_frames.gd": {
+   "sha": "da826493d45a4782f1558251dea55bb568c05ee4188ac400eafef2ad5852ea90",
+   "size": 9204
+  },
+  "cats.gd": {
+   "sha": "ab36a140e26ae29fadf79c228a9c83b6ed5b221b838a527b250e16468b54c417",
+   "size": 15417
+  },
   "comic_book.gd": {
    "sha": "e378101b398114706d307882c7ba9fea20eaa0ed51fff571c2cd1cd508b366b7",
    "size": 35377
@@ -201,13 +209,17 @@
    "sha": "3479b968b8d3f9124d1f1f1b4af3a4a66453f6b58d3c6ed351a9d52ef41188c5",
    "size": 2896968
   },
+  "cozy_cat.gd": {
+   "sha": "3aebb4b38b04f34dcd8606520a1469bdda9c8f1ee1729771e0b3e5f762f60774",
+   "size": 13131
+  },
   "diary.gd": {
-   "sha": "b04562353cfa09c7daa12e2ba11ff4d5da6550fd7bbf99f5fb79f38dc6c28871",
-   "size": 3966
+   "sha": "daa7ea166522ba96eab78ec963085b605509393b47da3f96c229051a9bb05bbd",
+   "size": 4828
   },
   "diary_book.gd": {
-   "sha": "e02704ba52133ed5fe39c23a378c9af4d7c82c97de776d163801bb911e55c76d",
-   "size": 5316
+   "sha": "c955efbab46c41a21674a2be1a1a9fa46974253b80320ab1aaff045581608ec8",
+   "size": 5363
   },
   "docs/QUEST.md": {
    "sha": "a73266aec08dcee806978608e4c4e49e37c432038c7419db380b09383fa709bf",
@@ -246,8 +258,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "604ec5dbf00660588da298e21d24b478b012c66db7cd9ea206515dd5dac1d5b2",
-   "size": 186835
+   "sha": "14fbed4b5fe751db7ec7756051acf31cdd77424f0c8ed24f4cba439fb6d10fd4",
+   "size": 186674
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -298,8 +310,8 @@
    "size": 1670
   },
   "net_game.gd": {
-   "sha": "fd8f5ab91b4775e390374225d5cc27add7f3b588916f05d563ac873edab8b818",
-   "size": 19405
+   "sha": "09902275e9ef0c7ac4012b6c21a0d471e0c228c8ccfd7749b4d18ccb9c5a83a7",
+   "size": 19839
   },
   "net_phone.gd": {
    "sha": "5850233ceb99d33bb1c36cabfe1f91ffa64e17496c5313a480f1ca7089b7f223",
@@ -326,8 +338,32 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "92e9812b31952dbd5147050a20e18fd63eff2835a0d3d80cb9c2f3b98982e2f9",
-   "size": 44601
+   "sha": "99ead2705fce8872fd88d8c70fcb3e2c61d6b6ef0ca6f2d61b32d180ec73d004",
+   "size": 45274
+  },
+  "photos/.gdignore": {
+   "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "size": 0
+  },
+  "photos/cat_calico.png": {
+   "sha": "ba66724fcfd29e8dcad93d36c21497eb49b86d2bf042a3e7f19647ea54121322",
+   "size": 180716
+  },
+  "photos/cat_tux.png": {
+   "sha": "9f2a3d847b994916a4cf3e660d3e03d3903de0732f52bef1a1eb73d741a98191",
+   "size": 170376
+  },
+  "photos/cats_together.png": {
+   "sha": "b365faa9010882ef97fb58c41c86b2b6c381a98ac877170b57ef050829694ab4",
+   "size": 198614
+  },
+  "photos/frame_empty.png": {
+   "sha": "8117893fdd8a4af0ed85de913cd9e8a19a48255a21189e1c66da082096384f7e",
+   "size": 3812
+  },
+  "photos/frame_empty_wide.png": {
+   "sha": "6c19b06632e1170dfa35bd2c9fb5362767a365a35056d07a07157e45db32e0a1",
+   "size": 4239
   },
   "platform.gd": {
    "sha": "c6bf62a1be57b71e552c88787f24461adaad9ca0fd97f5b4921b755ddba72ff7",
@@ -402,7 +438,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "4393447bd3c1d55ea7f97417ecb1b36a691ccaacaaf2ebd21c59a5acf825fb7b",
+   "sha": "0433e993a3dbc505d6e5cad972a1df0ab189cfe7ceece5e94fd47ca9a074370f",
    "size": 3
   },
   "weather.gd": {
