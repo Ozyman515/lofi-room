@@ -42,6 +42,7 @@ var _room_window: PanelContainer
 var _room_slap_btns: Array[Button] = []
 var _room_guest_btns := {}
 var _room_mic_btn: Button
+var _room_poster_btn: Button
 var _room_ptt_btn: Button
 var _dbg_seat_btns: Array[Button] = []
 var _dbg_phone_btn: Button
@@ -554,6 +555,10 @@ func _build_room_window() -> void:
 		gb.pressed.connect(func() -> void: _main.set_guest_allow(key, not _main.guest_allow[key]))
 		v.add_child(gb)
 		_room_guest_btns[key] = gb
+	_room_poster_btn = Button.new()
+	_room_poster_btn.custom_minimum_size = Vector2(0, 40)
+	_room_poster_btn.pressed.connect(func() -> void: _main.set_share_poster(not _main.share_poster))
+	v.add_child(_room_poster_btn)
 	var vt := Label.new()
 	vt.text = "Your voice (M mutes, hold T to talk when push-to-talk is on; point at a friend and scroll to set how loud you hear them):"
 	vt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -602,6 +607,8 @@ func _room_refresh() -> void:
 	if _room_mic_btn != null and _main.net_voice != null:
 		_room_mic_btn.text = "Microphone  [%s]" % ("ON" if _main.net_voice.mic_on else "MUTED")
 		_room_ptt_btn.text = "Push to talk  [%s]" % ("ON" if _main.net_voice.push_to_talk else "OFF: open mic")
+	if _room_poster_btn != null:
+		_room_poster_btn.text = "Guests see my poster   [%s]" % ("YES" if _main.share_poster else "NO: they see the room's posters")
 	for gg in _main.GUEST_GROUPS:
 		if _room_guest_btns.has(gg[0]):
 			_room_guest_btns[gg[0]].text = "%s   [%s]" % [gg[1], "GUESTS MAY" if _main.guest_allow[gg[0]] else "HOST ONLY"]

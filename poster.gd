@@ -1,14 +1,15 @@
 extends Node3D
 ## The poster on the right wall. Point at it to pick any picture from your Pictures folder (or anywhere else)
-## and it hangs there instead; the frame reshapes to the picture's proportions. "Original poster" puts the
-## 90s anime poster back. The choice is kept in user://lofi_room.cfg.
+## and it hangs there instead; the frame reshapes to the picture's proportions. Until you pick one (or after
+## "Room posters"), a random picture from res://posters/ hangs there, a new one each visit. The choice is kept
+## in user://lofi_room.cfg. In a shared room a host can let guests see the host's poster (show_remote).
 ## Local frame: origin on the wall at the poster's centre, +z out into the room, +x across, +y up.
 
 const ScreenUI := preload("res://screen_ui.gd")
 const FileBrowser := preload("res://file_browser.gd")
 
-const DEFAULT_TEX := "res://textures/poster.png"
-const DEFAULT_SIZE := Vector2(0.54, 0.92)     # the original poster's picture, metres
+const POSTER_DIR := "res://posters"          # the room's own posters (not imported: loaded as plain pictures)
+const DEFAULT_SIZE := Vector2(0.54, 0.92)     # where the picker sits before anything is loaded
 const MAX_H := 0.92                           # a picture is at most this tall...
 const MAX_W := 1.0                            # ...and this wide (a landscape one goes wide, then shrinks)
 const MARGIN := 0.04                          # frame border round the picture
@@ -26,7 +27,11 @@ var _pic_mesh: QuadMesh
 var _browser: FileBrowser
 var _note: Label
 var _ui_mesh: MeshInstance3D
-var current_path := ""                        # "" = the original poster
+var current_path := ""                        # "" = one of the room's posters
+var current_image: Image                      # what's hanging now (for sharing with guests)
+var revision := 0                             # goes up every time the picture changes
+var remote_from := ""                         # the host's name while their poster is shown here
+var _own: Array = []                          # [texture, size, image] of my own choice, while a host's is shown
 
 
 func build(frame_mat: Material) -> void:
@@ -58,9 +63,30 @@ func build(frame_mat: Material) -> void:
 
 # ---- the picture
 
+# the room's own posters, one at random
+static func room_posters() -> Array[String]:
+	var out: Array[String] = []
+	var d := DirAccess.open(POSTER_DIR)
+	if d == null:
+		return out
+	for f in d.get_files():
+		if f.get_extension().to_lower() in EXTS:
+			out.append(POSTER_DIR.path_join(f))
+	out.sort()
+	return out
+
+
 func _apply_default() -> void:
-	var tex: Texture2D = load(DEFAULT_TEX)
-	_set_texture(tex, DEFAULT_SIZE)
+	var list := room_posters()
+	list.shuffle()
+	for path in list:
+		if _apply_file(path, false):
+			current_path = ""
+			return
+	# nothing usable: a plain board
+	var img := Image.create(4, 4, false, Image.FORMAT_RGB8)
+	img.fill(Color(0.25, 0.12, 0.3))
+	_show_image(img)
 	current_path = ""
 
 
@@ -78,14 +104,63 @@ func _apply_file(path: String, remember := true) -> bool:
 	if long_side > MAX_PX:
 		var k := float(MAX_PX) / long_side
 		img.resize(maxi(1, int(w * k)), maxi(1, int(h * k)), Image.INTERPOLATE_LANCZOS)
-	if img.get_format() != Image.FORMAT_RGBA8 and img.get_format() != Image.FORMAT_RGB8:
-		img.convert(Image.FORMAT_RGBA8)
-	img.generate_mipmaps()
-	_set_texture(ImageTexture.create_from_image(img), fit_size(float(w) / float(h)))
+	_show_image(img)
 	current_path = path
 	if remember:
 		_remember(path)
 	return true
+
+
+func _show_image(img: Image) -> void:
+	if img.get_format() != Image.FORMAT_RGBA8 and img.get_format() != Image.FORMAT_RGB8:
+		img.convert(Image.FORMAT_RGBA8)
+	current_image = img.duplicate()
+	var shown := img.duplicate() as Image
+	shown.generate_mipmaps()
+	var aspect := float(img.get_width()) / float(img.get_height())
+	if remote_from != "":
+		_own = [ImageTexture.create_from_image(shown), fit_size(aspect), current_image]
+		return                                   # a host's poster is up: mine changes underneath it
+	_set_texture(ImageTexture.create_from_image(shown), fit_size(aspect))
+	revision += 1
+
+
+# ---- a host's poster, shown to guests when the host allows it
+
+func show_remote(img: Image, host_name: String) -> void:
+	if remote_from == "":
+		_own = [_mat.albedo_texture, _pic_mesh.size, current_image]
+	remote_from = host_name
+	var shown := img.duplicate() as Image
+	if shown.get_format() != Image.FORMAT_RGBA8 and shown.get_format() != Image.FORMAT_RGB8:
+		shown.convert(Image.FORMAT_RGBA8)
+	shown.generate_mipmaps()
+	_set_texture(ImageTexture.create_from_image(shown), fit_size(float(img.get_width()) / float(img.get_height())))
+	close_picker()
+
+
+func clear_remote() -> void:
+	if remote_from == "":
+		return
+	remote_from = ""
+	if _own.size() == 3:
+		_set_texture(_own[0], _own[1])
+		current_image = _own[2]
+	_own = []
+
+
+# the picture as JPEG for sending (at most 1024 px on its long side)
+func shared_jpeg() -> PackedByteArray:
+	if current_image == null:
+		return PackedByteArray()
+	var img := current_image.duplicate() as Image
+	var long_side := maxi(img.get_width(), img.get_height())
+	if long_side > 1024:
+		var k := 1024.0 / long_side
+		img.resize(maxi(1, int(img.get_width() * k)), maxi(1, int(img.get_height() * k)), Image.INTERPOLATE_LANCZOS)
+	if img.get_format() != Image.FORMAT_RGB8:
+		img.convert(Image.FORMAT_RGB8)
+	return img.save_jpg_to_buffer(0.85)
 
 
 # the picture's size on the wall for a width / height ratio
@@ -159,7 +234,7 @@ func _build_picker() -> void:
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
 	var orig := Button.new()
-	orig.text = "Original poster"
+	orig.text = "Room posters (a random one)"
 	orig.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	orig.pressed.connect(use_original)
 	row.add_child(orig)
@@ -193,6 +268,8 @@ func close_picker() -> void:
 
 
 func toggle_picker() -> void:
+	if remote_from != "":
+		return                                     # the host's poster: nothing to pick here
 	if picking:
 		close_picker()
 	else:
@@ -207,6 +284,8 @@ func _on_chosen(path: String) -> void:
 
 
 func label() -> String:
+	if remote_from != "":
+		return "%s'S POSTER" % remote_from.to_upper()
 	if picking:
 		return "POSTER  (close the picker)"
 	return "POSTER  (pick a picture)"

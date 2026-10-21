@@ -19,7 +19,7 @@ ign = subprocess.run(["git", "check-ignore", "--stdin"], input="\n".join(files),
 for p in ign:
     files.pop(p, None)
 # files that older copies still have and should lose (the updater deletes them if present)
-REMOVE = ["music/zephiramusic-tokyo-lofi.mp3"]
+REMOVE = ["music/zephiramusic-tokyo-lofi.mp3", "textures/poster.png", "textures/poster.png.import"]
 json.dump({"version": ver, "files": dict(sorted(files.items())), "remove": REMOVE}, open("update.json", "w"), indent=1)
 print(len(files), "files, version", ver)
 # the release must be signed or no copy of the room will install it:  godot --headless -s pack/sign_update.gd -- <private key>

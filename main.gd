@@ -79,6 +79,7 @@ var arcade_on := true                  # the power switch on the cabinet's side
 var arcade_marquee_m: StandardMaterial3D
 var arcade_marquee_label: Label3D
 var poster: Node3D                     # poster.gd: the picture on the right wall
+var share_poster := false              # host: guests see my poster (off: they see the room's own posters)
 var arcade_glow: Array = []            # [material, lit energy]: the buttons and coin lights, dark while the power is off
 var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV's buttons set the console's)
 var arcade_vol_label: Label3D
@@ -3392,6 +3393,12 @@ func set_arcade_on(on: bool) -> void:
 	_apply_console()
 
 
+func set_share_poster(on: bool) -> void:
+	share_poster = on
+	_save_settings()
+	settings_changed.emit()
+
+
 func set_arcade_volume(v: int) -> void:
 	arcade_volume = clampi(v, 0, 10)
 	_show_arcade_volume()
@@ -3691,6 +3698,7 @@ func _load_prefs() -> void:
 		for gk in guest_allow:
 			guest_allow[gk] = bool(cfg.get_value("guests", gk, false))
 		arcade_volume = clampi(int(cfg.get_value("settings", "arcade_volume", 7)), 0, 10)
+		share_poster = bool(cfg.get_value("settings", "share_poster", false))
 		_show_arcade_volume()
 		if not bool(cfg.get_value("settings", "arcade_on", true)):
 			set_arcade_on(false)
@@ -3753,6 +3761,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "slap_minutes", slap_minutes)
 	cfg.set_value("settings", "arcade_on", arcade_on)
 	cfg.set_value("settings", "arcade_volume", arcade_volume)
+	cfg.set_value("settings", "share_poster", share_poster)
 	for g in guest_allow:
 		cfg.set_value("guests", g, guest_allow[g])
 	cfg.save(SETTINGS_FILE)

@@ -22,7 +22,7 @@ OpenXR), so a few things work differently there. Status after the Quest 3 pass:
    - Gradle Build: on. XR Mode: OpenXR. Architectures: arm64-v8a only.
    - Under the OpenXR Vendors options turn on Meta (Quest) support. The project already uses ASTC textures and the Mobile renderer.
    - Permissions: Read/Write External Storage (so the music player and the poster picker can see the headset's Music, Pictures and Download folders).
-   - Resources, "Filters to export non-resource files": `*.gif, music/*, media/*`
+   - Resources, "Filters to export non-resource files": `*.gif, music/*, media/*, posters/*`
 5. Turn on Developer Mode for the headset (Meta Horizon phone app), connect it by USB, and use One-Click Deploy or
    `adb install -r lofi-room.apk`.
 

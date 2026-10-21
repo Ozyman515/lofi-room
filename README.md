@@ -27,7 +27,7 @@ Once the PC version works, follow Valve's Godot guide for Steam Frame (Developer
 Remote Deploy via the SteamOS Devkit Client).
 
 ## Poster
-The wall poster uses textures/poster.png. Replace that file with your own art (about 1080x1840, portrait) to change it.
+The wall poster is a random picture from the posters/ folder (add your own there), or point at it in the room to hang any picture from your PC. The frame takes the picture's shape.
 
 ## Sitting
 Walk up to the desk chair or the beanbag and press A (or the trigger) in VR, or E on the desktop, to sit. Press again to stand.

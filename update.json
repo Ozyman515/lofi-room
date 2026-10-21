@@ -1,5 +1,5 @@
 {
- "version": 89,
+ "version": 90,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "d71519304bc32c02daa8837e01b0d7a6ba80c4a5afc0b259b2897834a5e0aa47",
-   "size": 15601
+   "sha": "06eb9ed07abf15e93bfdb77dddab75b14d0b311004cdbe6ec46302e8e20c4396",
+   "size": 15662
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -210,8 +210,8 @@
    "size": 5316
   },
   "docs/QUEST.md": {
-   "sha": "5d89e93d13c53507fea6492473506d394a7f5ccc17b170b27f0d10d5163096e6",
-   "size": 4194
+   "sha": "a73266aec08dcee806978608e4c4e49e37c432038c7419db380b09383fa709bf",
+   "size": 4237
   },
   "emu.gd": {
    "sha": "050af6c153b6e4e622c58e604ebfbfc875654d6cdeef70f996491fed0ed8ff4b",
@@ -246,8 +246,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "1d6a3de23735193f8e625909c9fca0daca87eface199917f4d96f57db777351e",
-   "size": 185194
+   "sha": "604ec5dbf00660588da298e21d24b478b012c66db7cd9ea206515dd5dac1d5b2",
+   "size": 186835
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -298,8 +298,8 @@
    "size": 1670
   },
   "net_game.gd": {
-   "sha": "1e95769434c295824f3ae176302093122b3aa32d0995ea6affc054c6f67b509b",
-   "size": 17099
+   "sha": "fd8f5ab91b4775e390374225d5cc27add7f3b588916f05d563ac873edab8b818",
+   "size": 19405
   },
   "net_phone.gd": {
    "sha": "5850233ceb99d33bb1c36cabfe1f91ffa64e17496c5313a480f1ca7089b7f223",
@@ -326,12 +326,28 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "0fb1f5f0439ffb707e7a96ee66a3e38d95b4feb9782119ad6c4b9b05cfb7de31",
-   "size": 44198
+   "sha": "92e9812b31952dbd5147050a20e18fd63eff2835a0d3d80cb9c2f3b98982e2f9",
+   "size": 44601
   },
   "platform.gd": {
    "sha": "c6bf62a1be57b71e552c88787f24461adaad9ca0fd97f5b4921b755ddba72ff7",
    "size": 853
+  },
+  "poster.gd": {
+   "sha": "6f8bccb45c3ea98220503cac5c1c9c3fa2c8664fa3fcba2b9d5e84963571099f",
+   "size": 9593
+  },
+  "posters/.gdignore": {
+   "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "size": 0
+  },
+  "posters/anime_night.png": {
+   "sha": "088ffe0f37c263f4bd9d0460883e044c797633d6cd5d952449ebebe6537c05ce",
+   "size": 2368730
+  },
+  "posters/lofi_room.png": {
+   "sha": "45e09d72e3ee392d384ff47b0965aa92b14f3fe599237f564bcac6583937cb7c",
+   "size": 1204579
   },
   "remote_comic.gd": {
    "sha": "56d58672c3991797e2e8563357e91273ec4f5b88f1aecef58047f0144847c818",
@@ -373,14 +389,6 @@
    "sha": "e492fc89fe71a467c243c314a5145b0f15f3188cf50aea952395096f6c140e4a",
    "size": 5520
   },
-  "textures/poster.png": {
-   "sha": "088ffe0f37c263f4bd9d0460883e044c797633d6cd5d952449ebebe6537c05ce",
-   "size": 2368730
-  },
-  "textures/poster.png.import": {
-   "sha": "3e6dec8605d3e7ce8b3a6eab20d5a3690e2b918d50dfb1fdaa967716798ab453",
-   "size": 931
-  },
   "tornado_event.gd": {
    "sha": "b4c5550b12094a4d37b46ea6579d0cbf10e9f601ea969479542e2a4beabeaaae",
    "size": 35901
@@ -394,7 +402,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "69a9cd8a9e12b122cdf59392131bf6c83e7360c2f745921e76f48a16f1cc541a",
+   "sha": "4393447bd3c1d55ea7f97417ecb1b36a691ccaacaaf2ebd21c59a5acf825fb7b",
    "size": 3
   },
   "weather.gd": {
@@ -403,6 +411,8 @@
   }
  },
  "remove": [
-  "music/zephiramusic-tokyo-lofi.mp3"
+  "music/zephiramusic-tokyo-lofi.mp3",
+  "textures/poster.png",
+  "textures/poster.png.import"
  ]
 }

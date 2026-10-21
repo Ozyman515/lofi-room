@@ -28,6 +28,10 @@ var tv_source := 1
 var tv_live := false                    # the source has a tape going (so the VCR buttons act on theirs)
 var _tv_was_active := false
 var _tv_claim_ms := 0
+var _poster_sent := {}                  # host side: guest id -> poster revision sent (-1 = told them it's private)
+var _poster_parts := {}                 # guest side: rev -> {"n": parts, "got": {i: bytes}}
+var _poster_t := 0.0
+const POSTER_PART := 32000
 var sticks_seen := {}                   # everyone: id -> true for players at the arcade sticks
 var slap_minutes_seen := 30             # the host's slap cooldown, as last announced
 var _last_slap := {}                    # host side: slapper id -> ms of their last slap
@@ -72,6 +76,10 @@ func _on_net_state() -> void:
 	emu.streaming = net.state == net.State.HOSTING
 	if not net.is_online():
 		guest_pad.clear()
+		_poster_sent.clear()
+		_poster_parts.clear()
+		if main.poster != null:
+			main.poster.clear_remote()
 		tv_source = 1
 		tv_live = false
 		_tv_was_active = false
@@ -95,6 +103,7 @@ func _on_roster() -> void:
 			guest_arcade.erase(id)
 			guest_pad_idx.erase(id)
 			guest_mask.erase(id)
+			_poster_sent.erase(id)
 			if id == tv_source:
 				tv_source = 1
 				tv_live = my_tv_active()
@@ -110,6 +119,11 @@ func _process(delta: float) -> void:
 	_tv_video_tick()
 	main.vcr.remote_video_tick()
 	_tv_ownership()
+	if net.is_host():
+		_poster_t += delta
+		if _poster_t > 0.5:
+			_poster_t = 0.0
+			_share_poster()
 	_state_t += delta
 	if _state_t >= 0.2:
 		_state_t = 0.0
@@ -360,6 +374,12 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 						main.updater.show_toast("You can slap again in %s." % main.fmt_wait(int(d.get("secs", 0))), 4.0)
 					"slap_ok":
 						my_last_slap = Time.get_ticks_msec()
+					"poster":
+						_guest_poster_part(d)
+					"poster_off":
+						_poster_parts.clear()
+						if main.poster != null:
+							main.poster.clear_remote()
 					"vcr":
 						if tv_source == net.my_id:
 							_apply_vcr_button(int(d.get("b", -1)))
@@ -392,6 +412,56 @@ func _guest_pad(id: int, held: bool) -> void:
 			if guest_pad[other]:
 				p2_id = other
 				break
+
+
+# ---- the host's poster, for guests (only if the host allows it)
+
+func _share_poster() -> void:
+	var p = main.poster
+	if p == null:
+		return
+	var rev: int = p.revision if main.share_poster else -1
+	var jpeg := PackedByteArray()
+	for id in net.peer_ids():
+		if net._connecting_since.has(id) or int(_poster_sent.get(id, -1)) == rev:
+			continue
+		_poster_sent[id] = rev
+		if rev < 0:
+			net.send_var(id, Net.K_EVENT, {"k": "poster_off"})
+			continue
+		if jpeg.is_empty():
+			jpeg = p.shared_jpeg()
+			if jpeg.is_empty():
+				return
+		var n := int(ceil(jpeg.size() / float(POSTER_PART)))
+		for i in n:
+			net.send_var(id, Net.K_EVENT, {"k": "poster", "rev": rev, "i": i, "n": n,
+				"d": jpeg.slice(i * POSTER_PART, mini((i + 1) * POSTER_PART, jpeg.size()))})
+
+
+func _guest_poster_part(d: Dictionary) -> void:
+	var rev := int(d.get("rev", 0))
+	var n := int(d.get("n", 0))
+	var i := int(d.get("i", -1))
+	var bytes = d.get("d", null)
+	if n <= 0 or n > 160 or i < 0 or i >= n or not (bytes is PackedByteArray):
+		return
+	for k in _poster_parts.keys():
+		if k != rev:
+			_poster_parts.erase(k)                  # an older picture still arriving: drop it
+	if not _poster_parts.has(rev):
+		_poster_parts[rev] = {"n": n, "got": {}}
+	var entry: Dictionary = _poster_parts[rev]
+	entry["got"][i] = bytes
+	if entry["got"].size() < n:
+		return
+	var all := PackedByteArray()
+	for k in n:
+		all.append_array(entry["got"][k])
+	_poster_parts.erase(rev)
+	var img := Image.new()
+	if img.load_jpg_from_buffer(all) == OK and img.get_width() <= 4096 and img.get_height() <= 4096 and main.poster != null:
+		main.poster.show_remote(img, str(net.roster.get(1, {}).get("name", "The host")))
 
 
 func _host_tv_event(from: int, d: Dictionary) -> void:
