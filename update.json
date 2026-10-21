@@ -1,10 +1,6 @@
 {
- "version": 83,
+ "version": 84,
  "files": {
-  ".godot/.gdignore": {
-   "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-   "size": 1
-  },
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
    "size": 84
@@ -398,7 +394,7 @@
    "size": 41782
   },
   "version.txt": {
-   "sha": "f1769867b0abc7068f5cb7dd41574a420b3cfa4553856f459857ff8e5a525b13",
+   "sha": "4b9258d432ecb4511cfe5471a58f3feea9e8aa513e1d32294894693827d3b0d4",
    "size": 3
   },
   "weather.gd": {

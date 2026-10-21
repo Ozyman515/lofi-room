@@ -13,6 +13,11 @@ for d, _, fs in os.walk("."):
             continue
         b = open(p, "rb").read()
         files[p] = {"sha": hashlib.sha256(b).hexdigest(), "size": len(b)}
+# only files that are actually pushed: anything git ignores would 404 on the updater's download
+import subprocess
+ign = subprocess.run(["git", "check-ignore", "--stdin"], input="\n".join(files), capture_output=True, text=True).stdout.split()
+for p in ign:
+    files.pop(p, None)
 # files that older copies still have and should lose (the updater deletes them if present)
 REMOVE = ["music/zephiramusic-tokyo-lofi.mp3"]
 json.dump({"version": ver, "files": dict(sorted(files.items())), "remove": REMOVE}, open("update.json", "w"), indent=1)
