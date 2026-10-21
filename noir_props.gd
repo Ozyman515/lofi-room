@@ -282,7 +282,7 @@ static func case_file() -> Node3D:
 	_part(_box(Vector3(0.012, 0.004, 0.03)), _m(Color(0.7, 0.7, 0.72), 0.3, 0.9), Vector3(-0.07, 0.006, -0.088), Vector3(0, -0.12, 0), f)  # paper clip
 	var stamp := Label3D.new()
 	stamp.text = "CONFIDENTIAL"
-	stamp.font_size = 40
+	stamp.font_size = 30
 	stamp.pixel_size = 0.0006
 	stamp.outline_size = 0
 	stamp.modulate = Color(0.7, 0.12, 0.1, 0.85)
