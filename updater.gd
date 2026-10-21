@@ -66,6 +66,11 @@ func _ok_path(p: String) -> bool:
 		return false
 	if p == "project.godot" or p == "update_key.pub" or p.ends_with(".uid"):
 		return false                      # the signing key can only change with a fresh install
+	# other platforms' binaries: a Windows copy never needs the Linux ones, and the other way round
+	if OS.get_name() == "Windows" and (p.ends_with(".so") or p == "bin/retro_host_linux"):
+		return false
+	if OS.get_name() != "Windows" and (p.ends_with(".dll") or p.ends_with(".exe")):
+		return false
 	for s in SKIP_PREFIXES:
 		if p.begins_with(s):
 			return false
