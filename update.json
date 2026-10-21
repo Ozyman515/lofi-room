@@ -1,5 +1,5 @@
 {
- "version": 91,
+ "version": 92,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -258,8 +258,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "14fbed4b5fe751db7ec7756051acf31cdd77424f0c8ed24f4cba439fb6d10fd4",
-   "size": 186674
+   "sha": "1ae09a32ece10fc3be1bcd40a5b4e43ecca47fd5f9016f28696cd0d009d34d9f",
+   "size": 187507
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -282,8 +282,8 @@
    "size": 0
   },
   "music/CREDITS.txt": {
-   "sha": "2606ca69716b5a639d45357ae3357dcb0e76f05969538a4ff8a3621af5058050",
-   "size": 365
+   "sha": "80d8a107e3b8adb8df34267b65e2d3db788a79531c38fab86c7b2ef40b3d164b",
+   "size": 982
   },
   "music/README.txt": {
    "sha": "270a4507794fea0e7586e45f72f0be6d1615de92f7e69e2dd4613cba78e3ab2c",
@@ -310,12 +310,12 @@
    "size": 1670
   },
   "net_game.gd": {
-   "sha": "09902275e9ef0c7ac4012b6c21a0d471e0c228c8ccfd7749b4d18ccb9c5a83a7",
-   "size": 19839
+   "sha": "f1964786a83a31263419fd10eedfdc5a24d185262152f7fb976accbcc741afa8",
+   "size": 20018
   },
   "net_phone.gd": {
-   "sha": "5850233ceb99d33bb1c36cabfe1f91ffa64e17496c5313a480f1ca7089b7f223",
-   "size": 7951
+   "sha": "402b3c30fffcddb19d92d6cb125e8fd161372b5310e4120bd59f4ee2ac085ece",
+   "size": 8251
   },
   "net_session.gd": {
    "sha": "e1405f9957795cd1415222f0b252d9f56283bc51cc1bbe28b6de5edb201c4470",
@@ -324,6 +324,26 @@
   "net_voice.gd": {
    "sha": "bda870de615020779db57d81274c55ade0956a3f64c91f81be1ce93dc42b60fc",
    "size": 8509
+  },
+  "noir.gd": {
+   "sha": "a02c240f90e2d8b5d049f5eefbf79e98544b4b3e68075774be59a57da0472f07",
+   "size": 18438
+  },
+  "noir/.gdignore": {
+   "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "size": 0
+  },
+  "noir/konstantinpazuzustudio-gritty-noir.ogg": {
+   "sha": "7e301062ce17b0662337e9c819ac9871af8ebb9ef120741e5f6ce5b76570d5c4",
+   "size": 3633700
+  },
+  "noir/noir_poster.png": {
+   "sha": "652c58007057a3be311cb9add558e1a4f37f98fe1683680ddc34c56d805e59ec",
+   "size": 1140112
+  },
+  "noir_props.gd": {
+   "sha": "3b990eaf9d2d8066dc46a50f0febbe68f42dfa733635b722de5ee1e9b9833941",
+   "size": 17125
   },
   "openxr_action_map.tres": {
    "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
@@ -338,8 +358,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "99ead2705fce8872fd88d8c70fcb3e2c61d6b6ef0ca6f2d61b32d180ec73d004",
-   "size": 45274
+   "sha": "a1bd5689bf683e544651c17d9525576f53ff533c7e4f0164f32d69652abdda5f",
+   "size": 46866
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -370,8 +390,8 @@
    "size": 853
   },
   "poster.gd": {
-   "sha": "6f8bccb45c3ea98220503cac5c1c9c3fa2c8664fa3fcba2b9d5e84963571099f",
-   "size": 9593
+   "sha": "e59c01be3b80a5a0a43d01a730a971b39861edae45431642ad807896388e5623",
+   "size": 10678
   },
   "posters/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -438,12 +458,12 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "0433e993a3dbc505d6e5cad972a1df0ab189cfe7ceece5e94fd47ca9a074370f",
+   "sha": "13c1dc569ae4a0d7f90d8f83d22fc9c8fa526e133f8fea0f9526c8533c4d8da3",
    "size": 3
   },
   "weather.gd": {
-   "sha": "6c09bdd5b9ffffd909a892bc177b43338da4ee5ca68b5ef95a96b6d16e70bb01",
-   "size": 28545
+   "sha": "8b8ecd8aa548c8f1d6d04cc14c11cc13fdd49e1dc0fff81e7b9040ae5a823572",
+   "size": 29355
   }
  },
  "remove": [
