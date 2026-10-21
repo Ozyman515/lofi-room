@@ -1,5 +1,5 @@
 {
- "version": 80,
+ "version": 81,
  "files": {
   ".godot/.gdignore": {
    "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
@@ -298,8 +298,8 @@
    "size": 9157
   },
   "net_config.gd": {
-   "sha": "e64afb899e11096b5b66bf1bd64e6a2976b8bae35b6897088600cb28a7c99fc4",
-   "size": 1663
+   "sha": "47fb308905b84178872902abc365b11202d9cfd316af850369f3533b8332e70d",
+   "size": 1670
   },
   "net_game.gd": {
    "sha": "d299e2081c7c4e95d6c8d72d5c7474f869d04f0eaa6c77decb3e149c196780b7",
@@ -398,7 +398,7 @@
    "size": 41782
   },
   "version.txt": {
-   "sha": "95aebc97bc646c67fdcd923a5965b001f3c8a5c4d3a77075112e12a3a311d760",
+   "sha": "ce516e29a2ccfe4bab40e4e6adab7661cd695680482c00b1faa738fc0df62698",
    "size": 3
   },
   "weather.gd": {
