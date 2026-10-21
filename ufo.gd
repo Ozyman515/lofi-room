@@ -2,7 +2,7 @@ extends Node3D
 ## UFO (an easter egg): a flying saucer swoops in from the left, close outside the window, and stops. Its
 ## spin slows until a little port faces the room, the hatch slides up, and a grey alien with big black eyes
 ## looks in at you for a few seconds. The hatch drops, and it zooms off to the right.
-## Started from the Debug window for now; in a shared room the host's saucer flies past everyone's window.
+## Tap the little alien bobblehead on the desk ten times (or use the Debug window); in a shared room the host's saucer flies past everyone's window.
 
 const Model := preload("res://ufo_model.gd")
 
@@ -48,6 +48,91 @@ func setup(m: Node3D) -> void:
 	_whoosh.volume_db = -6.0
 	add_child(_whoosh)
 	set_process(false)
+	_build_figure()
+
+
+# ---- the little alien figure on the desk: a bobblehead. Tap its head ten times and the real one visits.
+
+const FIG_POS := Vector3(0.62, 0.785, -1.42)
+const FIG_TAPS := 10
+var _fig_head: Node3D
+var _fig_taps := 0
+var _fig_t := 0.0
+
+
+func _build_figure() -> void:
+	var fig := Node3D.new()
+	fig.position = FIG_POS
+	fig.rotation.y = 0.5                          # turned toward the chair
+	main.room.add_child(fig)
+	var grey := StandardMaterial3D.new()
+	grey.albedo_color = Color(0.66, 0.68, 0.70)
+	grey.roughness = 0.45
+	var black := StandardMaterial3D.new()
+	black.albedo_color = Color(0, 0, 0)
+	black.roughness = 0.05
+	var base_m := StandardMaterial3D.new()
+	base_m.albedo_color = Color(0.1, 0.35, 0.3)
+	base_m.emission_enabled = true
+	base_m.emission = Color(0.2, 0.9, 0.7)
+	base_m.emission_energy_multiplier = 0.6       # a glow-in-the-dark stand
+	var base := CylinderMesh.new()
+	base.top_radius = 0.032
+	base.bottom_radius = 0.035
+	base.height = 0.012
+	_fpart(fig, base, base_m, Vector3(0, 0.006, 0), Vector3.ONE)
+	_fpart(fig, SphereMesh.new(), grey, Vector3(0, 0.035, 0), Vector3(0.028, 0.05, 0.022))      # body
+	for sx in [-1.0, 1.0]:
+		var arm := _fpart(fig, SphereMesh.new(), grey, Vector3(sx * 0.016, 0.036, 0.004), Vector3(0.008, 0.032, 0.008))
+		arm.rotation.z = sx * 0.25
+	_fig_head = Node3D.new()                        # on a spring: it bobbles
+	_fig_head.position = Vector3(0, 0.062, 0)
+	fig.add_child(_fig_head)
+	_fpart(_fig_head, SphereMesh.new(), grey, Vector3(0, 0.022, 0), Vector3(0.046, 0.056, 0.042))
+	_fpart(_fig_head, SphereMesh.new(), grey, Vector3(0, -0.002, 0.006), Vector3(0.022, 0.026, 0.02))   # chin
+	for sx in [-1.0, 1.0]:
+		var e := _fpart(_fig_head, SphereMesh.new(), black, Vector3(sx * 0.011, 0.02, 0.016), Vector3(0.016, 0.009, 0.007))
+		e.rotation.z = sx * 0.5
+	var hit := Node3D.new()
+	hit.position = FIG_POS + Vector3(0, 0.05, 0)
+	main.room.add_child(hit)
+	main.interactables.append({"node": hit, "half": Vector3(0.05, 0.06, 0.05), "guest_ok": true,
+		"label": func() -> String: return "A LITTLE ALIEN" if not active else "A LITTLE ALIEN  (it's waving)", "cb": tap_figure})
+
+
+static func _fpart(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, sc: Vector3) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	if mesh is SphereMesh:
+		(mesh as SphereMesh).radius = 0.5
+		(mesh as SphereMesh).height = 1.0
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	mi.scale = sc
+	parent.add_child(mi)
+	return mi
+
+
+func tap_figure() -> void:
+	_fig_t = 1.2                                    # bobble
+	set_process(true)
+	if active:
+		return
+	_fig_taps += 1
+	if _fig_taps >= FIG_TAPS:
+		_fig_taps = 0
+		await get_tree().create_timer(1.2).timeout
+		request_visit()
+
+
+func _bobble(delta: float) -> void:
+	if _fig_t <= 0.0 and not active:
+		return
+	_fig_t = maxf(0.0, _fig_t - delta)
+	var k := _fig_t / 1.2
+	var w := Time.get_ticks_msec() / 1000.0
+	var amp := 0.35 * k + (0.08 if active else 0.0)  # it keeps nodding while its friend is outside
+	_fig_head.rotation = Vector3(amp * sin(w * 14.0), 0.0, amp * 0.7 * sin(w * 11.0))
 
 
 func request_visit() -> void:
@@ -76,6 +161,12 @@ func start() -> void:
 
 
 func _process(delta: float) -> void:
+	_bobble(delta)
+	if not active:
+		if _fig_t <= 0.0:
+			_fig_head.rotation = Vector3.ZERO
+			set_process(false)
+		return
 	_t += delta
 	var t := _t
 	var x := STOP_X
@@ -130,7 +221,6 @@ func _process(delta: float) -> void:
 		active = false
 		_u.visible = false
 		_hum.stop()
-		set_process(false)
 
 
 # ---- shared rooms
