@@ -607,6 +607,40 @@ func _rebuild_bed() -> void:
 	if bed_node != null and is_instance_valid(bed_node):
 		bed_node.queue_free()
 	bed_node = BedModel.build(room, BED_POS, "made" if bed_made else "unmade")
+	_place_house_cat()
+
+
+# A personal extra: if res://tools/sleeping_cat.gd is there (tools/ is never shipped), the cat sleeps at the
+# foot of the bed and purrs now and then.
+const HOUSE_CAT := "res://tools/sleeping_cat.gd"
+const HOUSE_CAT_SPOT := Vector2(-1.4, -0.02)      # x, z on the bed, near the foot
+var house_cat: Node3D
+
+
+func _place_house_cat() -> void:
+	if not ResourceLoader.exists(HOUSE_CAT):
+		return
+	if house_cat == null:
+		var sc: Script = load(HOUSE_CAT)
+		if sc == null or not sc.can_instantiate():
+			return
+		house_cat = sc.new()
+		house_cat.name = "HouseCat"
+		room.add_child(house_cat)
+		house_cat.rotation.y = 1.43                 # face turned toward the room
+	var spot := Vector3(HOUSE_CAT_SPOT.x, 0.0, HOUSE_CAT_SPOT.y)
+	house_cat.position = Vector3(spot.x, _top_of(bed_node, spot, 0.6) - 0.015, spot.z)
+
+
+# the highest mesh top over a point (x, z) among a node's meshes
+func _top_of(n: Node, p: Vector3, best: float) -> float:
+	for ch in n.get_children():
+		if ch is MeshInstance3D:
+			var bb: AABB = (ch as MeshInstance3D).global_transform * (ch as MeshInstance3D).get_aabb()
+			if p.x > bb.position.x and p.x < bb.end.x and p.z > bb.position.z and p.z < bb.end.z:
+				best = maxf(best, bb.end.y)
+		best = _top_of(ch, p, best)
+	return best
 
 
 func _make_bed() -> void:
