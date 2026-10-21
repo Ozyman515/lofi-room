@@ -1,5 +1,5 @@
 {
- "version": 79,
+ "version": 80,
  "files": {
   ".godot/.gdignore": {
    "sha": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
@@ -129,6 +129,10 @@
    "sha": "2523e609d714e31fe334628be60bdeea32f7ff64a6e5cfe646be00a0d231308b",
    "size": 1835
   },
+  "adpcm.gd": {
+   "sha": "e7edbe5de4bd2078084e0e12d58e4331fcecc085fa4c01cf2b769339040b3cd9",
+   "size": 3374
+  },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
    "size": 155
@@ -210,8 +214,8 @@
    "size": 5316
   },
   "docs/QUEST.md": {
-   "sha": "df36ee04655d5ccb1e14fbbe8aa4080425c72c236fea81a563d137992ae701ae",
-   "size": 3839
+   "sha": "5d89e93d13c53507fea6492473506d394a7f5ccc17b170b27f0d10d5163096e6",
+   "size": 4194
   },
   "emu.gd": {
    "sha": "050af6c153b6e4e622c58e604ebfbfc875654d6cdeef70f996491fed0ed8ff4b",
@@ -246,8 +250,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "aab6b0bcf7d09f4d8842b2a898831436c5a09e4aaa6648f919daa08f67066924",
-   "size": 174101
+   "sha": "9719a273ab363865a0de7f08167feb7e27690dc951767c1ed308ee852157bb36",
+   "size": 182076
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -281,9 +285,13 @@
    "sha": "d23062ae6bb474d25eeb5341430494d0e23fa34d25734d9c5010354c0755594e",
    "size": 2839789
   },
+  "net_audio.gd": {
+   "sha": "1cdfba4a9d041ed8ed4273b65d659203799b8e135d4986e2128e5e257e480372",
+   "size": 6559
+  },
   "net_avatars.gd": {
-   "sha": "dea20b3c618b421b5ddd90f49296d95d519c770d852d93292882c878efd9ad76",
-   "size": 5996
+   "sha": "c9a038ae73a0b06d49ac7ed4b78857fd6731806c394d9326c63611925a2c7740",
+   "size": 6388
   },
   "net_books.gd": {
    "sha": "7c3f81a995ddbf565f3ec9441cc385aeaf2498c203afd9967954fd2bb9de1093",
@@ -294,16 +302,20 @@
    "size": 1663
   },
   "net_game.gd": {
-   "sha": "8859870b31ef9d64b887effb21d863934b8025453d6c9747037ba78e5320e4cf",
-   "size": 9307
+   "sha": "d299e2081c7c4e95d6c8d72d5c7474f869d04f0eaa6c77decb3e149c196780b7",
+   "size": 10599
   },
   "net_phone.gd": {
    "sha": "52f11752e846e1945845b11d9d9504e3efbddba3b66ed18888d263dfe4a5e219",
    "size": 7950
   },
   "net_session.gd": {
-   "sha": "4749a3ac07da3de0c71cebe6676d77245c9df9ea7e3f5db05537afb78b751b5c",
-   "size": 11126
+   "sha": "4cf491a020793b8681352c97b7f757399490062dfdc34771e3a779fe0f9946c1",
+   "size": 11277
+  },
+  "net_voice.gd": {
+   "sha": "bda870de615020779db57d81274c55ade0956a3f64c91f81be1ce93dc42b60fc",
+   "size": 8509
   },
   "openxr_action_map.tres": {
    "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
@@ -318,8 +330,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "f65c60dbadfbeb28ea24f4d3b532a8f46047d3f210f0618cccd88f2f71b382bc",
-   "size": 41797
+   "sha": "0fb1f5f0439ffb707e7a96ee66a3e38d95b4feb9782119ad6c4b9b05cfb7de31",
+   "size": 44198
   },
   "platform.gd": {
    "sha": "c6bf62a1be57b71e552c88787f24461adaad9ca0fd97f5b4921b755ddba72ff7",
@@ -362,8 +374,8 @@
    "size": 2452
   },
   "speaker_bank.gd": {
-   "sha": "4e7f02e3e3fd1e079febd1299f97fb5a94e3532a96302fcac867eef58f9b5c4e",
-   "size": 3985
+   "sha": "e492fc89fe71a467c243c314a5145b0f15f3188cf50aea952395096f6c140e4a",
+   "size": 5520
   },
   "textures/poster.png": {
    "sha": "088ffe0f37c263f4bd9d0460883e044c797633d6cd5d952449ebebe6537c05ce",
@@ -382,11 +394,11 @@
    "size": 9858
   },
   "vcr.gd": {
-   "sha": "083ed5e90a42dd9dd3072bd92e7ee2f017f1aeb9f01ebda2f61e58c8f0713de9",
-   "size": 40165
+   "sha": "2c9ef837c92094dd6103bd5ab778c00701481a3ffc0bb9cdf15eec25535c5d18",
+   "size": 41782
   },
   "version.txt": {
-   "sha": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+   "sha": "95aebc97bc646c67fdcd923a5965b001f3c8a5c4d3a77075112e12a3a311d760",
    "size": 3
   },
   "weather.gd": {
