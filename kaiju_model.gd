@@ -1,6 +1,7 @@
 extends RefCounted
 ## An original giant monster for the city outside the window: a hunched, two-legged reptile with a big,
-## deep tyrannosaur-style head (heavy brows, rows of teeth), long clawed arms, thick legs and a heavy tail. Rounded knobs run down its back. Neon stripes glow along its flanks and throat, the same
+## deep tyrannosaur-style head (heavy brows, rows of teeth) crowned with swept-back horns and a fanned frill,
+## long clawed arms, thick legs and a heavy tail. Rounded knobs run down its back. Neon stripes glow along its flanks and throat, the same
 ## colours as the city's signs. The body is one smooth tube from the tail tip to the snout; the limbs are
 ## tubes too, on pivots that move: LegL/LegR (thigh) > Knee (shin and foot), ArmL/ArmR, Head > Jaw.
 ## Faces +x, about 1 unit tall (the caller scales it up to building size).
@@ -96,6 +97,18 @@ static func build() -> Node3D:
 		_ell(head, Vector3(0.26, 0.02, sz * 0.032), Vector3(0.01, 0.006, 0.004), _m(Color(0.02, 0.02, 0.03), 0.9))   # nostrils
 		_ell(head, Vector3(-0.04, -0.01, sz * 0.085), Vector3(0.05, 0.05, 0.01), skin)              # jaw muscles at the back of the skull
 	_ell(head, Vector3(-0.06, -0.08, 0), Vector3(0.07, 0.04, 0.06), glow2)                         # glowing throat
+	# the fanned frill behind the jaw, with its glowing rim
+	for sz in [-1.0, 1.0]:
+		var fr := _ell(head, Vector3(-0.1, 0.0, sz * 0.085), Vector3(0.055, 0.09, 0.006), skin)
+		fr.rotation.y = sz * 0.6
+		for t in 5:
+			var a := -1.1 + t * 0.55
+			_ell(head, Vector3(-0.12 + cos(a) * 0.05, sin(a) * 0.085, sz * 0.105), Vector3(0.008, 0.008, 0.004), glow2)
+	# the crown of horns, swept back off the top of the skull
+	for h in [[Vector3(-0.04, 0.09, 0.04), 0.12, 0.014], [Vector3(-0.04, 0.09, -0.04), 0.12, 0.014],
+			[Vector3(-0.07, 0.07, 0.065), 0.08, 0.01], [Vector3(-0.07, 0.07, -0.065), 0.08, 0.01], [Vector3(0.03, 0.095, 0.0), 0.05, 0.009]]:
+		var c := _cone(head, h[0], h[2], h[1], horn)
+		c.rotation = Vector3(sign(h[0].z) * -0.25, 0.0, 1.2)
 	# knobbly ridge from the brows back over the skull
 	for k in 4:
 		_ell(head, Vector3(0.0 - k * 0.04, 0.1 - k * 0.006, 0), Vector3(0.016, 0.012, 0.014), horn)
