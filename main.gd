@@ -254,6 +254,10 @@ func _build_multiplayer() -> void:
 	net_books.name = "NetBooks"
 	add_child(net_books)
 	net_books.setup(net, self)
+	var na: Node = load("res://net_audio.gd").new()
+	na.name = "NetAudio"
+	add_child(na)
+	na.setup(net, self)
 
 
 func _is_guest() -> bool:
@@ -318,6 +322,9 @@ func net_apply_game(d: Dictionary) -> void:
 	var ga = d.get("guests", {})
 	if ga is Dictionary:
 		guest_allow_seen = ga
+	var song := str(d.get("song", ""))
+	if pc != null:
+		pc.show_remote_song(song)
 
 
 func _on_net_roster() -> void:

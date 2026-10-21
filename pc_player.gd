@@ -1223,6 +1223,21 @@ func _play_index(i: int) -> void:
 	_play_btn.text = " PAUSE "
 
 
+# a guest: what the host is playing shows on the player (the local controls still work, they just wait)
+var _remote_song := ""
+
+
+func show_remote_song(title: String) -> void:
+	if title == _remote_song:
+		return
+	_remote_song = title
+	if title != "":
+		_title.text = title
+		_info.text = "Playing on the host's speakers"
+	elif audio.is_live():
+		_info.text = "The host's music stopped"
+
+
 func _toggle_play() -> void:
 	if audio.stream == null:
 		return
