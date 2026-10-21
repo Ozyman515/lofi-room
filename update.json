@@ -1,5 +1,5 @@
 {
- "version": 96,
+ "version": 97,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -266,8 +266,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "15d6a4019346cb99644b90c7d9fae44c114c381d674fa04f02d81898ba977076",
-   "size": 192374
+   "sha": "9ee9a8899e5e947cb76f138037bf846bf541bb8626360448377c146d38a72b76",
+   "size": 194123
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -334,8 +334,8 @@
    "size": 8509
   },
   "noir.gd": {
-   "sha": "a02c240f90e2d8b5d049f5eefbf79e98544b4b3e68075774be59a57da0472f07",
-   "size": 18438
+   "sha": "7459997ac29c4431c5336090077a2982c4a99b72e7f965a8c278bc9a57b381f7",
+   "size": 19074
   },
   "noir/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -366,8 +366,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "0e672315c91189776505eaf0d1dcb551cc705d3ac7cae840db8d549c923a93e1",
-   "size": 47640
+   "sha": "3bf31a784210b489b61b13840b5ff946f431ed291e9b4480d49768e5cd5035ce",
+   "size": 47921
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -453,6 +453,10 @@
    "sha": "e492fc89fe71a467c243c314a5145b0f15f3188cf50aea952395096f6c140e4a",
    "size": 5520
   },
+  "stressed_alien.gd": {
+   "sha": "c2db6b38802cdd0fb6733c09ac88098a7d4494cc12498c2cc7918d67321fe959",
+   "size": 6725
+  },
   "tornado_event.gd": {
    "sha": "b4c5550b12094a4d37b46ea6579d0cbf10e9f601ea969479542e2a4beabeaaae",
    "size": 35901
@@ -474,7 +478,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "d93844f8f37e55564be3f194656bf33b5d0fb5e589a0fe17eb7c2d4e8593ec9c",
+   "sha": "969eeff1eaac226a228cc61503effa46ea87d872ef3174365befc7c36ffa3c48",
    "size": 3
   },
   "weather.gd": {
