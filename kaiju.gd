@@ -3,21 +3,22 @@ extends Node3D
 ## window. Every footfall is a deep thump: the view jolts (on a screen; in a headset the controllers rumble
 ## instead, since shaking someone's view in VR makes them sick), the window rattles and the lamps flicker.
 ## Halfway across it stops, turns its head and looks in at you with a low rumble, then walks on.
-## It comes now and then on its own (more often at night), or from the Debug window. In a shared room the
-## host's kaiju walks past everybody's window.
+## It comes when you play with the little toy of it on the nightstand (or from the Debug window). In a
+## shared room the host's kaiju walks past everybody's window.
 
 const Model := preload("res://kaiju_model.gd")
 
-const SCALE := 7.5                   # in the city's units: just taller than the nearest rooftops
-const STREET := Vector3(0.0, -2.2, -9.5)
-const FROM_X := -16.0
-const TO_X := 12.0
-const STEP_TIME := 1.25              # seconds per footfall
-const STRIDE := 1.6                  # how far it moves each step (city units)
-const PEEK_X := -1.5                 # where it stops to look in the window
+const SCALE := 40.0                  # so big that only its head and the top of its neck rise over the rooftops
+const STREET := Vector3(0.0, -19.2, -31.0)   # a few blocks out, between the rows of towers
+const HEAD_X := 0.5 * SCALE          # how far ahead of its middle the head is
+const FROM_X := -42.0 - HEAD_X       # (positions are its middle; the head leads by HEAD_X)
+const TO_X := 36.0 - HEAD_X
+const STEP_TIME := 1.6               # seconds per footfall: slow and heavy
+const STRIDE := 3.6                  # how far it moves each step (city units)
+const PEEK_X := -4.0 - HEAD_X        # where it stops, head in the middle of the window, to look in
 const PEEK_TIME := 4.5
-const CHANCE_PER_CHECK := 0.04       # checked every 10 minutes; doubled at night
-const CHECK_EVERY := 600.0
+const TOY_POS := Vector3(-0.63, 0.46, -1.57)   # on the nightstand, by the lamp (the drawer below holds the secret cart)
+const TOY_SCALE := 0.15
 
 var main: Node3D
 var active := false
@@ -62,7 +63,7 @@ func setup(m: Node3D) -> void:
 	_thump = _player(_make_thump(), 0.0)
 	_rattle = _player(_make_rattle(), -10.0)
 	_rumble = _player(_make_rumble(), -4.0)
-	_check_t = _rng.randf_range(60.0, CHECK_EVERY)
+	_build_toy()
 
 
 func _player(s: AudioStream, db: float) -> AudioStreamPlayer:
@@ -81,7 +82,8 @@ func request_walk() -> void:
 		return
 	var ng = main.net_game
 	if ng != null and ng.net.is_online() and not ng.net.is_host():
-		return                       # guests see the host's kaiju only
+		ng.net.send_var(1, ng.Net.K_EVENT, {"k": "kaiju_on"})       # the host's window: ask the host
+		return
 	count += 1
 	start()
 
@@ -102,19 +104,12 @@ func _process(delta: float) -> void:
 	_camera_shake(delta)
 	_flicker(delta)
 	if not active:
-		_check_t -= delta
-		if _check_t <= 0.0:
-			_check_t = CHECK_EVERY
-			var h := int(Time.get_datetime_dict_from_system()["hour"])
-			var night := h >= 21 or h < 5
-			if _rng.randf() < CHANCE_PER_CHECK * (2.0 if night else 1.0):
-				request_walk()
 		return
 	# the pause at the window: stand still, turn the head toward the room, rumble
 	if not _peeked and _x >= PEEK_X:
 		_peek_t += delta
 		var k := clampf(_peek_t / 1.2, 0.0, 1.0) * (1.0 - clampf((_peek_t - (PEEK_TIME - 1.0)) / 1.0, 0.0, 1.0))
-		_head.rotation = Vector3(0.0, 0.9 * k, -0.15 * k)
+		_head.rotation = Vector3(0.0, 0.55 * k, -0.12 * k)
 		_jaw.rotation.z = -0.12 * k * (0.5 + 0.5 * sin(_peek_t * 5.0))
 		if _peek_t > 0.6 and not _rumble.playing and _peek_t < 1.0:
 			_rumble.play()
@@ -136,7 +131,7 @@ func _process(delta: float) -> void:
 # legs swing, knees bend on the lifted leg, the body dips at each footfall, arms and tail sway
 func _pose(ph: float) -> void:
 	var s := sin(ph)
-	_k.position = STREET + Vector3(_x, -absf(cos(ph)) * 0.04 * SCALE + 0.04 * SCALE, 0.0)
+	_k.position = STREET + Vector3(_x, -absf(cos(ph)) * 0.012 * SCALE + 0.012 * SCALE, 0.0)
 	_body.rotation.z = 0.04 * sin(ph * 2.0)
 	_body.rotation.x = 0.05 * s
 	for i in 2:
@@ -150,8 +145,8 @@ func _pose(ph: float) -> void:
 
 
 func _footfall() -> void:
-	var dist := Vector3(_x, 0, STREET.z).distance_to(Vector3(-1.4, 0, 0))
-	var near := clampf(1.0 - (dist - 9.5) / 16.0, 0.25, 1.0)        # loudest right outside the window
+	var dist := absf(_x + HEAD_X + 1.4)
+	var near := clampf(1.0 - dist / 40.0, 0.35, 1.0)                 # loudest when its head is right outside
 	_thump.volume_db = linear_to_db(near)
 	_thump.pitch_scale = _rng.randf_range(0.9, 1.05)
 	_thump.play()
@@ -195,6 +190,51 @@ func _flicker(delta: float) -> void:
 				_light_base[l] = (l as OmniLight3D).light_energy
 	for l in _light_base:
 		(l as OmniLight3D).light_energy = _light_base[l] * (0.35 if _rng.randf() < 0.5 else 1.0)
+
+
+# ---- the toy on the nightstand: pick it up, give it a stomp, and the real one comes
+
+var _toy: Node3D
+
+
+func _build_toy() -> void:
+	_toy = Model.build()
+	_toy.scale = Vector3.ONE * TOY_SCALE
+	_toy.position = TOY_POS
+	_toy.rotation.y = -PI * 0.62                 # facing out into the room, looking a little toward the bed
+	main.room.add_child(_toy)
+	var stand := MeshInstance3D.new()            # a little round display base
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.055
+	cm.bottom_radius = 0.06
+	cm.height = 0.01
+	stand.mesh = cm
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0.08, 0.07, 0.1)
+	sm.roughness = 0.4
+	stand.material_override = sm
+	stand.position = TOY_POS + Vector3(0, 0.005, 0)
+	main.room.add_child(stand)
+	_toy.position.y += 0.01
+	var hit := Node3D.new()
+	hit.position = TOY_POS + Vector3(0, 0.06, 0)
+	main.room.add_child(hit)
+	main.interactables.append({"node": hit, "half": Vector3(0.07, 0.07, 0.07), "guest_ok": true,
+		"label": func() -> String: return "A TOY KAIJU" if not active else "A TOY KAIJU  (uh oh)", "cb": play_with_toy})
+
+
+func play_with_toy() -> void:
+	# a little stomp-stomp on the nightstand, then the window
+	var tw := create_tween()
+	for i in 2:
+		tw.tween_property(_toy, "rotation:z", 0.25, 0.12)
+		tw.tween_property(_toy, "position:y", TOY_POS.y + 0.04, 0.12)
+		tw.tween_property(_toy, "rotation:z", -0.25, 0.12)
+		tw.tween_property(_toy, "position:y", TOY_POS.y + 0.01, 0.1)
+	tw.tween_property(_toy, "rotation:z", 0.0, 0.15)
+	await tw.finished
+	await get_tree().create_timer(1.5).timeout
+	request_walk()
 
 
 # ---- shared rooms

@@ -484,6 +484,9 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 		"tv_power":
 			if allowed and not main.egg_active and not main._net_play_lock():
 				main.vcr.toggle_tv()
+		"kaiju_on":
+			if main.kaiju != null:
+				main.kaiju.request_walk()
 		"noir_on":
 			if main.noir != null:
 				main.noir.on_guest_event(d)
