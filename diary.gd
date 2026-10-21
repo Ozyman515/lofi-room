@@ -67,7 +67,10 @@ static func entries() -> Array:
 		for k in cf.get_section_keys("cats"):
 			var c: Dictionary = cf.get_value("cats", k, {})
 			var n := int(c.get("pets", 0))
-			out.append({"kind": "cat", "title": "The tuxedo cat" if k == "tux" else "The calico",
+			var names := ConfigFile.new()
+			names.load("user://lofi_room.cfg")
+			var nm := str(names.get_value("cats", "name_" + k, "Tux" if k == "tux" else "Callie"))
+			out.append({"kind": "cat", "title": nm,
 				"detail": "petted %d time%s" % [n, "" if n == 1 else "s"], "when": int(c.get("last", 0)), "sort": int(c.get("last", 0))})
 	var rc := ConfigFile.new()
 	if rc.load(READER) == OK and rc.has_section("bookmarks"):

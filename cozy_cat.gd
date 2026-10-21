@@ -181,7 +181,7 @@ static func _cap(s: float, len: float) -> float:
 	if s >= len:
 		return 1.0
 	var u := 1.0 - s / len
-	return sqrt(maxf(0.0, 1.0 - u * u)) * 0.92 + 0.08
+	return sqrt(maxf(0.0, 1.0 - u * u))           # closes to a point, so the end is a round cap with no hole
 
 
 # a smooth tube through `pts`, with an elliptical section (width rh, height rv) that never dips below y = 0
@@ -223,13 +223,13 @@ static func _tube(pts: Array[Vector3], rh: Array[float], rv: Array[float], mat: 
 func _sleepy_head(h: Node3D, a: StandardMaterial3D, b: StandardMaterial3D, wht: StandardMaterial3D, pnk: StandardMaterial3D, calico: bool) -> void:
 	_ell(h, Vector3(0, 0.000, 0.020), Vector3(0.072, 0.058, 0.064), a)
 	if calico:
-		_ell(h, Vector3(0.022, 0.006, 0.022), Vector3(0.052, 0.054, 0.0625), b)    # the black half of the face
+		_ell(h, Vector3(0.03, 0.006, 0.02), Vector3(0.046, 0.053, 0.058), b)       # the black half of the face
 	for sx in [-1.0, 1.0]:
 		_ell(h, Vector3(sx * 0.044, -0.014, 0.036), Vector3(0.037, 0.034, 0.038), b if sx > 0.0 else a)
 	if calico:
 		_ell(h, Vector3(0, 0.014, 0.066), Vector3(0.013, 0.03, 0.012), wht)       # broad white blaze
 	else:
-		_ell(h, Vector3(0, 0.022, 0.071), Vector3(0.0065, 0.020, 0.006), wht)     # the blaze, a thin stripe
+		_ell(h, Vector3(0, 0.016, 0.0775), Vector3(0.0055, 0.024, 0.006), wht)    # the blaze, a thin stripe
 	var bridge := _ell(h, Vector3(0, 0.002, 0.077), Vector3(0.016, 0.032, 0.012), wht if calico else a)
 	bridge.rotation_degrees = Vector3(-26, 0, 0)
 	for sx in [-1.0, 1.0]:

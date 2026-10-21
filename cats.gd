@@ -9,14 +9,17 @@ extends Node3D
 ## In a shared room the host's cats are the ones everybody sees; a guest's pets, treats and moves go to the host.
 
 const CozyCat := preload("res://cozy_cat.gd")
+const CatFrames := preload("res://cat_frames.gd")
+const CFG := "user://lofi_room.cfg"
+const DEFAULT_NAMES := {"tux": "Tux", "calico": "Callie"}     # until the owner picks the real ones
 const Diary := preload("res://diary.gd")
 
 const CALICO_CHANCE := 0.10
 const CALICO_CHANCE_NIGHT := 0.25         # between 11 pm and 5 am
 const CAL_SPOTS := ["rug", "beanbag", "console"]
 const BED_SOLO := Vector2(-1.40, -0.02)  # x, z on the bed near the foot
-const BED_TUX := Vector2(-1.50, -0.04)   # together: the tux on the left...
-const BED_CAL := Vector2(-1.24, 0.04)    # ...the calico nested against it, facing the other way
+const BED_TUX := Vector2(-1.50, -0.12)   # together: the tux on the left...
+const BED_CAL := Vector2(-1.25, -0.06)   # ...the calico snuggled against its tail, both faces toward the room
 const RUG := Vector3(-0.98, 0.0, 0.34)   # on the floor just past the foot of the bed (the icon's cat)
 const FACE_ROOM := 1.43                   # a cat's yaw that turns its face toward the middle of the room
 
@@ -33,6 +36,10 @@ var _bag: Node3D
 var _sfx: AudioStreamPlayer3D
 var _door_sfx: AudioStreamPlayer3D
 var _items: Array = []
+var frames: Node3D                        # cat_frames.gd: the photos on the dresser
+var _names := {}                          # my names for them
+var _host_names := {}                     # the host's, while their cats are shown
+var _unlocked := {}                       # "tux", "calico", "both" -> met
 
 static var _rustle: AudioStreamWAV
 static var _creak: AudioStreamWAV
@@ -40,6 +47,7 @@ static var _creak: AudioStreamWAV
 
 func setup(m: Node3D) -> void:
 	main = m
+	_load_names()
 	tux = CozyCat.new()
 	tux.coat = "tux"
 	tux.name = "TuxedoCat"
@@ -74,7 +82,7 @@ func setup(m: Node3D) -> void:
 	main.room.add_child(bed_hit)
 	main.interactables.append({"node": bed_hit, "half": Vector3(0.84, 0.16, 1.06), "guest_ok": true,
 		"when": func() -> bool: return carrying,
-		"label": func() -> String: return "PUT THE CALICO ON THE BED", "cb": put_on_bed})
+		"label": func() -> String: return "PUT %s ON THE BED" % name_of("calico").to_upper(), "cb": put_on_bed})
 	# who's visiting today
 	var forced := OS.get_environment("LOFI_CATS")       # testing: "tux", "calico:console", "tux,calico:bed" ...
 	if forced != "":
@@ -88,7 +96,62 @@ func setup(m: Node3D) -> void:
 		var chance := CALICO_CHANCE_NIGHT if (h >= 23 or h < 5) else CALICO_CHANCE
 		if randf() < chance:
 			cal_spot = CAL_SPOTS[randi() % CAL_SPOTS.size()]
+	frames = CatFrames.new()
+	frames.name = "CatFrames"
+	add_child(frames)
+	frames.setup(main, self)
 	layout()
+
+
+# ---- names, and which cats you've met (the frames on the dresser fill in as you do)
+
+func _load_names() -> void:
+	var cf := ConfigFile.new()
+	cf.load(CFG)
+	for k in ["tux", "calico"]:
+		_names[k] = str(cf.get_value("cats", "name_" + k, DEFAULT_NAMES[k]))
+	for k in ["tux", "calico", "both"]:
+		_unlocked[k] = bool(cf.get_value("cats", "met_" + k, false))
+
+
+func default_name(which: String) -> String:
+	return DEFAULT_NAMES.get(which, "Cat")
+
+
+func name_of(which: String) -> String:
+	if _remote and _host_names.has(which):
+		return str(_host_names[which])
+	return str(_names.get(which, default_name(which)))
+
+
+func set_name_of(which: String, n: String) -> void:
+	_names[which] = n
+	var cf := ConfigFile.new()
+	cf.load(CFG)
+	cf.set_value("cats", "name_" + which, n)
+	cf.save(CFG)
+	if frames != null:
+		frames.refresh()
+
+
+func is_unlocked(which: String) -> bool:
+	return bool(_unlocked.get(which, false))
+
+
+func _meet(which: String) -> void:
+	if is_unlocked(which):
+		return
+	_unlocked[which] = true
+	var cf := ConfigFile.new()
+	cf.load(CFG)
+	cf.set_value("cats", "met_" + which, true)
+	cf.save(CFG)
+	if frames != null:
+		frames.refresh()
+
+
+func showing_hosts_cats() -> bool:
+	return _remote
 
 
 # ---- where everybody is
@@ -98,13 +161,19 @@ func layout() -> void:
 	calico.visible = cal_spot != "" or carrying
 	var together := tux_here and cal_spot == "bed"
 	if tux_here:
+		_meet("tux")
+	if cal_spot != "" or carrying:
+		_meet("calico")
+	if together:
+		_meet("both")
+	if tux_here:
 		_put(tux, _bed_point(BED_TUX if together else BED_SOLO), FACE_ROOM)
 	if carrying:
 		return
 	match cal_spot:
 		"bed":
 			if together:
-				_put(calico, _bed_point(BED_CAL), FACE_ROOM + PI * 0.92)
+				_put(calico, _bed_point(BED_CAL), FACE_ROOM - 0.7)
 			else:
 				_put(calico, _bed_point(BED_SOLO), FACE_ROOM)
 		"rug":
@@ -145,7 +214,7 @@ func _process(_delta: float) -> void:
 			and main.seat_nodes[main.cur_seat] == main.beanbags[0] and not _remote:
 		cal_spot = "bed"
 		layout()
-		main.updater.show_toast("The calico hops off to the bed.", 3.0)
+		main.updater.show_toast("%s hops off to the bed." % name_of("calico"), 3.0)
 	if carrying:
 		_hold_pose()
 
@@ -153,9 +222,9 @@ func _process(_delta: float) -> void:
 # ---- petting, carrying
 
 func _cat_label(cat: Node3D) -> String:
-	var name := "TUXEDO CAT" if cat == tux else "CALICO"
+	var name := name_of("tux" if cat == tux else "calico").to_upper()
 	if cat == calico and cal_spot == "console":
-		return "PICK UP THE CALICO  (it's asleep on the console)"
+		return "PICK UP %s  (asleep on the console)" % name
 	return "PET THE %s" % name + ("  (purring)" if cat.is_petted() else "")
 
 
@@ -196,7 +265,7 @@ func pick_up() -> void:
 	parent.add_child(calico)
 	calico.scale = Vector3.ONE * (1.0 if main.xr_active else 0.8)
 	_hold_pose()
-	main.updater.show_toast("Point at the bed and click to put the calico down.", 4.0)
+	main.updater.show_toast("Point at the bed and click to put %s down." % name_of("calico"), 4.0)
 
 
 func _hold_pose() -> void:
@@ -314,7 +383,7 @@ func debug_set(what: String) -> void:
 # ---- shared rooms: the host's cats
 
 func state() -> Dictionary:
-	return {"t": tux_here, "c": cal_spot, "carry": carrying}
+	return {"t": tux_here, "c": cal_spot, "carry": carrying, "n": {"tux": _names.get("tux", ""), "calico": _names.get("calico", "")}}
 
 
 func apply_remote(d: Dictionary) -> void:
@@ -324,6 +393,13 @@ func apply_remote(d: Dictionary) -> void:
 			put_on_bed()
 		_remote = true
 	tux_here = bool(d.get("t", false))
+	var hn = d.get("n", {})
+	_host_names = {}
+	if hn is Dictionary:
+		for k in ["tux", "calico"]:
+			var nm := str(hn.get(k, "")).strip_edges().left(12)
+			if nm != "":
+				_host_names[k] = nm
 	var c := str(d.get("c", ""))
 	cal_spot = c if c in ["", "rug", "beanbag", "console", "bed"] else ""
 	if bool(d.get("carry", false)) and cal_spot == "console":
@@ -335,6 +411,7 @@ func end_remote() -> void:
 	if not _remote:
 		return
 	_remote = false
+	_host_names = {}
 	tux_here = bool(_own.get("t", false))
 	cal_spot = str(_own.get("c", ""))
 	layout()

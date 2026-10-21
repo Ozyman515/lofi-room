@@ -2877,7 +2877,7 @@ func _console_label() -> String:
 # the calico asleep on the console: nothing gets in or switched on until it's moved
 func _cat_on_console() -> bool:
 	if cats != null and cats.blocks_console():
-		_net_say("The calico is asleep on the console. Pick it up and put it on the bed.")
+		_net_say("%s is asleep on the console. Pick her up and put her on the bed." % cats.name_of("calico"))
 		return true
 	return false
 
