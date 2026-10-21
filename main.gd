@@ -78,6 +78,9 @@ var arcade_light: OmniLight3D
 var arcade_on := true                  # the power switch on the cabinet's side
 var arcade_marquee_m: StandardMaterial3D
 var arcade_marquee_label: Label3D
+var arcade_glow: Array = []            # [material, lit energy]: the buttons and coin lights, dark while the power is off
+var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV's buttons set the console's)
+var arcade_vol_label: Label3D
 var emu: Node                         # NES / SNES games (emu.gd)
 var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo" or "egg" (the secret one)
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
@@ -1804,7 +1807,8 @@ func _process(delta: float) -> void:
 	_update_held_pad(delta)
 	_update_book(delta)
 	if emu != null:
-		emu.set_volume(float(vcr.tv_volume) / 10.0 if (vcr.tv_on or slot_cart == "neo") else 0.0)
+		var gv: int = arcade_volume if slot_cart == "neo" else vcr.tv_volume
+		emu.set_volume(float(gv) / 10.0 if (vcr.tv_on or slot_cart == "neo") else 0.0)
 		if game_mode:
 			_pad_tick(delta)
 			if not xr_active and not Input.get_connected_joypads().is_empty():
@@ -2583,8 +2587,16 @@ func _build_tv() -> void:
 	vcr.setup(sm, tv_ui)
 	for vb in vcr.buttons:
 		vb["egg_lock"] = true                  # the VCR is out of action during the easter egg
-	for vb2 in vcr.buttons:
+	for bi in vcr.buttons.size():
+		var vb2: Dictionary = vcr.buttons[bi]
 		vb2["group"] = "tv"
+		# in a room, the tape buttons act on whoever's tape is on the TV
+		var local_cb: Callable = vb2["cb"]
+		var idx := bi
+		vb2["cb"] = func() -> void:
+			if net_game != null and net_game.vcr_button_remote(idx):
+				return
+			local_cb.call()
 	interactables.append_array(vcr.buttons)
 	# control panel on the right: knobs, speaker slits
 	var px := w / 2.0 - 0.15
@@ -2615,7 +2627,9 @@ func _build_tv() -> void:
 	interactables.append({"node": pw, "half": Vector3(0.05, 0.035, 0.04),
 		"label": _tv_label.bind("power"), "egg_lock": true, "group": "tv",
 		"cb": func() -> void:
-			if not _net_play_lock():
+			if _is_guest():
+				net_game.request_tv_power()          # the host's TV: the host switches it
+			elif not _net_play_lock():
 				vcr.toggle_tv(), "hover": _glow_hover(pw_m)})
 	var vd_m := _mat(Color(0.45, 0.40, 0.50), 0.4)
 	var vu_m := _mat(Color(0.45, 0.40, 0.50), 0.4)
@@ -3153,6 +3167,7 @@ func _build_arcade() -> void:
 		_box(Vector3(0.7815, 0.40, cz), Vector3(0.006, 0.20, 0.13), grey, root)                       # coin door plate
 		_box(Vector3(0.785, 0.46, cz), Vector3(0.004, 0.05, 0.012), dark, root)                       # coin slot
 		_box(Vector3(0.785, 0.36, cz), Vector3(0.004, 0.025, 0.05), yellow, root)                     # "coin" light
+	arcade_glow.append([yellow, 1.2, yellow.albedo_color])
 	_box(Vector3(0.7815, 0.22, 0.0), Vector3(0.004, 0.18, 0.30), grey, root)                          # cash door
 	_box(Vector3(0.784, 0.22, 0.0), Vector3(0.003, 0.012, 0.05), dark, root)                          # its lock
 	var cl := Label3D.new()
@@ -3206,10 +3221,13 @@ func _build_arcade() -> void:
 		for r in 2:
 			for c in 3:
 				var bm := _mat(btn_cols[c], 0.25, 0.3)
+				arcade_glow.append([bm, 0.3, bm.albedo_color])
 				_cyl(Vector3(0.925 + r * 0.058, 0.911, zc - 0.092 - c * 0.06), 0.0195, 0.018, bm, root)
 	var st_cols := [btn_cols[0], btn_cols[1], btn_cols[2], btn_cols[1]]
 	for i in 4:
-		_cyl(Vector3(0.855, 0.908, 0.045 - i * 0.04 + 0.0), 0.0155, 0.012, _mat(st_cols[i], 0.25, 0.3), root)
+		var stm := _mat(st_cols[i], 0.25, 0.3)
+		arcade_glow.append([stm, 0.3, stm.albedo_color])
+		_cyl(Vector3(0.855, 0.908, 0.045 - i * 0.04 + 0.0), 0.0155, 0.012, stm, root)
 	# the monitor: a leaning white board with a black glass and the live screen
 	var tb := Basis(Vector3(0, 0, 1), CAB_TILT) * Basis(Vector3.UP, PI / 2.0)
 	var a := Vector2(0.83, 0.96)
@@ -3260,6 +3278,33 @@ func _build_arcade() -> void:
 	interactables.append({"node": sw_plate, "half": Vector3(0.05, 0.07, 0.03), "egg_lock": true, "group": "games",
 		"label": func() -> String: return "ARCADE POWER  [%s]" % ("ON" if arcade_on else "OFF"),
 		"cb": _toggle_arcade_power, "hover": _glow_hover(sw_m)})
+	# volume: two small buttons on the front panel under the control deck, and a little readout between them
+	var vol_m := _mat(Color(0.12, 0.12, 0.14), 0.4)
+	for vi in 2:
+		var up := vi == 1
+		var vz := -0.07 if up else 0.04
+		var vb := _box(Vector3(1.052, 0.862, vz), Vector3(0.006, 0.03, 0.032), vol_m, root)
+		var vl := Label3D.new()
+		vl.text = "+" if up else "-"
+		vl.font_size = 40
+		vl.pixel_size = 0.0007
+		vl.outline_size = 0
+		vl.modulate = Color(0.92, 0.92, 0.95)
+		vl.rotation = Vector3(0, PI / 2.0, 0)
+		vl.position = Vector3(1.0556, 0.863, vz)
+		root.add_child(vl)
+		interactables.append({"node": vb, "half": Vector3(0.025, 0.025, 0.025), "guest_ok": true,
+			"label": func() -> String: return "ARCADE VOLUME  %s  [%d / 10]" % ["+" if up else "-", arcade_volume],
+			"cb": func() -> void: set_arcade_volume(arcade_volume + (1 if up else -1)), "hover": _glow_hover(vol_m)})
+	arcade_vol_label = Label3D.new()
+	arcade_vol_label.font_size = 30
+	arcade_vol_label.pixel_size = 0.0007
+	arcade_vol_label.outline_size = 0
+	arcade_vol_label.modulate = Color(0.25, 0.85, 0.4)
+	arcade_vol_label.rotation = Vector3(0, PI / 2.0, 0)
+	arcade_vol_label.position = Vector3(1.0514, 0.862, -0.015)
+	root.add_child(arcade_vol_label)
+	_show_arcade_volume()
 	# the step from the monitor up to the marquee, the roof, and the sloped back
 	_box(Vector3(0.675, 1.515, 0), Vector3(0.08, 0.04, CAB_W - 0.07), white, root)
 	var rf := Vector2(0.50, 1.80) - Vector2(0.71, 1.77)
@@ -3307,7 +3352,24 @@ func set_arcade_on(on: bool) -> void:
 		arcade_marquee_m.emission_energy_multiplier = 0.9 if on else 0.0
 		arcade_marquee_m.albedo_color = Color(0.95, 0.97, 0.92) if on else Color(0.45, 0.46, 0.44)
 		arcade_marquee_label.modulate = Color(0.08, 0.45, 0.2) if on else Color(0.1, 0.22, 0.14)
+	for gm in arcade_glow:
+		var gmat := gm[0] as StandardMaterial3D
+		gmat.emission_energy_multiplier = float(gm[1]) if on else 0.0
+		gmat.albedo_color = gm[2] if on else (gm[2] as Color).darkened(0.72)      # unlit plastic, not glowing
+	_show_arcade_volume()
 	_apply_console()
+
+
+func set_arcade_volume(v: int) -> void:
+	arcade_volume = clampi(v, 0, 10)
+	_show_arcade_volume()
+	_save_settings()
+
+
+func _show_arcade_volume() -> void:
+	if arcade_vol_label != null:
+		arcade_vol_label.text = "VOL %d" % arcade_volume
+		arcade_vol_label.visible = arcade_on
 
 
 func _pick_arcade(side: int) -> void:
@@ -3596,6 +3658,8 @@ func _load_prefs() -> void:
 		slap_minutes = int(cfg.get_value("settings", "slap_minutes", 30))
 		for gk in guest_allow:
 			guest_allow[gk] = bool(cfg.get_value("guests", gk, false))
+		arcade_volume = clampi(int(cfg.get_value("settings", "arcade_volume", 7)), 0, 10)
+		_show_arcade_volume()
 		if not bool(cfg.get_value("settings", "arcade_on", true)):
 			set_arcade_on(false)
 		if bool(cfg.get_value("settings", "phone_hidden", false)):
@@ -3656,6 +3720,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "phone_hidden", phone_hidden)
 	cfg.set_value("settings", "slap_minutes", slap_minutes)
 	cfg.set_value("settings", "arcade_on", arcade_on)
+	cfg.set_value("settings", "arcade_volume", arcade_volume)
 	for g in guest_allow:
 		cfg.set_value("guests", g, guest_allow[g])
 	cfg.save(SETTINGS_FILE)
@@ -4378,6 +4443,9 @@ func _pointer_press(hand: int) -> bool:
 	if hover_screen != null:
 		if _is_guest() and hover_screen == monitor_ui and not (guest_allow_seen.get("music", false) or guest_allow_seen.get("lights", false)):
 			_net_say("The host hasn't opened the PC up to guests.")
+			return true
+		if _is_guest() and hover_screen == tv_screen_ui and not guest_allow_seen.get("tv", false):
+			_net_say("The host hasn't opened the TV up to guests.")
 			return true
 		down_screen = hover_screen
 		ptr_down = true

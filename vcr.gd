@@ -541,6 +541,15 @@ func stop() -> void:
 		_osd_show("STOP")
 
 
+# somebody else's tape went on in a shared room: stop mine even if my TV is switched off
+func stop_for_other() -> void:
+	var was := tv_on
+	tv_on = true
+	stop()
+	tv_on = was
+	_tv_paused = false                  # switching the TV back on must not resume it
+
+
 func eject() -> void:
 	if not tv_on:
 		return
@@ -1316,7 +1325,7 @@ var remote_video := false
 var _remote_last_ms := 0
 
 
-func remote_video_frame(img: Image) -> void:
+func remote_video_frame(img: Image, who := "the host") -> void:
 	if _remote_tex == null or _remote_tex.get_width() != img.get_width() or _remote_tex.get_height() != img.get_height():
 		_remote_tex = ImageTexture.create_from_image(img)
 	else:
@@ -1328,7 +1337,7 @@ func remote_video_frame(img: Image) -> void:
 		_mat.set_shader_parameter("video_aspect", float(img.get_width()) / float(img.get_height()))
 		_mat.set_shader_parameter("use_video", tv_on)
 		_show_status("")
-		_osd_show("THE HOST'S TAPE", 3.0)
+		_osd_show("%s'S TAPE" % who.to_upper(), 3.0)
 	else:
 		_mat.set_shader_parameter("video_tex", _remote_tex)      # the texture object can change size
 

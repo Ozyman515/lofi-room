@@ -22,6 +22,12 @@ var pads_seen := {}                     # everyone: id -> true for players holdi
 var guest_arcade := {}                  # host side: guest id -> true while they play at the arcade sticks (not a pad)
 var guest_pad_idx := {}                 # host side: guest id -> which rug pad they hold
 var pad_of_seen := {}                   # everyone: id -> which rug pad that player holds
+# The TV shows one person's tape: whoever last put one in (the host, or a guest the host lets use the TV).
+# That person streams the picture and sound; the host passes a guest's stream on to everyone else.
+var tv_source := 1
+var tv_live := false                    # the source has a tape going (so the VCR buttons act on theirs)
+var _tv_was_active := false
+var _tv_claim_ms := 0
 var sticks_seen := {}                   # everyone: id -> true for players at the arcade sticks
 var slap_minutes_seen := 30             # the host's slap cooldown, as last announced
 var _last_slap := {}                    # host side: slapper id -> ms of their last slap
@@ -66,6 +72,9 @@ func _on_net_state() -> void:
 	emu.streaming = net.state == net.State.HOSTING
 	if not net.is_online():
 		guest_pad.clear()
+		tv_source = 1
+		tv_live = false
+		_tv_was_active = false
 		guest_arcade.clear()
 		guest_pad_idx.clear()
 		pad_of_seen.clear()
@@ -86,6 +95,9 @@ func _on_roster() -> void:
 			guest_arcade.erase(id)
 			guest_pad_idx.erase(id)
 			guest_mask.erase(id)
+			if id == tv_source:
+				tv_source = 1
+				tv_live = my_tv_active()
 			_state_known.erase(id)
 			if id == p2_id:
 				p2_id = 0
@@ -95,10 +107,9 @@ func _on_roster() -> void:
 func _process(delta: float) -> void:
 	if net == null or not net.is_online():
 		return
-	if net.is_host():
-		_tv_video_tick()
-	else:
-		main.vcr.remote_video_tick()
+	_tv_video_tick()
+	main.vcr.remote_video_tick()
+	_tv_ownership()
 	_state_t += delta
 	if _state_t >= 0.2:
 		_state_t = 0.0
@@ -133,7 +144,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"tv_src": tv_source, "tv_live": tv_live, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -166,7 +177,7 @@ func _on_frame(img: Image) -> void:
 
 # the host's tape: the TV picture goes out at a lower rate and size than a game
 func _tv_video_tick() -> void:
-	if not net.is_host() or net.peer_ids().is_empty():
+	if tv_source != net.my_id or net.peer_ids().is_empty():
 		return
 	var now := Time.get_ticks_msec()
 	if now - _last_tv < int(1000.0 / TV_FPS):
@@ -187,8 +198,82 @@ func _tv_video_tick() -> void:
 		return
 	var pk := PackedByteArray([1])
 	pk.append_array(buf)
-	for id in net.peer_ids():
-		net.send_to(id, Net.K_VIDEO, pk, false)
+	if net.is_host():
+		for id in net.peer_ids():
+			net.send_to(id, Net.K_VIDEO, pk, false)
+	else:
+		net.send_to(1, Net.K_VIDEO, pk, false)      # the host passes it on
+
+
+# ---- who owns the TV
+
+const TV_BUTTONS := 4                   # rewind, fast forward, play/pause, stop: these act on whoever's tape is on
+
+
+func my_tv_active() -> bool:
+	var v = main.vcr
+	return v.has_tape and (v.state == v.State.PLAYING or v.state == v.State.PAUSED or v.state == v.State.LOADING)
+
+
+func tv_source_name() -> String:
+	return str(net.roster.get(tv_source, {}).get("name", "Someone"))
+
+
+func _tv_ownership() -> void:
+	var active := my_tv_active()
+	if active and not _tv_was_active:
+		_tv_claim_ms = Time.get_ticks_msec()
+		if net.is_host():
+			_set_tv_source(1)
+		else:
+			net.send_var(1, Net.K_EVENT, {"k": "tv_take"})
+	elif not active and _tv_was_active and tv_source == net.my_id:
+		if net.is_host():
+			tv_live = false
+		else:
+			net.send_var(1, Net.K_EVENT, {"k": "tv_drop"})
+	_tv_was_active = active
+	if net.is_host():
+		if tv_source == 1:
+			tv_live = active
+		elif not bool(main.guest_allow.get("tv", false)):
+			_set_tv_source(1)                       # the host took the TV back from guests
+	# somebody else's tape is on now: stop mine (after a moment, so my own claim has time to land)
+	if active and tv_source != net.my_id and Time.get_ticks_msec() - _tv_claim_ms > 4000:
+		main.vcr.stop_for_other()
+		main.updater.show_toast("%s put a tape in." % tv_source_name(), 3.0)
+
+
+func _set_tv_source(id: int) -> void:
+	tv_source = id
+	tv_live = true if id != 1 else my_tv_active()
+	if id != net.my_id and my_tv_active():
+		main.vcr.stop_for_other()
+
+
+# pressing a VCR transport button while someone else's tape is on: it goes to them. Returns true if sent.
+func vcr_button_remote(i: int) -> bool:
+	if net == null or not net.is_online() or tv_source == net.my_id or not tv_live or i >= TV_BUTTONS:
+		return false
+	if net.is_host():
+		net.send_var(tv_source, Net.K_EVENT, {"k": "vcr", "b": i})
+	else:
+		net.send_var(1, Net.K_EVENT, {"k": "vcr", "b": i})
+	return true
+
+
+func _apply_vcr_button(i: int) -> void:
+	var v = main.vcr
+	match i:
+		0: v.seek_rel(-10.0)
+		1: v.seek_rel(30.0)
+		2: v.play_pause()
+		3: v.stop()
+
+
+# a guest pressed the TV's power button
+func request_tv_power() -> void:
+	net.send_var(1, Net.K_EVENT, {"k": "tv_power"})
 
 
 func _on_audio(pcm: PackedByteArray, count: int) -> void:
@@ -242,6 +327,17 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 					guest_pad_idx[from] = clampi(int(d.get("idx", -1)), -1, 7)
 				elif d is Dictionary and d.get("k", "") == "slap":
 					_host_slap(from, int(d.get("target", 0)))
+				elif d is Dictionary:
+					_host_tv_event(from, d)
+			Net.K_VIDEO:
+				# a guest's tape: show it here and pass it on to the others
+				if from == tv_source and payload.size() >= 2 and payload.size() <= 2 * 1024 * 1024 and payload[0] == 1:
+					var img := Image.new()
+					if img.load_jpg_from_buffer(payload.slice(1)) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
+						main.vcr.remote_video_frame(img, tv_source_name())
+						for id in net.peer_ids():
+							if id != from:
+								net.send_to(id, Net.K_VIDEO, payload, false)
 			Net.K_INPUT:
 				if payload.size() >= 2 and from == p2_id:
 					emu.set_remote_buttons(payload.decode_u16(0))
@@ -264,13 +360,17 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 						main.updater.show_toast("You can slap again in %s." % main.fmt_wait(int(d.get("secs", 0))), 4.0)
 					"slap_ok":
 						my_last_slap = Time.get_ticks_msec()
+					"vcr":
+						if tv_source == net.my_id:
+							_apply_vcr_button(int(d.get("b", -1)))
 		Net.K_VIDEO:
 			if payload.size() > 2 * 1024 * 1024 or payload.size() < 2:
 				return                                  # no honest frame is that big
 			var img := Image.new()
 			if img.load_jpg_from_buffer(payload.slice(1)) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
 				if payload[0] == 1:
-					main.vcr.remote_video_frame(img)
+					if tv_source != net.my_id:
+						main.vcr.remote_video_frame(img, tv_source_name())
 				else:
 					emu.remote_frame(img)
 		Net.K_AUDIO:
@@ -294,6 +394,29 @@ func _guest_pad(id: int, held: bool) -> void:
 				break
 
 
+func _host_tv_event(from: int, d: Dictionary) -> void:
+	var allowed := bool(main.guest_allow.get("tv", false))
+	match str(d.get("k", "")):
+		"tv_take":
+			if allowed:
+				_set_tv_source(from)
+		"tv_drop":
+			if from == tv_source:
+				tv_source = 1
+				tv_live = my_tv_active()
+		"tv_power":
+			if allowed and not main.egg_active and not main._net_play_lock():
+				main.vcr.toggle_tv()
+		"vcr":
+			if not allowed:
+				return
+			var b := int(d.get("b", -1))
+			if tv_source == 1:
+				_apply_vcr_button(b)
+			elif tv_source != from:
+				net.send_var(tv_source, Net.K_EVENT, {"k": "vcr", "b": b})
+
+
 func _apply_state(d: Dictionary) -> void:
 	var p = d.get("pads", {})
 	pads_seen = p if p is Dictionary else {}
@@ -302,6 +425,8 @@ func _apply_state(d: Dictionary) -> void:
 	var po = d.get("pad_of", {})
 	pad_of_seen = po if po is Dictionary else {}
 	slap_minutes_seen = int(d.get("slap", 30))
+	tv_source = int(d.get("tv_src", 1))
+	tv_live = bool(d.get("tv_live", false))
 	main.net_apply_game(d)
 	if not bool(d.get("run", false)):
 		emu.remote_stopped()

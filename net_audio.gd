@@ -66,6 +66,10 @@ func _ensure_capture() -> void:
 			_capture = AudioEffectCapture.new()
 			_capture.buffer_length = 0.5
 			AudioServer.add_bus_effect(bi, _capture)
+	_ensure_tv_capture()
+
+
+func _ensure_tv_capture() -> void:
 	if _tv_capture == null:
 		var ti := AudioServer.get_bus_index("TV")
 		if ti >= 0:
@@ -81,6 +85,10 @@ func _process(_delta: float) -> void:
 		_host_tick()
 	else:
 		_guest_tick()
+		if _tv_capture == null:
+			_ensure_tv_capture()
+		_tv_tick([1])                       # sends only while my tape is the one on the TV
+	_play_tv()
 
 
 func _host_tick() -> void:
@@ -125,6 +133,7 @@ func _host_tick() -> void:
 
 
 # the TV's sound: already at the volume the host hears (its bus is live, not muted)
+# The TV's sound goes out from whoever's tape is on (a guest sends theirs to the host, who passes it on).
 func _tv_tick(guests: Array) -> void:
 	if _tv_capture == null:
 		return
@@ -132,8 +141,10 @@ func _tv_tick(guests: Array) -> void:
 	if avail <= 0:
 		return
 	var frames := _tv_capture.get_buffer(avail)
-	if guests.is_empty():
-		return
+	var ng = main.net_game
+	if guests.is_empty() or ng == null or ng.tv_source != net.my_id:
+		_tv_acc.clear()
+		return                               # (the TV bus is also playing someone else's tape: don't echo it)
 	for f in frames:
 		_tv_phase += 1.0
 		while _tv_phase >= _ratio:
@@ -202,7 +213,7 @@ func _ensure_tv_player() -> void:
 	_tv_player.play()
 
 
-func _guest_tick() -> void:
+func _play_tv() -> void:
 	if _tv_player != null:
 		var pb := _tv_player.get_stream_playback() as AudioStreamGeneratorPlayback
 		while pb != null and not _tv_pending.is_empty():
@@ -211,6 +222,9 @@ func _guest_tick() -> void:
 				break
 			_tv_pending.pop_front()
 			pb.push_buffer(fr)
+
+
+func _guest_tick() -> void:
 	if _gen == null:
 		return
 	while not _pending.is_empty():
@@ -220,7 +234,17 @@ func _guest_tick() -> void:
 
 
 func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
-	if kind != Net.K_SOUND or from != 1 or payload.size() < 2 or net.is_host():
+	if kind != Net.K_SOUND or payload.size() < 2:
+		return
+	var ng = main.net_game
+	if net.is_host():
+		# only a guest whose tape is on the TV sends TV sound: play it here and pass it on
+		if payload[0] != CH_TV or ng == null or from != ng.tv_source:
+			return
+		for id in net.peer_ids():
+			if id != from:
+				net.send_to(id, Net.K_SOUND, payload, false)
+	elif from != 1 or (payload[0] == CH_TV and ng != null and ng.tv_source == net.my_id):
 		return
 	var frames: PackedVector2Array = Adpcm.decode(payload.slice(1))
 	if frames.is_empty():
