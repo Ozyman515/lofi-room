@@ -8,8 +8,8 @@ extends Node3D
 
 const Model := preload("res://kaiju_model.gd")
 
-const SCALE := 34.0                  # so big that only its head and the top of its neck fit in the window
-const STREET := Vector3(0.0, -24.0, -11.5)   # just across the street; its shoulders stay below the sill
+const SCALE := 28.0                  # so big that only its head and the top of its neck fit in the window
+const STREET := Vector3(0.0, -19.0, -11.5)   # just across the street; its shoulders stay below the sill
 const HEAD_X := 0.5 * SCALE          # how far ahead of its middle the head is
 const FROM_X := -28.0 - HEAD_X       # (positions are its middle; the head leads by HEAD_X)
 const TO_X := 24.0 - HEAD_X

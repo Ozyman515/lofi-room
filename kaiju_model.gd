@@ -1,7 +1,6 @@
 extends RefCounted
-## An original giant monster for the city outside the window: a hunched, two-legged reptile with a short,
-## blunt snout, a swept-back crown of horns and a fanned neck frill, long clawed arms, thick legs and a
-## heavy tail. Rounded knobs run down its back. Neon stripes glow along its flanks and throat, the same
+## An original giant monster for the city outside the window: a hunched, two-legged reptile with a big,
+## deep tyrannosaur-style head (heavy brows, rows of teeth), long clawed arms, thick legs and a heavy tail. Rounded knobs run down its back. Neon stripes glow along its flanks and throat, the same
 ## colours as the city's signs. The body is one smooth tube from the tail tip to the snout; the limbs are
 ## tubes too, on pivots that move: LegL/LegR (thigh) > Knee (shin and foot), ArmL/ArmR, Head > Jaw.
 ## Faces +x, about 1 unit tall (the caller scales it up to building size).
@@ -27,8 +26,9 @@ static func build() -> Node3D:
 	# the spine, tail tip to snout tip: [x, y, half width, half height]
 	var spine := [
 		[-1.00, 0.04, 0.012, 0.012], [-0.80, 0.10, 0.04, 0.035], [-0.55, 0.22, 0.08, 0.07], [-0.28, 0.38, 0.12, 0.115],
-		[0.0, 0.48, 0.15, 0.16], [0.18, 0.58, 0.155, 0.17], [0.32, 0.69, 0.13, 0.135], [0.42, 0.78, 0.075, 0.08],
-		[0.50, 0.83, 0.075, 0.075], [0.57, 0.83, 0.062, 0.058], [0.645, 0.815, 0.045, 0.04], [0.71, 0.80, 0.026, 0.024],
+		[0.0, 0.48, 0.15, 0.16], [0.18, 0.58, 0.155, 0.17], [0.32, 0.69, 0.13, 0.135], [0.42, 0.79, 0.095, 0.10],
+		[0.50, 0.84, 0.085, 0.105], [0.58, 0.845, 0.07, 0.095], [0.66, 0.835, 0.058, 0.08], [0.73, 0.82, 0.048, 0.062],
+		[0.775, 0.81, 0.034, 0.042],
 	]
 	var pts: Array[Vector3] = []
 	var rw: Array[float] = []
@@ -70,29 +70,35 @@ static func build() -> Node3D:
 			var st := _ell(body, p + Vector3(0, 0, sz * (0.145 - abs(k - 2.5) * 0.008)), Vector3(0.035, 0.008, 0.005), glow)
 			st.rotation.z = 0.55
 
-	# the head: horns, frill, eyes and the jaw on a pivot
+	# the head: a big tyrannosaur-style skull (the body tube above makes its shape) with heavy brows, a deep
+	# lower jaw on a pivot, rows of teeth, glowing eyes and throat
 	var head := Node3D.new()
 	head.name = "Head"
-	head.position = Vector3(0.5, 0.83, 0)
+	head.position = Vector3(0.5, 0.84, 0)
 	body.add_child(head)
+	var tooth := _m(Color(0.85, 0.82, 0.74), 0.4)
 	var jaw := Node3D.new()
 	jaw.name = "Jaw"
-	jaw.position = Vector3(0.0, -0.04, 0)
+	jaw.position = Vector3(0.02, -0.07, 0)
 	head.add_child(jaw)
-	jaw.add_child(_tube([Vector3(0.0, 0, 0), Vector3(0.09, -0.012, 0), Vector3(0.19, -0.018, 0)] as Array[Vector3],
-		[0.05, 0.035, 0.015] as Array[float], [0.025, 0.02, 0.01] as Array[float], belly))
-	_ell(head, Vector3(-0.03, -0.06, 0), Vector3(0.06, 0.035, 0.045), glow2)                      # glowing throat pouch
+	jaw.add_child(_tube([Vector3(-0.02, 0.0, 0), Vector3(0.08, -0.006, 0), Vector3(0.17, -0.004, 0), Vector3(0.25, 0.006, 0)] as Array[Vector3],
+		[0.075, 0.062, 0.05, 0.03] as Array[float], [0.045, 0.04, 0.032, 0.02] as Array[float], belly))
 	for sz in [-1.0, 1.0]:
-		_ell(head, Vector3(0.04, 0.03, sz * 0.058), Vector3(0.014, 0.009, 0.006), glow)             # eyes
-		var fr := _ell(head, Vector3(-0.07, 0.0, sz * 0.065), Vector3(0.05, 0.08, 0.006), skin)   # the frill behind the jaw
-		fr.rotation.y = sz * 0.6
-		for t in 5:                                                                                # its glowing rim
-			var a := -1.1 + t * 0.55
-			_ell(head, Vector3(-0.07 - 0.02 + cos(a) * 0.045, sin(a) * 0.075, sz * 0.085), Vector3(0.007, 0.007, 0.004), glow2)
-	for h in [[Vector3(-0.02, 0.06, 0.035), 0.11, 0.013], [Vector3(-0.02, 0.06, -0.035), 0.11, 0.013],
-			[Vector3(-0.05, 0.05, 0.055), 0.07, 0.009], [Vector3(-0.05, 0.05, -0.055), 0.07, 0.009], [Vector3(0.05, 0.06, 0.0), 0.045, 0.008]]:
-		var c := _cone(head, h[0], h[2], h[1], horn)
-		c.rotation = Vector3(sign(h[0].z) * -0.25, 0.0, 1.2)
+		for t in 7:                                                                                # teeth along both jaws
+			var tx := 0.06 + t * 0.03
+			var up := _cone(head, Vector3(tx, -0.072 + t * 0.002, sz * (0.052 - t * 0.003)), 0.006, 0.028, tooth)
+			up.rotation.z = PI                                                                    # upper teeth point down
+			_cone(jaw, Vector3(tx - 0.02, 0.02, sz * (0.05 - t * 0.003)), 0.005, 0.022, tooth)  # lower teeth point up
+		# heavy brow ridge over each eye, the eye set deep under it
+		var brow := _ell(head, Vector3(0.05, 0.075, sz * 0.055), Vector3(0.045, 0.02, 0.024), skin)
+		brow.rotation.z = -0.25
+		_ell(head, Vector3(0.065, 0.05, sz * 0.074), Vector3(0.02, 0.012, 0.008), glow)            # eyes
+		_ell(head, Vector3(0.26, 0.02, sz * 0.032), Vector3(0.01, 0.006, 0.004), _m(Color(0.02, 0.02, 0.03), 0.9))   # nostrils
+		_ell(head, Vector3(-0.04, -0.01, sz * 0.085), Vector3(0.05, 0.05, 0.01), skin)              # jaw muscles at the back of the skull
+	_ell(head, Vector3(-0.06, -0.08, 0), Vector3(0.07, 0.04, 0.06), glow2)                         # glowing throat
+	# knobbly ridge from the brows back over the skull
+	for k in 4:
+		_ell(head, Vector3(0.0 - k * 0.04, 0.1 - k * 0.006, 0), Vector3(0.016, 0.012, 0.014), horn)
 
 	# legs: a thigh on the hip pivot, a shin and three-toed foot on the knee pivot
 	for sz in [-1.0, 1.0]:
