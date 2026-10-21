@@ -3,19 +3,19 @@ extends Node3D
 ## window. Every footfall is a deep thump: the view jolts (on a screen; in a headset the controllers rumble
 ## instead, since shaking someone's view in VR makes them sick), the window rattles and the lamps flicker.
 ## Halfway across it stops, turns its head and looks in at you with a low rumble, then walks on.
-## It comes when you play with the little toy of it on the nightstand (or from the Debug window). In a
+## It comes when you play with the little toy of it on the nightstand ten times (or from the Debug window). In a
 ## shared room the host's kaiju walks past everybody's window.
 
 const Model := preload("res://kaiju_model.gd")
 
-const SCALE := 40.0                  # so big that only its head and the top of its neck rise over the rooftops
-const STREET := Vector3(0.0, -19.2, -31.0)   # a few blocks out, between the rows of towers
+const SCALE := 34.0                  # so big that only its head and the top of its neck fit in the window
+const STREET := Vector3(0.0, -24.0, -11.5)   # just across the street; its shoulders stay below the sill
 const HEAD_X := 0.5 * SCALE          # how far ahead of its middle the head is
-const FROM_X := -42.0 - HEAD_X       # (positions are its middle; the head leads by HEAD_X)
-const TO_X := 36.0 - HEAD_X
+const FROM_X := -28.0 - HEAD_X       # (positions are its middle; the head leads by HEAD_X)
+const TO_X := 24.0 - HEAD_X
 const STEP_TIME := 1.6               # seconds per footfall: slow and heavy
-const STRIDE := 3.6                  # how far it moves each step (city units)
-const PEEK_X := -4.0 - HEAD_X        # where it stops, head in the middle of the window, to look in
+const STRIDE := 2.6                  # how far it moves each step (city units)
+const PEEK_X := -1.5 - HEAD_X        # where it stops, head in the middle of the window, to look in
 const PEEK_TIME := 4.5
 const TOY_POS := Vector3(-0.63, 0.46, -1.57)   # on the nightstand, by the lamp (the drawer below holds the secret cart)
 const TOY_SCALE := 0.15
@@ -195,6 +195,9 @@ func _flicker(delta: float) -> void:
 # ---- the toy on the nightstand: pick it up, give it a stomp, and the real one comes
 
 var _toy: Node3D
+var _toy_plays := 0
+var _toy_busy := false
+const TOY_PLAYS := 10                # stomps it takes to call the real one
 
 
 func _build_toy() -> void:
@@ -224,7 +227,11 @@ func _build_toy() -> void:
 
 
 func play_with_toy() -> void:
-	# a little stomp-stomp on the nightstand, then the window
+	if _toy_busy or active:
+		return
+	_toy_busy = true
+	_toy_plays += 1
+	# a little stomp-stomp on the nightstand; the tenth time, something out there answers
 	var tw := create_tween()
 	for i in 2:
 		tw.tween_property(_toy, "rotation:z", 0.25, 0.12)
@@ -233,6 +240,10 @@ func play_with_toy() -> void:
 		tw.tween_property(_toy, "position:y", TOY_POS.y + 0.01, 0.1)
 	tw.tween_property(_toy, "rotation:z", 0.0, 0.15)
 	await tw.finished
+	_toy_busy = false
+	if _toy_plays < TOY_PLAYS:
+		return
+	_toy_plays = 0
 	await get_tree().create_timer(1.5).timeout
 	request_walk()
 
