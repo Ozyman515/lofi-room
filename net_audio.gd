@@ -11,10 +11,19 @@ const Adpcm := preload("res://adpcm.gd")
 const RATE := 24000.0
 const CHUNK := 960                      # frames per packet at 24 kHz = 40 ms
 const CH_MUSIC := 1
+const CH_TV := 2
 
 var net: Node
 var main: Node3D
 var _capture: AudioEffectCapture
+var _tv_capture: AudioEffectCapture
+var _tv_acc := PackedVector2Array()
+var _tv_phase := 0.0
+var _tv_last := Vector2.ZERO
+var _tv_silent_t := 0.0
+var _tv_gen: AudioStreamGenerator
+var _tv_player: AudioStreamPlayer3D
+var _tv_pending: Array = []
 var _mix_rate := 48000.0
 var _acc := PackedVector2Array()
 var _ratio := 2.0
@@ -51,14 +60,18 @@ func _on_state() -> void:
 # ---- host: capture + send
 
 func _ensure_capture() -> void:
-	if _capture != null:
-		return
-	var bi := AudioServer.get_bus_index("SpeakerClock")
-	if bi < 0:
-		return
-	_capture = AudioEffectCapture.new()
-	_capture.buffer_length = 0.5
-	AudioServer.add_bus_effect(bi, _capture)
+	if _capture == null:
+		var bi := AudioServer.get_bus_index("SpeakerClock")
+		if bi >= 0:
+			_capture = AudioEffectCapture.new()
+			_capture.buffer_length = 0.5
+			AudioServer.add_bus_effect(bi, _capture)
+	if _tv_capture == null:
+		var ti := AudioServer.get_bus_index("TV")
+		if ti >= 0:
+			_tv_capture = AudioEffectCapture.new()
+			_tv_capture.buffer_length = 0.5
+			AudioServer.add_bus_effect(ti, _tv_capture)
 
 
 func _process(_delta: float) -> void:
@@ -75,6 +88,7 @@ func _host_tick() -> void:
 		_ensure_capture()
 		return
 	var guests: Array = net.peer_ids()
+	_tv_tick(guests)
 	var avail := _capture.get_frames_available()
 	if avail <= 0:
 		return
@@ -110,6 +124,42 @@ func _host_tick() -> void:
 			net.send_to(id, Net.K_SOUND, packet, false)
 
 
+# the TV's sound: already at the volume the host hears (its bus is live, not muted)
+func _tv_tick(guests: Array) -> void:
+	if _tv_capture == null:
+		return
+	var avail := _tv_capture.get_frames_available()
+	if avail <= 0:
+		return
+	var frames := _tv_capture.get_buffer(avail)
+	if guests.is_empty():
+		return
+	for f in frames:
+		_tv_phase += 1.0
+		while _tv_phase >= _ratio:
+			_tv_phase -= _ratio
+			_tv_acc.append(_tv_last.lerp(f, 1.0 - _tv_phase / _ratio))
+		_tv_last = f
+	while _tv_acc.size() >= CHUNK:
+		var chunk := _tv_acc.slice(0, CHUNK)
+		_tv_acc = _tv_acc.slice(CHUNK)
+		var loud := false
+		for i in chunk.size():
+			if absf(chunk[i].x) > 0.002 or absf(chunk[i].y) > 0.002:
+				loud = true
+				break
+		if not loud:
+			_tv_silent_t += CHUNK / RATE
+			if _tv_silent_t > 0.5:
+				continue
+		else:
+			_tv_silent_t = 0.0
+		var packet := PackedByteArray([CH_TV])
+		packet.append_array(Adpcm.encode(chunk))
+		for id in guests:
+			net.send_to(id, Net.K_SOUND, packet, false)
+
+
 # ---- guest: receive + play through the room's speakers
 
 func _start_remote() -> void:
@@ -122,6 +172,12 @@ func _start_remote() -> void:
 
 
 func _stop_remote() -> void:
+	if _tv_player != null:
+		_tv_player.stop()
+		_tv_player.queue_free()
+		_tv_player = null
+		_tv_gen = null
+		_tv_pending.clear()
 	if _gen == null:
 		return
 	main.bank.live_stop()
@@ -130,7 +186,31 @@ func _stop_remote() -> void:
 	_remote_playing = false
 
 
+func _ensure_tv_player() -> void:
+	if _tv_player != null:
+		return
+	_tv_gen = AudioStreamGenerator.new()
+	_tv_gen.mix_rate = RATE
+	_tv_gen.buffer_length = 0.6
+	_tv_player = AudioStreamPlayer3D.new()
+	_tv_player.stream = _tv_gen
+	_tv_player.unit_size = 4.0
+	_tv_player.max_distance = 40.0
+	_tv_player.bus = "TV"
+	main.tv_root.add_child(_tv_player)
+	_tv_player.position = Vector3(0, 0.6, 0.3)
+	_tv_player.play()
+
+
 func _guest_tick() -> void:
+	if _tv_player != null:
+		var pb := _tv_player.get_stream_playback() as AudioStreamGeneratorPlayback
+		while pb != null and not _tv_pending.is_empty():
+			var fr: PackedVector2Array = _tv_pending[0]
+			if pb.get_frames_available() < fr.size():
+				break
+			_tv_pending.pop_front()
+			pb.push_buffer(fr)
 	if _gen == null:
 		return
 	while not _pending.is_empty():
@@ -142,13 +222,19 @@ func _guest_tick() -> void:
 func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 	if kind != Net.K_SOUND or from != 1 or payload.size() < 2 or net.is_host():
 		return
+	var frames: PackedVector2Array = Adpcm.decode(payload.slice(1))
+	if frames.is_empty():
+		return
+	if payload[0] == CH_TV:
+		_ensure_tv_player()
+		while _tv_pending.size() > 12:
+			_tv_pending.pop_front()
+		_tv_pending.append(frames)
+		return
 	if payload[0] != CH_MUSIC:
 		return
 	if _gen == null:
 		_start_remote()
-	var frames: PackedVector2Array = Adpcm.decode(payload.slice(1))
-	if frames.is_empty():
-		return
 	# keep latency bounded: if we fall far behind, drop the oldest
 	while _pending.size() > 12:
 		_pending.pop_front()

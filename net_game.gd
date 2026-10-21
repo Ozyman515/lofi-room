@@ -7,6 +7,9 @@ extends Node
 const Net := preload("res://net_session.gd")
 
 const VIDEO_FPS := 30.0
+const TV_FPS := 12.0
+const TV_WIDTH := 640
+var _last_tv := 0
 const JPEG_QUALITY := 0.6
 const MAX_VIDEO_BYTES := 48000          # stay under the data channel's message size
 
@@ -80,6 +83,10 @@ func _on_roster() -> void:
 func _process(delta: float) -> void:
 	if net == null or not net.is_online():
 		return
+	if net.is_host():
+		_tv_video_tick()
+	else:
+		main.vcr.remote_video_tick()
 	_state_t += delta
 	if _state_t >= 0.2:
 		_state_t = 0.0
@@ -127,8 +134,37 @@ func _on_frame(img: Image) -> void:
 		buf = img.save_jpg_to_buffer(0.3)
 		if buf.size() > MAX_VIDEO_BYTES:
 			return
+	var pk := PackedByteArray([0])
+	pk.append_array(buf)
 	for id in net.peer_ids():
-		net.send_to(id, Net.K_VIDEO, buf, false)
+		net.send_to(id, Net.K_VIDEO, pk, false)
+
+
+# the host's tape: the TV picture goes out at a lower rate and size than a game
+func _tv_video_tick() -> void:
+	if not net.is_host() or net.peer_ids().is_empty():
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_tv < int(1000.0 / TV_FPS):
+		return
+	var tex: Texture2D = main.vcr.current_frame_texture()
+	if tex == null:
+		return
+	_last_tv = now
+	var img := tex.get_image()
+	if img == null or img.get_width() == 0:
+		return
+	if img.get_width() > TV_WIDTH:
+		img.resize(TV_WIDTH, int(img.get_height() * float(TV_WIDTH) / img.get_width()), Image.INTERPOLATE_BILINEAR)
+	if img.get_format() != Image.FORMAT_RGB8:
+		img.convert(Image.FORMAT_RGB8)
+	var buf := img.save_jpg_to_buffer(0.55)
+	if buf.size() > MAX_VIDEO_BYTES:
+		return
+	var pk := PackedByteArray([1])
+	pk.append_array(buf)
+	for id in net.peer_ids():
+		net.send_to(id, Net.K_VIDEO, pk, false)
 
 
 func _on_audio(pcm: PackedByteArray, count: int) -> void:
@@ -199,11 +235,14 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 					"slap_ok":
 						my_last_slap = Time.get_ticks_msec()
 		Net.K_VIDEO:
-			if payload.size() > 2 * 1024 * 1024:
+			if payload.size() > 2 * 1024 * 1024 or payload.size() < 2:
 				return                                  # no honest frame is that big
 			var img := Image.new()
-			if img.load_jpg_from_buffer(payload) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
-				emu.remote_frame(img)
+			if img.load_jpg_from_buffer(payload.slice(1)) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
+				if payload[0] == 1:
+					main.vcr.remote_video_frame(img)
+				else:
+					emu.remote_frame(img)
 		Net.K_AUDIO:
 			if payload.size() >= 8:
 				var count := payload.decode_u32(4)

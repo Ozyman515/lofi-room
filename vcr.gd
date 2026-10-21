@@ -180,11 +180,15 @@ func _glow(mi: MeshInstance3D) -> Callable:
 # ---------------------------------------------------------------- video + UI
 
 func _build_player() -> void:
+	if AudioServer.get_bus_index("TV") < 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, "TV")
 	_holder = SubViewport.new()
 	_holder.size = Vector2i(2, 2)
 	_holder.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_holder)
 	_player = VideoStreamPlayer.new()
+	_player.bus = "TV"
 	_player.finished.connect(_on_finished)
 	_holder.add_child(_player)
 	_use_vlc = ClassDB.class_exists("VLCMediaPlayer") and Engine.has_singleton("VLCInstance")
@@ -198,6 +202,8 @@ func _new_vlc_player() -> void:
 		_vlc.queue_free()
 	_vlc = ClassDB.instantiate("VLCMediaPlayer")
 	_vlc.size = Vector2(640, 360)
+	if "bus" in _vlc:
+		_vlc.set("bus", "TV")
 	_holder.add_child(_vlc)
 	_audio_tl = null
 	_sub_tl = null
@@ -1291,3 +1297,45 @@ func _process(delta: float) -> void:
 			_display.text = "PAUSE" if blink else "     "
 		State.STOPPED:
 			_display.text = "STOP"
+
+
+# the picture now on the TV (for streaming to guests), or null
+func current_frame_texture() -> Texture2D:
+	if state != State.PLAYING or _paused_flag:
+		return null
+	if _use_vlc and _vlc != null:
+		return _last_tex
+	if _player != null and _player.is_playing():
+		return _player.get_video_texture()
+	return null
+
+
+# ---- a guest: the host's tape shows on this TV as a stream of pictures
+var _remote_tex: ImageTexture
+var remote_video := false
+var _remote_last_ms := 0
+
+
+func remote_video_frame(img: Image) -> void:
+	if _remote_tex == null or _remote_tex.get_width() != img.get_width() or _remote_tex.get_height() != img.get_height():
+		_remote_tex = ImageTexture.create_from_image(img)
+	else:
+		_remote_tex.update(img)
+	_remote_last_ms = Time.get_ticks_msec()
+	if not remote_video:
+		remote_video = true
+		_mat.set_shader_parameter("video_tex", _remote_tex)
+		_mat.set_shader_parameter("video_aspect", float(img.get_width()) / float(img.get_height()))
+		_mat.set_shader_parameter("use_video", tv_on)
+		_show_status("")
+		_osd_show("THE HOST'S TAPE", 3.0)
+	else:
+		_mat.set_shader_parameter("video_tex", _remote_tex)      # the texture object can change size
+
+
+func remote_video_tick() -> void:
+	if remote_video and Time.get_ticks_msec() - _remote_last_ms > 3000:
+		remote_video = false
+		_mat.set_shader_parameter("use_video", state == State.PLAYING)
+		if state != State.PLAYING and state != State.PAUSED:
+			_show_idle_status()
