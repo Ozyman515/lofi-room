@@ -79,6 +79,7 @@ var arcade_on := true                  # the power switch on the cabinet's side
 var arcade_marquee_m: StandardMaterial3D
 var arcade_marquee_label: Label3D
 var poster: Node3D                     # poster.gd: the picture on the right wall
+var cats: Node3D                       # cats.gd: the tuxedo (shake the treats) and the calico (drops by now and then)
 var share_poster := false              # host: guests see my poster (off: they see the room's own posters)
 var arcade_glow: Array = []            # [material, lit energy]: the buttons and coin lights, dark while the power is off
 var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV's buttons set the console's)
@@ -332,6 +333,9 @@ func net_apply_game(d: Dictionary) -> void:
 	var ga = d.get("guests", {})
 	if ga is Dictionary:
 		guest_allow_seen = ga
+	var cd = d.get("cats", null)
+	if cats != null and cd is Dictionary:
+		cats.apply_remote(cd)
 	var song := str(d.get("song", ""))
 	if pc != null:
 		pc.show_remote_song(song)
@@ -609,30 +613,6 @@ func _rebuild_bed() -> void:
 	if bed_node != null and is_instance_valid(bed_node):
 		bed_node.queue_free()
 	bed_node = BedModel.build(room, BED_POS, "made" if bed_made else "unmade")
-	_place_house_cat()
-
-
-# A personal extra: if res://tools/sleeping_cat.gd is there (tools/ is never shipped), the cat sleeps at the
-# foot of the bed and purrs now and then.
-const HOUSE_CAT := "res://tools/sleeping_cat.gd"
-const HOUSE_CAT_SPOT := Vector2(-1.4, -0.02)      # x, z on the bed, near the foot
-var house_cat: Node3D
-
-
-func _place_house_cat() -> void:
-	if not ResourceLoader.exists(HOUSE_CAT):
-		return
-	if house_cat == null:
-		var sc: Script = load(HOUSE_CAT)
-		if sc == null or not sc.can_instantiate():
-			return
-		house_cat = sc.new()
-		house_cat.name = "HouseCat"
-		room.add_child(house_cat)
-		house_cat.rotation.y = 1.43                 # face turned toward the room
-	var spot := Vector3(HOUSE_CAT_SPOT.x, 0.0, HOUSE_CAT_SPOT.y)
-	house_cat.position = Vector3(spot.x, _top_of(bed_node, spot, 0.6) - 0.015, spot.z)
-
 
 # the highest mesh top over a point (x, z) among a node's meshes
 func _top_of(n: Node, p: Vector3, best: float) -> float:
@@ -1690,6 +1670,10 @@ func _build_weather() -> void:
 		weather.set_mode(wm)
 	weather.snap()
 	pc.setup_weather(weather, self)
+	cats = load("res://cats.gd").new()
+	cats.name = "Cats"
+	add_child(cats)
+	cats.setup(self)
 	egg = TornadoEvent.new()
 	egg.name = "TornadoEvent"
 	add_child(egg)
@@ -2832,7 +2816,9 @@ func _build_console() -> void:
 	var knob_m := _mat(Color(0.88, 0.80, 0.55), 0.45)
 	console_knob = _box(Vector3(-0.157, 0.081, fz + 0.005), Vector3(0.028, 0.018, 0.011), knob_m, root)      # the power switch: slides right = ON
 	interactables.append({"node": console_knob, "half": Vector3(0.04, 0.03, 0.04),
-		"label": _console_label, "egg_lock": true, "cb": toggle_console, "hover": _glow_hover(knob_m), "group": "games"})
+		"label": _console_label, "egg_lock": true, "cb": func() -> void:
+			if not _cat_on_console():
+				toggle_console(), "hover": _glow_hover(knob_m), "group": "games"})
 	_cart_text("POWER", 20, 0.0004, Color(0.3, 0.26, 0.2), Vector3(-0.157, 0.0645, fz + 0.0014), root)
 	# ---- the top: eject and reset buttons, the little display with its row of keys, and the cover over the cartridge slot
 	_cyl(Vector3(-0.152, CON_TOP + 0.002, 0.137), 0.028, 0.004, tan, root)
@@ -2886,6 +2872,14 @@ func _set_lid(open: bool) -> void:
 
 func _console_label() -> String:
 	return "CONSOLE POWER  [%s]" % ("ON" if console_on else "OFF")
+
+
+# the calico asleep on the console: nothing gets in or switched on until it's moved
+func _cat_on_console() -> bool:
+	if cats != null and cats.blocks_console():
+		_net_say("The calico is asleep on the console. Pick it up and put it on the bed.")
+		return true
+	return false
 
 
 func toggle_console() -> void:
@@ -3535,7 +3529,7 @@ func _cart_label(id: String) -> String:
 
 
 func _cart_click(id: String) -> void:
-	if egg_active or bool(carts[id]["busy"]) or _net_play_lock():
+	if egg_active or bool(carts[id]["busy"]) or _net_play_lock() or _cat_on_console():
 		return
 	if slot_cart == id:
 		_eject_cart()

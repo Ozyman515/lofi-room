@@ -659,6 +659,23 @@ func _build_debug_window() -> void:
 	_dbg_phone_btn.custom_minimum_size = Vector2(0, 42)
 	_dbg_phone_btn.pressed.connect(func() -> void: _main.set_phone_hidden(not _main.phone_hidden))
 	v.add_child(_dbg_phone_btn)
+	var ct := Label.new()
+	ct.text = "Cats (for testing the easter egg):"
+	ct.add_theme_font_size_override("font_size", 17)
+	v.add_child(ct)
+	var crow := HBoxContainer.new()
+	crow.add_theme_constant_override("separation", 8)
+	v.add_child(crow)
+	for opt in [["Call the tux", "tux"], ["Calico: rug", "rug"], ["Calico: beanbag", "beanbag"], ["Calico: console", "console"], ["No cats", "none"]]:
+		var cb := Button.new()
+		cb.text = opt[0]
+		cb.custom_minimum_size = Vector2(0, 42)
+		cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var what: String = opt[1]
+		cb.pressed.connect(func() -> void:
+			if _main.cats != null:
+				_main.cats.debug_set(what))
+		crow.add_child(cb)
 	_dbg_refresh()
 	_main.settings_changed.connect(_dbg_refresh)
 

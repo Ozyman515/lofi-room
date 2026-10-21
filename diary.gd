@@ -40,6 +40,17 @@ static func close_open_session() -> void:
 	game_stopped()
 
 
+# ---- the cats: how often each one has been petted
+
+static func cat_petted(which: String) -> void:
+	var cf := ConfigFile.new()
+	cf.load(DIARY)
+	var c: Dictionary = cf.get_value("cats", which, {})
+	var now := int(Time.get_unix_time_from_system())
+	cf.set_value("cats", which, {"pets": int(c.get("pets", 0)) + 1, "last": now, "first": int(c.get("first", now))})
+	cf.save(DIARY)
+
+
 # ---- what the diary shows
 
 # [{"kind": "game"|"book", "title", "detail", "when": unix, "sort": unix, "path"?: String}]
@@ -52,6 +63,12 @@ static func entries() -> Array:
 			out.append({"kind": "game", "title": str(g.get("game", "?")), "system": str(g.get("system", "")),
 				"detail": "played %s in all, last time %s" % [fmt_len(int(g.get("total", 0))), fmt_len(int(g.get("last_len", 0)))],
 				"when": int(g.get("last", 0)), "sort": int(g.get("last", 0))})
+	if cf.has_section("cats"):
+		for k in cf.get_section_keys("cats"):
+			var c: Dictionary = cf.get_value("cats", k, {})
+			var n := int(c.get("pets", 0))
+			out.append({"kind": "cat", "title": "The tuxedo cat" if k == "tux" else "The calico",
+				"detail": "petted %d time%s" % [n, "" if n == 1 else "s"], "when": int(c.get("last", 0)), "sort": int(c.get("last", 0))})
 	var rc := ConfigFile.new()
 	if rc.load(READER) == OK and rc.has_section("bookmarks"):
 		for k in rc.get_section_keys("bookmarks"):

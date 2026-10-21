@@ -119,7 +119,7 @@ func refresh() -> void:
 		_list.add_child(row)
 		var is_book: bool = e["kind"] == "book"
 		var title: Control = Button.new() if is_book else Label.new()
-		title.set("text", ("[comic]  " if is_book else "[game]  ") + str(e["title"]))
+		title.set("text", ({"book": "[comic]  ", "cat": "[cat]  "} as Dictionary).get(str(e["kind"]), "[game]  ") + str(e["title"]))
 		title.add_theme_font_size_override("font_size", 22)
 		title.add_theme_color_override("font_color", ink)
 		if is_book:
