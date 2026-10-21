@@ -16,7 +16,16 @@ const MAX_FRAME = 64 * 1024;
 const MAX_ROOMS = parseInt(process.env.MAX_ROOMS || "2000", 10);
 const MAX_CONNS = parseInt(process.env.MAX_CONNS || "4000", 10);
 const MAX_CONNS_PER_IP = parseInt(process.env.MAX_CONNS_PER_IP || "8", 10);
-const TRUST_PROXY = process.env.TRUST_PROXY === "1";             // only read X-Forwarded-For behind Caddy/nginx
+const TRUST_PROXY = process.env.TRUST_PROXY === "1";
+// Relay for players whose networks block a direct link (coturn with use-auth-secret). Optional.
+const TURN_SECRET = process.env.TURN_SECRET || "";
+const TURN_HOST = process.env.TURN_HOST || "";
+function iceFor(id) {
+	if (!TURN_SECRET || !TURN_HOST) return [];
+	const user = `${Math.floor(Date.now() / 1000) + 12 * 3600}:p${id}`;     // good for 12 hours
+	const credential = crypto.createHmac("sha1", TURN_SECRET).update(user).digest("base64");
+	return [{ urls: [`turn:${TURN_HOST}:3478?transport=udp`, `turn:${TURN_HOST}:3478?transport=tcp`], username: user, credential }];
+}             // only read X-Forwarded-For behind Caddy/nginx
 const IDLE_MS = 70000;                                            // no pong for this long = gone
 const clients = new Set();
 const perIp = new Map();
@@ -194,7 +203,7 @@ function doHost(c, m) {
 	room.dropAt = 0;
 	room.hostName = cleanName(m.name);
 	c.role = "host"; c.room = room; c.id = 1; c.name = room.hostName;
-	c.send({ t: "hosted", code: room.code, id: 1, max: MAX_PLAYERS, token: room.token });
+	c.send({ t: "hosted", code: room.code, id: 1, max: MAX_PLAYERS, token: room.token, ice: iceFor(1) });
 	for (const g of room.guests.values()) {                       // guests that waited for the host: tell the host about them again
 		c.send({ t: "peer_join", id: g.id, name: g.name });
 		g.send({ t: "host_back" });
@@ -216,7 +225,7 @@ function doJoin(c, m) {
 	room.guests.set(id, c);
 	const peers = [{ id: 1, name: room.hostName }];
 	for (const g of room.guests.values()) if (g !== c) peers.push({ id: g.id, name: g.name });
-	c.send({ t: "joined", id, host_name: room.hostName, peers, code });
+	c.send({ t: "joined", id, host_name: room.hostName, peers, code, ice: iceFor(id) });
 	room.host.send({ t: "peer_join", id, name: c.name });
 }
 

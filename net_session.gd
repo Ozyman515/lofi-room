@@ -227,6 +227,7 @@ func _on_ws_open() -> void:
 func _on_server_msg(m: Dictionary) -> void:
 	match str(m.get("t", "")):
 		"hosted":
+			_relay = m.get("ice", []) if m.get("ice", []) is Array else []
 			code = str(m.get("code", ""))
 			host_token = str(m.get("token", ""))
 			my_id = 1
@@ -237,6 +238,7 @@ func _on_server_msg(m: Dictionary) -> void:
 			_set_state(State.HOSTING, "Room open")
 			roster_changed.emit()
 		"joined":
+			_relay = m.get("ice", []) if m.get("ice", []) is Array else []
 			code = str(m.get("code", _want_code))
 			my_id = int(m.get("id", 0))
 			_mp = WebRTCMultiplayerPeer.new()
@@ -293,11 +295,17 @@ func _make_conn(id: int, offerer: bool) -> void:
 	if _conns.has(id):
 		return
 	var c := WebRTCPeerConnection.new()
-	c.initialize({"iceServers": Cfg.ice_servers()})
+	var ice: Array = Cfg.ice_servers()
+	for r in _relay:
+		if r is Dictionary and r.has("urls"):
+			ice.append(r)
+	c.initialize({"iceServers": ice})
+	_log("link %d: %d ice servers (relay %s)" % [id, ice.size(), "yes" if _relay.size() > 0 else "no"])
 	c.session_description_created.connect(func(type: String, sdp: String) -> void:
 		c.set_local_description(type, sdp)
 		_send_ws({"t": "sig", "to": id, "data": {"k": "sdp", "type": type, "sdp": sdp}}))
 	c.ice_candidate_created.connect(func(media: String, index: int, cname: String) -> void:
+		_log("link %d: my candidate %s" % [id, _cand_kind(cname)])
 		_send_ws({"t": "sig", "to": id, "data": {"k": "ice", "m": media, "i": index, "n": cname}}))
 	_conns[id] = c
 	_connecting_since[id] = Time.get_ticks_msec()
@@ -329,7 +337,29 @@ func _apply_sig(from: int, d: Dictionary) -> void:
 	if d.get("k", "") == "sdp":
 		c.set_remote_description(str(d.get("type", "")), str(d.get("sdp", "")))
 	elif d.get("k", "") == "ice":
+		_log("link %d: their candidate %s" % [from, _cand_kind(str(d.get("n", "")))])
 		c.add_ice_candidate(str(d.get("m", "")), int(d.get("i", 0)), str(d.get("n", "")))
+
+
+var _relay: Array = []
+
+
+# connection notes for user://net.log, so a failed link can be diagnosed (host / srflx = direct, relay = via TURN)
+func _cand_kind(c: String) -> String:
+	var i := c.find(" typ ")
+	return c.substr(i + 5).get_slice(" ", 0) if i >= 0 else "?"
+
+
+func _log(line: String) -> void:
+	var path := "user://net.log"
+	var f := FileAccess.open(path, FileAccess.READ_WRITE if FileAccess.file_exists(path) else FileAccess.WRITE)
+	if f == null:
+		return
+	if f.get_length() > 200000:
+		f.close()
+		f = FileAccess.open(path, FileAccess.WRITE)
+	f.seek_end()
+	f.store_line("%s  %s" % [Time.get_datetime_string_from_system(), line])
 
 
 func _check_timeouts() -> void:
@@ -343,6 +373,7 @@ func _check_timeouts() -> void:
 			_on_peer_up(id)
 		elif now - int(_connecting_since[id]) > 20000:
 			_connecting_since.erase(id)
+			_log("link %d: no connection after 20 s (state %d)" % [id, _conns[id].get_connection_state()])
 			if is_host():
 				_drop_peer(id)
 			else:
