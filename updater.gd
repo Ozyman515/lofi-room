@@ -9,6 +9,8 @@ const Plat := preload("res://platform.gd")
 signal changed
 
 var base := "https://raw.githubusercontent.com/Ozyman515/lofi-room/main/"
+const COMMIT_API := "https://api.github.com/repos/Ozyman515/lofi-room/commits/main"
+var _src := ""     # where this check reads from: the newest commit when GitHub tells us (no stale web cache), else main
 # .godot/imported (and the small .godot/*.cfg files) ARE updated: the exe build runs the loose project and needs them;
 # the editor just regenerates identical ones. Only the editor's own caches stay out.
 const SKIP_PREFIXES := ["carts/", ".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/"]
@@ -90,10 +92,30 @@ func check() -> void:
 		return
 	_state("checking", "Checking for updates...")
 	_http.download_file = ""
+	_src = base
+	# ask GitHub for the newest commit and read that exact version: main's web cache can lag minutes behind a push
+	if _http.request_completed.is_connected(_on_head_done):
+		_http.request_completed.disconnect(_on_head_done)
+	_http.request_completed.connect(_on_head_done, CONNECT_ONE_SHOT)
+	if _http.request(COMMIT_API, ["Accept: application/vnd.github.sha", "User-Agent: lofi-room"]) != OK:
+		_http.request_completed.disconnect(_on_head_done)
+		_fetch_manifest()
+
+
+func _on_head_done(result: int, code: int, _h: PackedStringArray, body: PackedByteArray) -> void:
+	var sha := body.get_string_from_utf8().strip_edges()
+	if result == HTTPRequest.RESULT_SUCCESS and code == 200 and sha.length() == 40 and sha.is_valid_hex_number():
+		_src = base.replace("/main/", "/%s/" % sha)
+	else:
+		_log("commit lookup failed (result %d http %d), reading main" % [result, code])
+	_fetch_manifest()
+
+
+func _fetch_manifest() -> void:
 	if _http.request_completed.is_connected(_on_check_done):
 		_http.request_completed.disconnect(_on_check_done)
 	_http.request_completed.connect(_on_check_done, CONNECT_ONE_SHOT)
-	var err := _http.request(base + "update.json?t=%d" % int(Time.get_unix_time_from_system()))
+	var err := _http.request(_src + "update.json?t=%d" % int(Time.get_unix_time_from_system()))
 	if err != OK:
 		_state("error", "Could not reach the update server.")
 
@@ -108,7 +130,7 @@ func _on_check_done(result: int, code: int, _h: PackedStringArray, body: PackedB
 	if _http.request_completed.is_connected(_on_sig_done):
 		_http.request_completed.disconnect(_on_sig_done)
 	_http.request_completed.connect(_on_sig_done, CONNECT_ONE_SHOT)
-	if _http.request(base + "update.json.sig?t=%d" % int(Time.get_unix_time_from_system())) != OK:
+	if _http.request(_src + "update.json.sig?t=%d" % int(Time.get_unix_time_from_system())) != OK:
 		_state("error", "Could not reach the update server.")
 
 
@@ -188,7 +210,7 @@ func install() -> void:
 	var staged: Array = []
 	for path in _todo.duplicate():
 		var dest: String = _stage_dir.path_join(path.replace("/", "__"))
-		var url: String = base + String(path).uri_encode().replace("%2F", "/")
+		var url: String = _src + String(path).uri_encode().replace("%2F", "/")
 		var want: String = str(_manifest[path]["sha"])
 		var ok := false
 		for attempt in 2:

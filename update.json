@@ -1,5 +1,5 @@
 {
- "version": 84,
+ "version": 85,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -386,15 +386,15 @@
    "size": 35901
   },
   "updater.gd": {
-   "sha": "fffbaa57a1695b42b669bb0d9c09bbc2efc3c5a12750df76089b8765e9af8143",
-   "size": 10154
+   "sha": "6b9b8f9066409262357be9c2b0c00c63a0e61fdce4f48f5d7480755748b3e0aa",
+   "size": 11286
   },
   "vcr.gd": {
    "sha": "2c9ef837c92094dd6103bd5ab778c00701481a3ffc0bb9cdf15eec25535c5d18",
    "size": 41782
   },
   "version.txt": {
-   "sha": "4b9258d432ecb4511cfe5471a58f3feea9e8aa513e1d32294894693827d3b0d4",
+   "sha": "ff393127b5a059b172af9b9eed820368071cf24d46df1b8326623c8e79178379",
    "size": 3
   },
   "weather.gd": {
