@@ -165,6 +165,10 @@ func _render_home() -> void:
 	_label("Friends can play with you in this room.", 16, Color(0.7, 0.6, 0.9))
 
 
+const SECRET_CODE := "DETECT"                 # typed on the keypad and JOINed: Noir Night
+var secret_cb: Callable
+
+
 func _render_join() -> void:
 	_code_label = _label(_shown_code(), 40, Color(1.0, 0.95, 0.5))
 	var grid := GridContainer.new()
@@ -189,6 +193,12 @@ func _render_join() -> void:
 		b.custom_minimum_size.y = 44
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var go := _button("JOIN", func() -> void:
+		if _entry == SECRET_CODE and secret_cb.is_valid():
+			_entry = ""
+			_page = "home"
+			_render()
+			secret_cb.call()                 # not a room: somebody knows the code
+			return
 		if _entry.length() == 6:
 			net.status = ""
 			net.join_room(_entry), 30)

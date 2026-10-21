@@ -79,6 +79,9 @@ var arcade_on := true                  # the power switch on the cabinet's side
 var arcade_marquee_m: StandardMaterial3D
 var arcade_marquee_label: Label3D
 var poster: Node3D                     # poster.gd: the picture on the right wall
+var noir: Node3D                       # noir.gd: Noir Night (an easter egg)
+var keyboard_node: Node3D              # the desk's keyboard and mug (Noir Night swaps in a typewriter and a whiskey)
+var mug_node: Node3D
 var cats: Node3D                       # cats.gd: the tuxedo (shake the treats) and the calico (drops by now and then)
 var share_poster := false              # host: guests see my poster (off: they see the room's own posters)
 var arcade_glow: Array = []            # [material, lit energy]: the buttons and coin lights, dark while the power is off
@@ -250,6 +253,8 @@ func _build_multiplayer() -> void:
 	net_phone.scale = Vector3.ONE * 1.5
 	room.add_child(net_phone)
 	net_phone.build(net, func(it: Dictionary) -> void: interactables.append(it))
+	if noir != null:
+		net_phone.secret_cb = noir.request_start         # the keypad's secret code
 	screens.append(net_phone.ui)
 	net.state_changed.connect(_on_net_state)
 	net.roster_changed.connect(_on_net_roster)
@@ -333,6 +338,8 @@ func net_apply_game(d: Dictionary) -> void:
 	var ga = d.get("guests", {})
 	if ga is Dictionary:
 		guest_allow_seen = ga
+	if noir != null and d.has("noir"):
+		noir.apply_remote(bool(d.get("noir", false)))
 	var cd = d.get("cats", null)
 	if cats != null and cd is Dictionary:
 		cats.apply_remote(cd)
@@ -740,8 +747,8 @@ func _build_desk() -> void:
 	pc.setup(pc_ui, bank)
 
 	# keyboard, mug, lamp, plant
-	_box(Vector3(1.45, 0.80, -1.38), Vector3(0.42, 0.015, 0.14), _mat(Color(0.25, 0.10, 0.28)))
-	_cyl(Vector3(1.95, 0.825, -1.42), 0.035, 0.08, _mat(Color(0.95, 0.80, 0.75)))
+	keyboard_node = _box(Vector3(1.45, 0.80, -1.38), Vector3(0.42, 0.015, 0.14), _mat(Color(0.25, 0.10, 0.28)))
+	mug_node = _cyl(Vector3(1.95, 0.825, -1.42), 0.035, 0.08, _mat(Color(0.95, 0.80, 0.75)))
 	_lamp(Vector3(2.2, 0.785, -1.75), 1.0)
 	_plant(Vector3(0.7, 0.785, -1.75), 0.5)
 
@@ -1674,6 +1681,10 @@ func _build_weather() -> void:
 	cats.name = "Cats"
 	add_child(cats)
 	cats.setup(self)
+	noir = load("res://noir.gd").new()
+	noir.name = "NoirNight"
+	add_child(noir)
+	noir.setup(self)
 	egg = TornadoEvent.new()
 	egg.name = "TornadoEvent"
 	add_child(egg)
@@ -2626,7 +2637,10 @@ func _build_tv() -> void:
 			_box(Vector3(px, ky + 0.02, fz + 0.03), Vector3(0.006, 0.026, 0.004), _mat(Color(0.15, 0.12, 0.18), 0.6), root)   # pointer mark
 			interactables.append({"node": k, "half": Vector3(0.055, 0.055, 0.05), "group": "tv",
 				"label": func() -> String: return "CHANNEL  [%s]" % CRT_NAMES[crt_mode],
-				"cb": func() -> void: set_crt_mode((crt_mode + 1) % 3), "hover": _glow_hover(ch_knob_m)})
+				"cb": func() -> void:
+					set_crt_mode((crt_mode + 1) % 3)
+					if noir != null:
+						noir.on_channel_turned(), "hover": _glow_hover(ch_knob_m)})
 	for i in 8:
 		_box(Vector3(px, cy - 0.05 - i * 0.035, fz), Vector3(0.16, 0.012, 0.01), lip, root)
 	# AV jacks, lower right
@@ -3637,7 +3651,7 @@ func _prefs_now() -> Dictionary:
 		d["weather_mode"] = _prefs_last["weather_mode"]
 	d["traffic_muted"] = weather.traffic_muted
 	d["weather_vol"] = snappedf(weather.volume, 0.01)
-	d["levels"] = [snappedf(weather.levels[1], 0.01), snappedf(weather.levels[2], 0.01), snappedf(weather.levels[3], 0.01)]
+	d["levels"] = [snappedf(weather.real_level(1), 0.01), snappedf(weather.real_level(2), 0.01), snappedf(weather.real_level(3), 0.01)]
 	for i in bank.speakers.size():
 		d["spk_" + String(bank.speakers[i]["name"])] = bank.is_enabled(i)
 	for g in light_groups:

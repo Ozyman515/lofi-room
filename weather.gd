@@ -146,6 +146,41 @@ func end_event() -> void:
 	mode_changed.emit(mode)
 
 
+# Noir Night: a steady downpour until it ends, then whatever was on before
+var _saved_noir := {}
+
+
+func begin_noir() -> void:
+	if not _saved_noir.is_empty() or locked:
+		return
+	_saved_noir = {"mode": mode, "rain": levels[Mode.RAIN]}
+	locked = true
+	levels[Mode.RAIN] = 0.9
+	mode = Mode.RAIN
+	_apply_mode_targets()
+	if not _sounds_ready:
+		_make_sounds()
+	mode_changed.emit(mode)
+
+
+func end_noir() -> void:
+	if _saved_noir.is_empty():
+		return
+	locked = false
+	levels[Mode.RAIN] = _saved_noir["rain"]
+	mode = _saved_noir["mode"]
+	_saved_noir = {}
+	_apply_mode_targets()
+	mode_changed.emit(mode)
+
+
+# the level the player chose (not the one Noir Night is borrowing), for saving
+func real_level(m: int) -> float:
+	if m == Mode.RAIN and not _saved_noir.is_empty():
+		return _saved_noir["rain"]
+	return levels[m]
+
+
 func set_volume(v: float) -> void:
 	volume = clampf(v, 0.0, 1.0)
 
