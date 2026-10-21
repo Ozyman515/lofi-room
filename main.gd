@@ -78,6 +78,7 @@ var arcade_light: OmniLight3D
 var arcade_on := true                  # the power switch on the cabinet's side
 var arcade_marquee_m: StandardMaterial3D
 var arcade_marquee_label: Label3D
+var poster: Node3D                     # poster.gd: the picture on the right wall
 var arcade_glow: Array = []            # [material, lit energy]: the buttons and coin lights, dark while the power is off
 var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV's buttons set the console's)
 var arcade_vol_label: Label3D
@@ -787,20 +788,17 @@ func _build_desk() -> void:
 	seat_eye.append(SEAT_EYE_HEIGHT)
 	seat_swivel.append(true)
 
-	# 90s anime poster on the right wall (res://textures/poster.png, swap in your own art any time)
-	_box(Vector3(2.485, 1.75, -1.25), Vector3(0.03, 1.0, 0.62), _mat(Color(0.95, 0.80, 0.86), 0.5))
-	var poster_mat := StandardMaterial3D.new()
-	poster_mat.disable_fog = true      # fog is only for the city outside
-	var tex: Texture2D = load("res://textures/poster.png")
-	poster_mat.albedo_texture = tex
-	poster_mat.roughness = 1.0
-	poster_mat.emission_enabled = true
-	poster_mat.emission_texture = tex
-	poster_mat.emission_energy_multiplier = 0.35
-	var poster := QuadMesh.new()
-	poster.size = Vector2(0.54, 0.92)
-	var poster_node := _place(poster, Vector3(2.455, 1.75, -1.25), poster_mat, null)
-	poster_node.rotation.y = -PI / 2.0
+	# the poster on the right wall: the 90s anime one, or any picture you pick (poster.gd)
+	poster = load("res://poster.gd").new()
+	poster.name = "Poster"
+	poster.position = Vector3(2.5, 1.75, -1.25)
+	poster.rotation.y = -PI / 2.0
+	room.add_child(poster)
+	poster.build(_mat(Color(0.95, 0.80, 0.86), 0.5))
+	screens.append(poster.ui)
+	interactables.append({"node": poster.frame, "half": Vector3(0.6, 0.55, 0.05), "guest_ok": true,
+		"half_fn": func() -> Vector3: return poster.frame.mesh.size * 0.5 + Vector3(0, 0, 0.03),
+		"label": func() -> String: return poster.label(), "cb": func() -> void: poster.toggle_picker()})
 	# paper lantern hanging from the ceiling on a cord
 	_cyl(Vector3(1.6, 2.65, 0.3), 0.004, 0.3, _mat(Color(0.10, 0.04, 0.12)))
 	lantern_mat = _mat(WARM, 0.5, 2.5)
@@ -4383,7 +4381,7 @@ func _update_pointer(delta: float) -> void:
 		for it in interactables:
 			if it.has("when") and not bool((it["when"] as Callable).call()):
 				continue
-			var t := _ray_box(o, d, it["node"], it["half"])
+			var t := _ray_box(o, d, it["node"], (it["half_fn"] as Callable).call() if it.has("half_fn") else it["half"])
 			if t >= 0.0 and t < best:
 				best = t
 				it_hit = it
