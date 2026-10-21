@@ -91,15 +91,19 @@ func _build_figure() -> void:
 	bm.position = Vector3(0, 0.005, 0)
 	fig.add_child(bm)
 	# a slim body, one smooth piece from the hips to a thin neck
-	var body := _lathe([[0.0, 0.0], [0.002, 0.009], [0.012, 0.013], [0.026, 0.0135], [0.038, 0.012], [0.047, 0.009],
-		[0.053, 0.0055], [0.058, 0.0038], [0.064, 0.0036], [0.066, 0.0]], 0.8, grey)
+	var body := _lathe([[0.0, 0.0], [0.002, 0.009], [0.012, 0.0122], [0.024, 0.0115], [0.032, 0.0118], [0.037, 0.0128],
+		[0.042, 0.0118], [0.047, 0.0082], [0.053, 0.0048], [0.062, 0.0038], [0.066, 0.0]], 0.8, grey)          # sloping shoulders
 	body.position.y = 0.01
 	fig.add_child(body)
-	# long thin arms hanging at its sides
+	# long thin arms that grow out of the shoulders: thick where they join the body, curving out and down,
+	# elbows in a little, ending in small rounded hands by the hips
 	for sx in [-1.0, 1.0]:
-		var arm := _lathe([[0.0, 0.0], [0.003, 0.0026], [0.02, 0.0024], [0.034, 0.002], [0.037, 0.0]], 1.0, grey)
-		arm.position = Vector3(sx * 0.0125, 0.06, 0.0)
-		arm.rotation = Vector3(0.0, 0.0, PI + sx * 0.14)            # hanging down from the shoulder
+		var path: Array[Vector3] = [Vector3(sx * 0.005, 0.044, 0.0), Vector3(sx * 0.0095, 0.0445, 0.0), Vector3(sx * 0.013, 0.042, 0.0),
+			Vector3(sx * 0.0148, 0.036, 0.0005), Vector3(sx * 0.0153, 0.028, 0.0015), Vector3(sx * 0.015, 0.019, 0.003),
+			Vector3(sx * 0.0146, 0.012, 0.0035)]
+		var radii: Array[float] = [0.0056, 0.0048, 0.0036, 0.0027, 0.0023, 0.0021, 0.0026]
+		var arm := _tube(path, radii, grey)
+		arm.position.y = 0.01
 		fig.add_child(arm)
 	# the head on a spring (it bobbles): a smooth inverted teardrop, a big rounded cranium tapering to a narrow chin
 	_fig_head = Node3D.new()
@@ -164,6 +168,56 @@ static func _lathe(profile: Array, depth: float, mat: Material) -> MeshInstance3
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = mat
+	return mi
+
+
+# a smooth round tube along a path, capped with a rounded end at the hand
+static func _tube(path: Array[Vector3], radii: Array[float], mat: Material) -> MeshInstance3D:
+	var pts: Array[Vector3] = []
+	var rr: Array[float] = []
+	for i in path.size() - 1:
+		for k in 5:
+			var t := k / 5.0
+			var a := path[maxi(i - 1, 0)]
+			var b := path[i]
+			var c := path[i + 1]
+			var d := path[mini(i + 2, path.size() - 1)]
+			pts.append(Vector3(_cr(a.x, b.x, c.x, d.x, t), _cr(a.y, b.y, c.y, d.y, t), _cr(a.z, b.z, c.z, d.z, t)))
+			rr.append(lerpf(radii[i], radii[i + 1], t))
+	var end := path[path.size() - 1]
+	var dir_end := (end - path[path.size() - 2]).normalized()
+	for k in 4:                                         # the rounded hand
+		var u := (k + 1) / 4.0
+		pts.append(end + dir_end * radii[radii.size() - 1] * u)
+		rr.append(radii[radii.size() - 1] * sqrt(maxf(0.0, 1.0 - u * u)))
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var seg := 16
+	var cnt := pts.size()
+	for i in cnt:
+		var t := (pts[mini(i + 1, cnt - 1)] - pts[maxi(i - 1, 0)]).normalized()
+		var side := t.cross(Vector3.FORWARD).normalized()
+		if side.length() < 0.5:
+			side = Vector3.RIGHT
+		var up := side.cross(t).normalized()
+		for j in seg + 1:
+			var a := TAU * j / seg
+			st.add_vertex(pts[i] + (side * cos(a) + up * sin(a)) * rr[i])
+	for i in cnt - 1:
+		for j in seg:
+			var a := i * (seg + 1) + j
+			var b := a + seg + 1
+			st.add_index(a)
+			st.add_index(b)
+			st.add_index(a + 1)
+			st.add_index(a + 1)
+			st.add_index(b)
+			st.add_index(b + 1)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	(mat as BaseMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
 	return mi
 
 
