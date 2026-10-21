@@ -162,7 +162,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"kaiju": main.kaiju.state() if main.kaiju != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -484,6 +484,9 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 		"tv_power":
 			if allowed and not main.egg_active and not main._net_play_lock():
 				main.vcr.toggle_tv()
+		"ufo_on":
+			if main.ufo != null:
+				main.ufo.request_visit()
 		"kaiju_on":
 			if main.kaiju != null:
 				main.kaiju.request_walk()

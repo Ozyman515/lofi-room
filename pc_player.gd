@@ -732,6 +732,13 @@ func _build_debug_window() -> void:
 		if _main.kaiju != null:
 			_main.kaiju.request_walk())
 	v.add_child(kb)
+	var ub := Button.new()
+	ub.text = "UFO: stop at the window now"
+	ub.custom_minimum_size = Vector2(0, 42)
+	ub.pressed.connect(func() -> void:
+		if _main.ufo != null:
+			_main.ufo.request_visit())
+	v.add_child(ub)
 	for opt in [["Call the tux", "tux"], ["Calico: rug", "rug"], ["Calico: beanbag", "beanbag"], ["Calico: console", "console"], ["No cats", "none"]]:
 		var cb := Button.new()
 		cb.text = opt[0]
