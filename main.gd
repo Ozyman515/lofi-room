@@ -95,6 +95,7 @@ var net_avatars: Node3D
 var net_phone: Node3D
 var net_game: Node
 var net_books: Node
+var net_voice: Node
 var _net_toast_t := 0
 var _net_moved := false
 var arcade_side := 0                     # 0 = left player, 1 = right player
@@ -258,6 +259,10 @@ func _build_multiplayer() -> void:
 	na.name = "NetAudio"
 	add_child(na)
 	na.setup(net, self)
+	net_voice = load("res://net_voice.gd").new()
+	net_voice.name = "NetVoice"
+	add_child(net_voice)
+	net_voice.setup(net, self, net_avatars)
 
 
 func _is_guest() -> bool:
@@ -361,6 +366,28 @@ func set_slap_minutes(mins: int) -> void:
 	slap_minutes = mins
 	_save_settings()
 	settings_changed.emit()
+
+
+# pointing at a player: their name, how loud you have them, how loud they have you; the wheel / stick adjusts
+func player_label(pid: int) -> String:
+	var who := str(net.roster.get(pid, {}).get("name", "them"))
+	if net_game != null and net_game.holds_pad(pid):
+		return slap_label(pid)
+	if net_voice == null:
+		return who.to_upper()
+	var mine: float = net_voice.volume_of(pid)
+	var theirs: float = net_voice.volume_they_have_me(pid)
+	var s := "%s     YOU HEAR THEM AT %d%%" % [who.to_upper(), int(round(mine * 100.0))]
+	if theirs >= 0.0:
+		s += "     THEY HEAR YOU AT %d%%" % int(round(theirs * 100.0))
+	if net_voice.is_speaking(pid):
+		s += "     (talking)"
+	return s + "\n" + ("STICK UP / DOWN  =  LOUDER / QUIETER" if xr_active else "WHEEL  =  LOUDER / QUIETER")
+
+
+func player_scroll(pid: int, up: bool) -> void:
+	if net_voice != null:
+		net_voice.set_volume_of(pid, net_voice.volume_of(pid) + (0.1 if up else -0.1))
 
 
 func slap_label(pid: int) -> String:
@@ -1847,6 +1874,8 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if xr_active:
 		return
+	if event is InputEventKey and not event.pressed and event.keycode == KEY_T and net_voice != null:
+		net_voice.talking = false
 	if pc != null and pc.ct_wants_key(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -1891,6 +1920,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_M:
 			if game_mode and emu != null:
 				emu.to_menu()          # back to the game list without taking the cart out
+			elif net_voice != null and net != null and net.is_online():
+				net_voice.set_mic_on(not net_voice.mic_on)
+				updater.show_toast("Microphone %s" % ("on" if net_voice.mic_on else "muted"), 2.0)
+		elif event.keycode == KEY_T and net_voice != null:
+			net_voice.talking = true
 		elif event.keycode == KEY_Q:
 			if not egg_active and not game_mode:
 				vcr.cycle_aspect()
@@ -1912,6 +1946,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				hover_screen.send_scroll(hover_pos, true)
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				hover_screen.send_scroll(hover_pos, false)
+		elif event.pressed and not hover_item.is_empty() and hover_item.has("player") and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			player_scroll(int(hover_item["player"]), event.button_index == MOUSE_BUTTON_WHEEL_UP)
 		elif event.pressed and held_book != null:
 			if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				_book_page(1)
@@ -4320,8 +4356,13 @@ func _update_pointer(delta: float) -> void:
 		laser.scale = Vector3(1.0, found_t, 1.0)
 		laser.position = Vector3(0.0, 0.0, -found_t / 2.0)
 
-	# scroll lists with the right thumbstick while pointing at a screen
+	# scroll lists with the right thumbstick while pointing at a screen (or set a friend's volume while pointing at them)
 	scroll_cd = maxf(0.0, scroll_cd - delta)
+	if xr_active and hover_screen == null and not hover_item.is_empty() and hover_item.has("player") and scroll_cd <= 0.0:
+		var sy2 := right_hand.get_vector2("primary").y
+		if absf(sy2) > 0.6:
+			player_scroll(int(hover_item["player"]), sy2 > 0.0)
+			scroll_cd = 0.25
 	if xr_active and hover_screen != null and scroll_cd <= 0.0:
 		var sy := right_hand.get_vector2("primary").y
 		if absf(sy) > 0.6:

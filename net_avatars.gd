@@ -42,6 +42,7 @@ class Avatar extends Node3D:
 		sm.rings = 8
 		s.mesh = sm
 		s.material_override = m
+		head_mat = m
 		head.add_child(s)
 		var visor := MeshInstance3D.new()      # dark band so you can tell which way they face (-z is forward)
 		var vb := BoxMesh.new()
@@ -74,6 +75,13 @@ class Avatar extends Node3D:
 		n.material_override = m
 		add_child(n)
 		return n
+
+	var head_mat: StandardMaterial3D
+	var base_glow := 0.9
+
+	func set_talking(level: float) -> void:
+		if head_mat != null:
+			head_mat.emission_energy_multiplier = base_glow + clampf(level * 12.0, 0.0, 2.5)
 
 	func apply(delta: float, snap := false) -> void:
 		if target.size() < FLOATS_PER:
@@ -119,9 +127,12 @@ func _sync_roster() -> void:
 		a.visible = false
 		# pointing at somebody who holds a controller offers a slap
 		var pid: int = id
-		var it := {"node": a.head, "half": Vector3(0.16, 0.16, 0.16), "guest_ok": true,
-			"when": func() -> bool: return a.visible and main.net_game != null and main.net_game.holds_pad(pid),
-			"label": func() -> String: return main.slap_label(pid), "cb": func() -> void: main.try_slap(pid)}
+		var it := {"node": a.head, "half": Vector3(0.16, 0.16, 0.16), "guest_ok": true, "player": pid,
+			"when": func() -> bool: return a.visible,
+			"label": func() -> String: return main.player_label(pid),
+			"cb": func() -> void:
+				if main.net_game != null and main.net_game.holds_pad(pid):
+					main.try_slap(pid)}
 		main.interactables.append(it)
 		_items[id] = it
 	for id in avatars:
@@ -131,6 +142,8 @@ func _sync_roster() -> void:
 func _process(delta: float) -> void:
 	for id in avatars:
 		avatars[id].apply(delta)
+		if main.net_voice != null:
+			avatars[id].set_talking(float(main.net_voice.levels.get(id, 0.0)) if main.net_voice.is_speaking(id) else 0.0)
 	if net == null or not net.is_online():
 		return
 	_t += delta

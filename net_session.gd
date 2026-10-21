@@ -15,7 +15,8 @@ const K_INPUT := 4       # guest -> host: pad / stick state
 const K_VIDEO := 5       # host -> guest: emulator frames
 const K_AUDIO := 6       # host -> guest: emulator sound
 const K_BOOK := 7        # comic pages (JPEG) from a book's owner to whoever is reading it
-const K_SOUND := 8       # host -> guests: the room's music (and later voices), ADPCM
+const K_SOUND := 8       # host -> guests: the room's music and TV, ADPCM
+const K_VOICE := 9       # voices: [speaker id] + ADPCM, relayed by the host
 
 signal state_changed
 signal roster_changed

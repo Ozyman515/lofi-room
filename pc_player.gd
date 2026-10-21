@@ -41,6 +41,8 @@ var _dbg_window: PanelContainer
 var _room_window: PanelContainer
 var _room_slap_btns: Array[Button] = []
 var _room_guest_btns := {}
+var _room_mic_btn: Button
+var _room_ptt_btn: Button
 var _dbg_seat_btns: Array[Button] = []
 var _dbg_phone_btn: Button
 var _ct_dev := "key"
@@ -552,8 +554,32 @@ func _build_room_window() -> void:
 		gb.pressed.connect(func() -> void: _main.set_guest_allow(key, not _main.guest_allow[key]))
 		v.add_child(gb)
 		_room_guest_btns[key] = gb
+	var vt := Label.new()
+	vt.text = "Your voice (M mutes, hold T to talk when push-to-talk is on; point at a friend and scroll to set how loud you hear them):"
+	vt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vt.add_theme_font_size_override("font_size", 17)
+	v.add_child(vt)
+	var vrow := HBoxContainer.new()
+	vrow.add_theme_constant_override("separation", 8)
+	v.add_child(vrow)
+	_room_mic_btn = Button.new()
+	_room_mic_btn.custom_minimum_size = Vector2(0, 40)
+	_room_mic_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_room_mic_btn.pressed.connect(func() -> void:
+		if _main.net_voice != null:
+			_main.net_voice.set_mic_on(not _main.net_voice.mic_on)
+			_room_refresh())
+	vrow.add_child(_room_mic_btn)
+	_room_ptt_btn = Button.new()
+	_room_ptt_btn.custom_minimum_size = Vector2(0, 40)
+	_room_ptt_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_room_ptt_btn.pressed.connect(func() -> void:
+		if _main.net_voice != null:
+			_main.net_voice.set_push_to_talk(not _main.net_voice.push_to_talk)
+			_room_refresh())
+	vrow.add_child(_room_ptt_btn)
 	var hint := Label.new()
-	hint.text = "These are the host's settings: they apply to everyone in your room. Beds, naps and the bookshelf are never shared."
+	hint.text = "The room settings above are the host's: they apply to everyone in your room. Beds, naps and the bookshelf are never shared."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", 15)
 	v.add_child(hint)
@@ -573,6 +599,9 @@ func _room_refresh() -> void:
 		var txt := "Never" if mins < 0 else ("%d h" % (mins / 60) if mins >= 60 else "%d min" % mins)
 		var on: bool = mins == _main.slap_minutes
 		_room_slap_btns[i].text = ("[ %s ]" if on else "%s") % txt
+	if _room_mic_btn != null and _main.net_voice != null:
+		_room_mic_btn.text = "Microphone  [%s]" % ("ON" if _main.net_voice.mic_on else "MUTED")
+		_room_ptt_btn.text = "Push to talk  [%s]" % ("ON" if _main.net_voice.push_to_talk else "OFF: open mic")
 	for gg in _main.GUEST_GROUPS:
 		if _room_guest_btns.has(gg[0]):
 			_room_guest_btns[gg[0]].text = "%s   [%s]" % [gg[1], "GUESTS MAY" if _main.guest_allow[gg[0]] else "HOST ONLY"]

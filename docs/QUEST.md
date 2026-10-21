@@ -45,3 +45,9 @@ Comics (.cbz, picture PDFs, fixed-layout .epub, or a folder of them read as one 
 folder next to the game on a PC. Reading is pure GDScript (zip + the engine's image decoders), so it works
 on the Quest; pages are capped at 1600 px there. .cbr (RAR) files can't be opened anywhere; convert them to .cbz.
 When friends are in the room, a book you take off your shelf is streamed to whoever picks it up as JPEGs.
+
+## Voice and shared sound
+Voices, the host's music and the host's tape travel as IMA ADPCM at 24 kHz (adpcm.gd), about 190 kb/s per
+stream, no codec library needed, so it works the same on the Quest. The microphone needs
+`audio/driver/enable_input` (on in project.godot); on the Quest the app also needs the RECORD_AUDIO
+permission in the export preset.
