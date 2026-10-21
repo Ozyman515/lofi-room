@@ -3,7 +3,7 @@ extends RefCounted
 ## or the environment variable LOFI_SERVER (handy for testing against a local server).
 
 const SETTINGS_FILE := "user://lofi_room.cfg"
-const DEFAULT_SERVER := "ws://127.0.0.1:8787"     # replace with the real wss:// address once the server is deployed
+const DEFAULT_SERVER := "wss://lofirooms.duckdns.org"     # the code server (server/server.js on the droplet, behind Caddy)
 const STUN := "stun:stun.cloudflare.com:3478"
 const MAX_PLAYERS := 4
 
