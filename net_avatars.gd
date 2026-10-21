@@ -23,6 +23,7 @@ class Avatar extends Node3D:
 	var rh: Node3D
 	var tag: Label3D
 	var target := PackedFloat32Array()
+	var pad: Node3D                 # the controller in their hands, while they hold one
 
 	func build(pname: String, col: Color) -> void:
 		var m := StandardMaterial3D.new()
@@ -140,8 +141,10 @@ func _sync_roster() -> void:
 
 
 func _process(delta: float) -> void:
+	_rug_pads()
 	for id in avatars:
 		avatars[id].apply(delta)
+		_show_pad(avatars[id], main.net_game != null and main.net_game.holds_controller(id))
 		if main.net_voice != null:
 			avatars[id].set_talking(float(main.net_voice.levels.get(id, 0.0)) if main.net_voice.is_speaking(id) else 0.0)
 	if net == null or not net.is_online():
@@ -163,6 +166,38 @@ func _process(delta: float) -> void:
 				net.send_to(gid, Net.K_POSE, out.to_byte_array(), false)
 	else:
 		net.send_to(1, Net.K_POSE, mine.to_byte_array(), false)
+
+
+var _hidden_pads := {}           # rug pad index -> true while I hide it because somebody else holds it
+
+
+func _rug_pads() -> void:
+	var taken: Dictionary = main.net_game.pads_taken_by_others() if main.net_game != null and net != null and net.is_online() else {}
+	for i in main.pad_nodes.size():
+		if taken.has(i) and i != main.held_pad_idx:
+			if main.pad_nodes[i].visible:
+				main.pad_nodes[i].visible = false
+				_hidden_pads[i] = true
+		elif _hidden_pads.has(i):
+			_hidden_pads.erase(i)
+			if i != main.held_pad_idx:
+				main.pad_nodes[i].visible = true
+
+
+# a held controller sits between their hands, facing the way their head faces, tilted up like you'd hold it
+func _show_pad(a: Avatar, held: bool) -> void:
+	if held and a.pad == null:
+		a.pad = Node3D.new()
+		main._pad_meshes(a.pad)
+		a.add_child(a.pad)
+	elif not held and a.pad != null:
+		a.pad.queue_free()
+		a.pad = null
+	if a.pad == null or not a.visible:
+		return
+	var yaw := Basis(Vector3.UP, a.head.global_transform.basis.get_euler().y)
+	var mid := (a.lh.global_position + a.rh.global_position) * 0.5
+	a.pad.global_transform = Transform3D(yaw * Basis(Vector3.RIGHT, 0.6), mid + yaw * Vector3(0, 0.02, -0.04))
 
 
 func _my_pose() -> PackedFloat32Array:

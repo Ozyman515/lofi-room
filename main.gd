@@ -4015,7 +4015,8 @@ func _controller(pos: Vector3, yaw_off: float) -> void:
 	ctrl_exits.append(root.to_global(Vector3(0, 0.014, -0.052)))
 	var idx := pad_nodes.size()
 	pad_nodes.append(root)
-	interactables.append({"node": root, "half": Vector3(0.095, 0.035, 0.065), "label": _pad_label, "cb": _pick_pad.bind(idx), "guest_ok": true})
+	interactables.append({"node": root, "half": Vector3(0.095, 0.035, 0.065), "label": _pad_label, "cb": _pick_pad.bind(idx), "guest_ok": true,
+		"when": func() -> bool: return root.visible or idx == held_pad_idx})       # a pad a friend is holding can't be grabbed
 
 
 func _build_dresser() -> void:

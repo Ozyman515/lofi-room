@@ -1,5 +1,5 @@
 {
- "version": 87,
+ "version": 88,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -246,8 +246,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "9719a273ab363865a0de7f08167feb7e27690dc951767c1ed308ee852157bb36",
-   "size": 182076
+   "sha": "9ae6d8442dd30acaaea4482e3db92c73d561118056a03ffe13bb392211b9cd11",
+   "size": 182197
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -286,8 +286,8 @@
    "size": 6559
   },
   "net_avatars.gd": {
-   "sha": "c9a038ae73a0b06d49ac7ed4b78857fd6731806c394d9326c63611925a2c7740",
-   "size": 6388
+   "sha": "6bd8897ab6dd9713453d0174387592f949ba60c652188afadb72064f3d1f8190",
+   "size": 7753
   },
   "net_books.gd": {
    "sha": "7c3f81a995ddbf565f3ec9441cc385aeaf2498c203afd9967954fd2bb9de1093",
@@ -298,8 +298,8 @@
    "size": 1670
   },
   "net_game.gd": {
-   "sha": "d299e2081c7c4e95d6c8d72d5c7474f869d04f0eaa6c77decb3e149c196780b7",
-   "size": 10599
+   "sha": "c17b9e7cc684da266ba5dab6af84db892cd5e0e1daed0b635df1f0c8426263ca",
+   "size": 12931
   },
   "net_phone.gd": {
    "sha": "5850233ceb99d33bb1c36cabfe1f91ffa64e17496c5313a480f1ca7089b7f223",
@@ -394,7 +394,7 @@
    "size": 41782
   },
   "version.txt": {
-   "sha": "fe028cccfcfd1aadf0cae5cdadc9fdb1e93988c41b242b575cb45a3dd4b0c24c",
+   "sha": "94357f63ecbc9f2a794d70f4d95b4a0db358191b6ae02fe472d240e367467503",
    "size": 3
   },
   "weather.gd": {

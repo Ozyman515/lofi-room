@@ -19,6 +19,10 @@ var emu: Node
 
 var guest_pad := {}                     # host side: guest id -> pad held
 var pads_seen := {}                     # everyone: id -> true for players holding a pad (from the host's state)
+var guest_arcade := {}                  # host side: guest id -> true while they play at the arcade sticks (not a pad)
+var guest_pad_idx := {}                 # host side: guest id -> which rug pad they hold
+var pad_of_seen := {}                   # everyone: id -> which rug pad that player holds
+var sticks_seen := {}                   # everyone: id -> true for players at the arcade sticks
 var slap_minutes_seen := 30             # the host's slap cooldown, as last announced
 var _last_slap := {}                    # host side: slapper id -> ms of their last slap
 var my_last_slap := 0                   # ms of my own last (accepted) slap, for the countdown on the label
@@ -30,6 +34,8 @@ var _state_t := 0.0
 var _resend_t := 0.0
 var _last_state := {}
 var _my_pad_sent := false
+var _my_arcade_sent := false
+var _my_idx_sent := -2
 var _my_mask_sent := -1
 var _running_seen := false
 var _rate := 44100.0
@@ -60,6 +66,10 @@ func _on_net_state() -> void:
 	emu.streaming = net.state == net.State.HOSTING
 	if not net.is_online():
 		guest_pad.clear()
+		guest_arcade.clear()
+		guest_pad_idx.clear()
+		pad_of_seen.clear()
+		sticks_seen.clear()
 		guest_mask.clear()
 		_state_known.clear()
 		p2_id = 0
@@ -73,6 +83,8 @@ func _on_roster() -> void:
 	for id in guest_pad.keys():
 		if not net.roster.has(id):
 			guest_pad.erase(id)
+			guest_arcade.erase(id)
+			guest_pad_idx.erase(id)
 			guest_mask.erase(id)
 			_state_known.erase(id)
 			if id == p2_id:
@@ -109,7 +121,19 @@ func _current_state() -> Dictionary:
 	for id in guest_pad:
 		if guest_pad[id]:
 			pads[id] = true
-	return {"k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	var sticks := {}
+	if main.game_mode and main.held_pad_idx < 0:
+		sticks[1] = true
+	for id in guest_arcade:
+		if guest_arcade[id] and guest_pad.get(id, false):
+			sticks[id] = true
+	var pad_of := {}
+	if main.game_mode and main.held_pad_idx >= 0:
+		pad_of[1] = main.held_pad_idx
+	for id in guest_pad_idx:
+		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
+			pad_of[id] = guest_pad_idx[id]
+	return {"sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -196,9 +220,13 @@ func _send_pad_state() -> void:
 	if net.is_host():
 		return
 	var held: bool = main.game_mode
-	if held != _my_pad_sent:
+	var arc: bool = held and main.held_pad_idx < 0
+	var idx: int = main.held_pad_idx if held else -1
+	if held != _my_pad_sent or arc != _my_arcade_sent or idx != _my_idx_sent:
 		_my_pad_sent = held
-		net.send_var(1, Net.K_EVENT, {"k": "pad", "held": held})
+		_my_arcade_sent = arc
+		_my_idx_sent = idx
+		net.send_var(1, Net.K_EVENT, {"k": "pad", "held": held, "arcade": arc, "idx": idx})
 		if not held:
 			_my_mask_sent = -1
 
@@ -210,6 +238,8 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 				var d = Net.read_var(payload)
 				if d is Dictionary and d.get("k", "") == "pad":
 					_guest_pad(from, bool(d.get("held", false)))
+					guest_arcade[from] = bool(d.get("arcade", false))
+					guest_pad_idx[from] = clampi(int(d.get("idx", -1)), -1, 7)
 				elif d is Dictionary and d.get("k", "") == "slap":
 					_host_slap(from, int(d.get("target", 0)))
 			Net.K_INPUT:
@@ -267,6 +297,10 @@ func _guest_pad(id: int, held: bool) -> void:
 func _apply_state(d: Dictionary) -> void:
 	var p = d.get("pads", {})
 	pads_seen = p if p is Dictionary else {}
+	var st = d.get("sticks", {})
+	sticks_seen = st if st is Dictionary else {}
+	var po = d.get("pad_of", {})
+	pad_of_seen = po if po is Dictionary else {}
 	slap_minutes_seen = int(d.get("slap", 30))
 	main.net_apply_game(d)
 	if not bool(d.get("run", false)):
@@ -279,6 +313,29 @@ func holds_pad(id: int) -> bool:
 	if net.is_host():
 		return main.game_mode if id == net.my_id else bool(guest_pad.get(id, false))
 	return bool(pads_seen.get(id, false))
+
+
+# holding one of the console pads (not standing at the arcade sticks): their avatar shows it in their hands
+func holds_controller(id: int) -> bool:
+	if not holds_pad(id):
+		return false
+	if net.is_host():
+		return main.held_pad_idx >= 0 if id == net.my_id else not bool(guest_arcade.get(id, false))
+	return not bool(sticks_seen.get(id, false))
+
+
+# rug pads somebody else is holding (so they aren't drawn lying on the rug too)
+func pads_taken_by_others() -> Dictionary:
+	var out := {}
+	if net.is_host():
+		for id in guest_pad_idx:
+			if guest_pad.get(id, false) and not guest_arcade.get(id, false) and int(guest_pad_idx[id]) >= 0:
+				out[int(guest_pad_idx[id])] = id
+	else:
+		for id in pad_of_seen:
+			if int(id) != net.my_id and int(pad_of_seen[id]) >= 0:
+				out[int(pad_of_seen[id])] = int(id)
+	return out
 
 
 func slap_minutes() -> int:
