@@ -1,5 +1,5 @@
 {
- "version": 95,
+ "version": 96,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -266,8 +266,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "8440f5ed3ceb3459e1d3f763fc8e8c1ce0a9543d83d94c32fe8819467528eb9b",
-   "size": 192098
+   "sha": "15d6a4019346cb99644b90c7d9fae44c114c381d674fa04f02d81898ba977076",
+   "size": 192374
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -318,8 +318,8 @@
    "size": 1670
   },
   "net_game.gd": {
-   "sha": "58d10e936b26b165a858d51468aca73203aeef9b744d0502037212d2294b11de",
-   "size": 20146
+   "sha": "cba25a7730d00f1beba11b1a425fb95a8728cc2684536d432ccf4cf2ed2bb52e",
+   "size": 20263
   },
   "net_phone.gd": {
    "sha": "402b3c30fffcddb19d92d6cb125e8fd161372b5310e4120bd59f4ee2ac085ece",
@@ -366,8 +366,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "9cf3083fc5a964030b0db2eef9098dbc06256f9134c29c3e805049c12d2df655",
-   "size": 47427
+   "sha": "0e672315c91189776505eaf0d1dcb551cc705d3ac7cae840db8d549c923a93e1",
+   "size": 47640
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -457,6 +457,14 @@
    "sha": "b4c5550b12094a4d37b46ea6579d0cbf10e9f601ea969479542e2a4beabeaaae",
    "size": 35901
   },
+  "ufo.gd": {
+   "sha": "2b109fae0fb710cfc8ba0ec066eb99a6f63d59e3ee203a9870daa43c8e937b3d",
+   "size": 12906
+  },
+  "ufo_model.gd": {
+   "sha": "3142276c30cc3e34a10a2e135a5afd8762e30839adef6529c1c148b093a92185",
+   "size": 7561
+  },
   "updater.gd": {
    "sha": "6b9b8f9066409262357be9c2b0c00c63a0e61fdce4f48f5d7480755748b3e0aa",
    "size": 11286
@@ -466,7 +474,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "d867d3f88fa20d7cb936ecd93651adeedf473a6177218cd0987f462ff5511cb6",
+   "sha": "d93844f8f37e55564be3f194656bf33b5d0fb5e589a0fe17eb7c2d4e8593ec9c",
    "size": 3
   },
   "weather.gd": {
