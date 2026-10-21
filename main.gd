@@ -3410,6 +3410,16 @@ func set_arcade_on(on: bool) -> void:
 	_apply_console()
 
 
+var cat_purr_on := true               # PC setting: the cats' purring can be switched off
+
+
+func set_cat_purr(on: bool) -> void:
+	cat_purr_on = on
+	load("res://cozy_cat.gd").muted = not on
+	_save_settings()
+	settings_changed.emit()
+
+
 func set_share_poster(on: bool) -> void:
 	share_poster = on
 	_save_settings()
@@ -3716,6 +3726,8 @@ func _load_prefs() -> void:
 			guest_allow[gk] = bool(cfg.get_value("guests", gk, false))
 		arcade_volume = clampi(int(cfg.get_value("settings", "arcade_volume", 7)), 0, 10)
 		share_poster = bool(cfg.get_value("settings", "share_poster", false))
+		cat_purr_on = bool(cfg.get_value("settings", "cat_purr", true))
+		load("res://cozy_cat.gd").muted = not cat_purr_on
 		_show_arcade_volume()
 		if not bool(cfg.get_value("settings", "arcade_on", true)):
 			set_arcade_on(false)
@@ -3779,6 +3791,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "arcade_on", arcade_on)
 	cfg.set_value("settings", "arcade_volume", arcade_volume)
 	cfg.set_value("settings", "share_poster", share_poster)
+	cfg.set_value("settings", "cat_purr", cat_purr_on)
 	for g in guest_allow:
 		cfg.set_value("guests", g, guest_allow[g])
 	cfg.save(SETTINGS_FILE)

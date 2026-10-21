@@ -668,6 +668,9 @@ func _open_credits_window() -> void:
 	_cr_window.visible = true
 
 
+var _dbg_purr_btn: Button
+
+
 func _build_debug_window() -> void:
 	_dbg_window = PanelContainer.new()
 	_dbg_window.offset_left = 150.0
@@ -711,6 +714,10 @@ func _build_debug_window() -> void:
 	_dbg_phone_btn.custom_minimum_size = Vector2(0, 42)
 	_dbg_phone_btn.pressed.connect(func() -> void: _main.set_phone_hidden(not _main.phone_hidden))
 	v.add_child(_dbg_phone_btn)
+	_dbg_purr_btn = Button.new()
+	_dbg_purr_btn.custom_minimum_size = Vector2(0, 42)
+	_dbg_purr_btn.pressed.connect(func() -> void: _main.set_cat_purr(not _main.cat_purr_on))
+	v.add_child(_dbg_purr_btn)
 	var ct := Label.new()
 	ct.text = "Cats (for testing the easter egg):"
 	ct.add_theme_font_size_override("font_size", 17)
@@ -742,6 +749,8 @@ func _dbg_refresh() -> void:
 	for i in _dbg_seat_btns.size():
 		var on: bool = i == _main.debug_seats
 		_dbg_seat_btns[i].text = ("[ %s ]" if on else "%s") % ("Players" if i == 0 else str(i))
+	if _dbg_purr_btn != null:
+		_dbg_purr_btn.text = "Cat purring  [%s]" % ("ON" if _main.cat_purr_on else "MUTED")
 	if _dbg_phone_btn != null:
 		_dbg_phone_btn.text = "Wall phone (buddy bois)  [%s]" % ("HIDDEN" if _main.phone_hidden else "SHOWN")
 

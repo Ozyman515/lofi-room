@@ -28,6 +28,7 @@ var _next := 0.0
 var _fade := 0.0
 var _rng := RandomNumberGenerator.new()
 var _pet_t := 0.0
+static var muted := false           # the PC's "Cat purring" setting (both cats)
 var _lift := 0.0
 var _head_rest := Vector3.ZERO
 
@@ -39,8 +40,9 @@ func _ready() -> void:
 	if _purr_stream == null:
 		_purr_stream = _make_purr()
 	_purr.stream = _purr_stream
-	_purr.unit_size = 0.6               # a purr is close-up: clear within a metre, gone across the room
-	_purr.max_distance = 4.0
+	_purr.unit_size = 0.35              # a purr is close-up: soft within a metre, gone across the room
+	_purr.max_distance = 3.0
+	_purr.max_db = -6.0                 # even with your ear right on the cat it stays gentle
 	_purr.volume_db = -80.0
 	_purr.position = Vector3(0.05, 0.08, 0)
 	add_child(_purr)
@@ -69,7 +71,7 @@ func _process(delta: float) -> void:
 			_purr.play(fmod(_t, BREATH))
 	_fade = move_toward(_fade, 1.0 if _purring else 0.0, delta / 2.5)
 	if _purr.playing:
-		_purr.volume_db = linear_to_db(maxf(_fade, 0.0001)) - (0.0 if _pet_t > 0.0 else 6.0)
+		_purr.volume_db = (linear_to_db(maxf(_fade, 0.0001)) - (8.0 if _pet_t > 0.0 else 14.0)) if not muted else -80.0
 		if _fade <= 0.0 and not _purring:
 			_purr.stop()
 
@@ -264,8 +266,8 @@ static func _make_purr() -> AudioStreamWAV:
 	rng.seed = 7
 	var lp := 0.0
 	var lp2 := 0.0
+	var lp3 := 0.0
 	var pulse_t := 0.0
-	var amp := 0.0
 	for i in n:
 		var t := float(i) / rate
 		var ph := fmod(t, BREATH) / BREATH            # 0..1 through a breath: in for 45 %, out for the rest
@@ -273,19 +275,22 @@ static func _make_purr() -> AudioStreamWAV:
 		var f := 23.0 if inhale else 26.0
 		var env := 0.0
 		if inhale:
-			env = smoothstep(0.0, 0.08, ph) * (1.0 - smoothstep(0.38, 0.45, ph))
+			env = smoothstep(0.0, 0.12, ph) * (1.0 - smoothstep(0.36, 0.45, ph))
 		else:
-			env = 0.75 * smoothstep(0.47, 0.55, ph) * (1.0 - smoothstep(0.90, 1.0, ph))
+			env = 0.8 * smoothstep(0.47, 0.58, ph) * (1.0 - smoothstep(0.86, 1.0, ph))
 		pulse_t += 1.0 / rate
 		if pulse_t >= 1.0 / f:
 			pulse_t -= 1.0 / f
-			amp = 1.0                                 # each vocal-fold flutter is a little thud of noise
-		amp *= 0.9975
-		var noise := rng.randf_range(-1.0, 1.0) * amp
-		lp += (noise - lp) * 0.08                     # soft, low and breathy
-		lp2 += (lp - lp2) * 0.15
-		var s := clampf(lp2 * 5.5 * env, -1.0, 1.0)
-		data.encode_s16(i * 2, int(s * 32767.0))
+		# each flutter is a soft, rounded swell of breathy noise (no sharp edge, so it rumbles rather than rattles)
+		var u := pulse_t * f
+		var shape := 0.5 - 0.5 * cos(TAU * u)
+		var noise := rng.randf_range(-1.0, 1.0) * shape * shape
+		lp += (noise - lp) * 0.06                     # three gentle low-pass stages: warm and muffled
+		lp2 += (lp - lp2) * 0.10
+		lp3 += (lp2 - lp3) * 0.18
+		var s := lp3 * 9.0 * env
+		s = s / (1.0 + absf(s))                       # soft limit: it can never clip into a buzz
+		data.encode_s16(i * 2, int(s * 0.55 * 32767.0))
 	var w := AudioStreamWAV.new()
 	w.format = AudioStreamWAV.FORMAT_16_BITS
 	w.mix_rate = rate
