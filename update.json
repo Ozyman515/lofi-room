@@ -1,5 +1,5 @@
 {
- "version": 98,
+ "version": 99,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -290,12 +290,16 @@
    "size": 0
   },
   "music/CREDITS.txt": {
-   "sha": "80d8a107e3b8adb8df34267b65e2d3db788a79531c38fab86c7b2ef40b3d164b",
-   "size": 982
+   "sha": "a437e67d1f06dde3a63ee85300574409f9faf3ab8d30767fff7e3866159b09a0",
+   "size": 1577
   },
   "music/README.txt": {
    "sha": "270a4507794fea0e7586e45f72f0be6d1615de92f7e69e2dd4613cba78e3ab2c",
    "size": 458
+  },
+  "music/konstantinpazuzustudio-gritty-noir.ogg": {
+   "sha": "7e301062ce17b0662337e9c819ac9871af8ebb9ef120741e5f6ce5b76570d5c4",
+   "size": 3633700
   },
   "music/zephiramusic-tokyo-lofi.ogg": {
    "sha": "d23062ae6bb474d25eeb5341430494d0e23fa34d25734d9c5010354c0755594e",
@@ -334,20 +338,20 @@
    "size": 8509
   },
   "noir.gd": {
-   "sha": "6383275862cd93627a2b249a7b0ee04b991aa1f45d0e0f438b87f3507ee18f48",
-   "size": 19813
+   "sha": "848e0d947f858fce82e3d4b5c37019b791276cc50d848ad17a75738144f1e07f",
+   "size": 19870
   },
   "noir/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
    "size": 0
   },
-  "noir/konstantinpazuzustudio-gritty-noir.ogg": {
-   "sha": "7e301062ce17b0662337e9c819ac9871af8ebb9ef120741e5f6ce5b76570d5c4",
-   "size": 3633700
-  },
   "noir/noir_poster.png": {
    "sha": "652c58007057a3be311cb9add558e1a4f37f98fe1683680ddc34c56d805e59ec",
    "size": 1140112
+  },
+  "noir/yulius2tudio-lofi-jazz-noir-late-night.ogg": {
+   "sha": "d533ebfbdedab9ed825fb4777ac31fba0c6ed0400d6779fb8389ce1cf39bc4cf",
+   "size": 2246945
   },
   "noir_props.gd": {
    "sha": "3b990eaf9d2d8066dc46a50f0febbe68f42dfa733635b722de5ee1e9b9833941",
@@ -482,7 +486,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "4960a9ce196ee53a9ae6f2b038ebf5bb7949312406eabe79835e766b4a3d0d88",
+   "sha": "7e332bcee418f7d700927c946d36341f0651d6d90997b58d3d5441dec96b2e74",
    "size": 3
   },
   "weather.gd": {
@@ -492,6 +496,7 @@
  },
  "remove": [
   "music/zephiramusic-tokyo-lofi.mp3",
+  "noir/konstantinpazuzustudio-gritty-noir.ogg",
   "textures/poster.png",
   "textures/poster.png.import"
  ]
