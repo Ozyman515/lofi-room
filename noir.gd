@@ -146,12 +146,15 @@ func start() -> void:
 	visitor.visible = force_visitor or randf() < VISITOR_CHANCE
 	force_visitor = false
 	if visitor.visible:
-		# he takes the desk chair, turned round to face the room
-		if main.seated and main.seat_nodes[main.cur_seat] == main.chair:
+		# he takes the recliner, sitting up, turned round to face the room
+		var rc: Node3D = main.recliner
+		if main.seated and main.cur_seat == main.recliner_seat:
 			main._toggle_sit()                          # (you get up)
-		_saved["chair_yaw"] = main.chair.rotation.y
-		main.chair.rotation.y = PI
-		visitor.global_position = main.chair.global_position + Vector3(0, 0, 0.08)
+		_saved["rec_yaw"] = rc.rotation.y
+		_saved["rec_back"] = rc.reclined
+		rc.reclined = false
+		rc.rotation.y = PI
+		visitor.global_position = rc.global_position + Vector3(0, 0, 0.1)
 		visitor.rotation.y = 0.0
 	# the desk
 	_sips = 0
@@ -187,8 +190,9 @@ func stop() -> void:
 		return
 	active = false
 	main.weather.end_noir()
-	if visitor.visible and _saved.has("chair_yaw"):
-		main.chair.rotation.y = float(_saved["chair_yaw"])
+	if visitor.visible and _saved.has("rec_yaw"):
+		main.recliner.rotation.y = float(_saved["rec_yaw"])
+		main.recliner.reclined = bool(_saved["rec_back"])
 	visitor.visible = false
 	if main.poster != null:
 		main.poster.clear_override()

@@ -2248,12 +2248,19 @@ func _build_recliner() -> void:
 		var sd: int = side
 		interactables.append({"node": recliner.arm_node(sd), "half": Vector3(0.12, 0.1, 0.12), "guest_ok": true,
 			"label": func() -> String: return "TURN THE RECLINER  " + ("LEFT" if sd < 0 else "RIGHT"),
+			"when": func() -> bool: return not _recliner_taken(),
 			"cb": func() -> void: recliner.turn(-1 if sd < 0 else 1)})
 	interactables.append({"node": recliner.lever_node(), "half": Vector3(0.06, 0.12, 0.08), "guest_ok": true,
+		"when": func() -> bool: return not _recliner_taken(),
 		"label": func() -> String: return "SIT UP" if recliner.reclined else "LEAN BACK",
 		"cb": func() -> void:
 			recliner.toggle_recline()
 			_save_recliner()})
+
+
+# Noir Night's grey visitor is sitting in it
+func _recliner_taken() -> bool:
+	return noir != null and noir.visitor != null and noir.visitor.visible
 
 
 func _on_recliner_turned(dy: float) -> void:
@@ -2640,7 +2647,7 @@ func _nearest_seat() -> int:
 	for i in seat_nodes.size():
 		if not seat_nodes[i].visible:
 			continue
-		if seat_nodes[i] == chair and noir != null and noir.visitor != null and noir.visitor.visible:
+		if i == recliner_seat and noir != null and noir.visitor != null and noir.visitor.visible:
 			continue                                   # somebody's in it
 		var sp := seat_nodes[i].global_position
 		var dist := Vector2(p.x, p.z).distance_to(Vector2(sp.x, sp.z))
