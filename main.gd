@@ -793,7 +793,8 @@ func _build_desk() -> void:
 	screens.append(poster.ui)
 	interactables.append({"node": poster.frame, "half": Vector3(0.6, 0.55, 0.05), "guest_ok": true,
 		"half_fn": func() -> Vector3: return poster.frame.mesh.size * 0.5 + Vector3(0, 0, 0.03),
-		"no_hint": true,                           # no sign: the poster speaks for itself (clicking it still opens the picker)
+		"hint_at": func() -> Vector3: return poster.hint_spot(),
+		"no_reticle": true,                        # no crosshair dot over the picture (clicking it still opens the picker)
 		"label": func() -> String: return poster.label(), "cb": func() -> void: poster.toggle_picker()})
 	# paper lantern hanging from the ceiling on a cord
 	_cyl(Vector3(1.6, 2.65, 0.3), 0.004, 0.3, _mat(Color(0.10, 0.04, 0.12)))
@@ -1866,7 +1867,7 @@ func _process(delta: float) -> void:
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
 			_cancel_leave()          # walked away or waited too long: the sign goes
 	if reticle != null:
-		reticle.visible = reticle_on and not xr_active and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or pad_in_use) and not game_mode and not _aim_at_playing_tv() and not (hover_screen != null and hover_screen.cursor_allowed)
+		reticle.visible = reticle_on and not xr_active and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or pad_in_use) and not game_mode and not _aim_at_playing_tv() and not (hover_screen != null and hover_screen.cursor_allowed) and not hover_item.get("no_reticle", false)
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
 	_room_pad_tick(delta)
 	_update_held_pad(delta)
@@ -4757,7 +4758,7 @@ func _update_pointer(delta: float) -> void:
 		if found_item.has("hint_at"):                 # a fixed spot for the sign (e.g. under a picture, not on it)
 			hint_label.global_position = (found_item["hint_at"] as Callable).call()
 			hint_label.scale = Vector3.ONE * clampf(found_t / 1.6, 0.35, 0.8)
-		hint_label.visible = not found_item.get("no_hint", false) and not (found_item.get("shelf", false) and not shelf_hints)
+		hint_label.visible = not (found_item.get("shelf", false) and not shelf_hints)
 	elif diary != null and diary.open_book and book_hint_t > 0.0:
 		hint_label.text = ("GRIP  =  PUT IT DOWN" if xr_active else "G  =  PUT IT DOWN")
 		hint_label.scale = Vector3.ONE * 0.45
