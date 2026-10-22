@@ -107,7 +107,7 @@ func build(seat_y := 0.6) -> void:
 		_head.add_child(lid)
 	# a fedora, tipped down over one eye
 	var hat: Node3D = load("res://noir_props.gd").fedora()
-	hat.position = Vector3(0.0, 0.205, -0.005)
+	hat.position = Vector3(0.0, 0.222, -0.005)
 	hat.rotation = Vector3(0.12, 0.0, -0.14)
 	hat.scale = Vector3(1.15, 1.1, 1.2)
 	for mi in hat.get_children():
