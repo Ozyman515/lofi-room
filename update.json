@@ -1,5 +1,5 @@
 {
- "version": 103,
+ "version": 104,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -170,8 +170,8 @@
    "size": 15417
   },
   "comic_book.gd": {
-   "sha": "e378101b398114706d307882c7ba9fea20eaa0ed51fff571c2cd1cd508b366b7",
-   "size": 35377
+   "sha": "3c56eaa52825af602b3d797a674894ee5eca8669d0401c2f339c97e227a06a29",
+   "size": 35543
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -270,8 +270,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "d54465f0fbbd8b60a7ffaae87257f5851dc0b43440efe26ffd5304428b17cfd0",
-   "size": 204595
+   "sha": "464c6e346b86c254f5a4fe65262805fac3efaf91548e18f71e8a64b84064c56b",
+   "size": 204739
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -322,24 +322,24 @@
    "size": 9157
   },
   "net_config.gd": {
-   "sha": "47fb308905b84178872902abc365b11202d9cfd316af850369f3533b8332e70d",
-   "size": 1670
+   "sha": "f07eaafb7880a08e9c9b7ca7ed6d16fee54368030ce95dd39c3930817764c960",
+   "size": 2098
   },
   "net_game.gd": {
-   "sha": "cba25a7730d00f1beba11b1a425fb95a8728cc2684536d432ccf4cf2ed2bb52e",
-   "size": 20263
+   "sha": "67952092d5e83179f2a59b036a8aae17e5db5c9539f1af933a8da9cedeae6753",
+   "size": 20112
   },
   "net_phone.gd": {
-   "sha": "402b3c30fffcddb19d92d6cb125e8fd161372b5310e4120bd59f4ee2ac085ece",
-   "size": 8251
+   "sha": "a133313051d50eeb3406f541403d3be11ef11a26281b20e9b4e59b6bb9d6d007",
+   "size": 9166
   },
   "net_session.gd": {
-   "sha": "e1405f9957795cd1415222f0b252d9f56283bc51cc1bbe28b6de5edb201c4470",
-   "size": 14630
+   "sha": "d5997559f6c8724a953e293f28b381efae367de1cbf9742784283fa7f75f4212",
+   "size": 16350
   },
   "net_voice.gd": {
-   "sha": "bda870de615020779db57d81274c55ade0956a3f64c91f81be1ce93dc42b60fc",
-   "size": 8509
+   "sha": "b5f4a93b7563e0df244b4483bf950e95429a0681b974dc0a1fd3acdc7a5f0040",
+   "size": 9088
   },
   "noir.gd": {
    "sha": "848e0d947f858fce82e3d4b5c37019b791276cc50d848ad17a75738144f1e07f",
@@ -426,12 +426,16 @@
    "size": 4270
   },
   "remote_comic.gd": {
-   "sha": "56d58672c3991797e2e8563357e91273ec4f5b88f1aecef58047f0144847c818",
-   "size": 2370
+   "sha": "0f356c82e22aef79edd1c61e5faba797e71a55173684b6d441ac382d4921733d",
+   "size": 2328
   },
   "reticle.gd": {
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
    "size": 952
+  },
+  "safe_image.gd": {
+   "sha": "426f22db0b2cfcf43730cc465542ec332356e80ad13e8cf11d36acd3226e8356",
+   "size": 1815
   },
   "screen_ui.gd": {
    "sha": "be7b3cc54e6128e7305c438fb8f891336a9d1ee0999ec30bbfd958cdff0c7050",
@@ -494,7 +498,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "45080860abd6d79b808dbd71836bf29e41918f1bf1f05f7ce732ada7674cc816",
+   "sha": "77a60c200656e08ac5403f38b58657ecec155293323bd5313290399b75cf1c3d",
    "size": 4
   },
   "weather.gd": {
