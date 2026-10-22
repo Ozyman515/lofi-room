@@ -32,6 +32,8 @@ static func build() -> Node3D:
 	_part(root, band, _m(Color(0.2, 0.2, 0.23), 0.3, 0.9), Vector3.ZERO)
 	# panel seams on the top
 	for k in 12:
+		if k == 3:
+			continue                                     # none right under the porthole
 		var a := TAU * k / 12.0
 		var seam := BoxMesh.new()
 		seam.size = Vector3(0.3, 0.003, 0.004)
@@ -81,24 +83,39 @@ static func build() -> Node3D:
 	cabin.radial_segments = 40
 	_part(root, cabin, hull, Vector3(0, 0.12, 0))
 	dome.position.y = 0.185
+	# the port: a short round porthole sticking out of the cabin wall, black inside, the alien sitting in it
 	var port := Node3D.new()
 	port.name = "Port"
-	port.position = Vector3(0, 0.125, 0.2)
+	port.position = Vector3(0, 0.148, 0.214)        # above the hull's top slope, so nothing buries its lower half
 	root.add_child(port)
+	var dark := _m(Color(0.25, 0.26, 0.3), 0.3, 0.9)
+	var tube := CylinderMesh.new()
+	tube.top_radius = 0.047
+	tube.bottom_radius = 0.047
+	tube.height = 0.04
+	tube.cap_top = false
+	tube.cap_bottom = false
+	tube.radial_segments = 32
+	var tm := _m(Color(0.25, 0.26, 0.3), 0.3, 0.9)
+	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_part(port, tube, tm, Vector3(0, 0, 0.02)).rotation.x = PI / 2.0
+	var back_m := StandardMaterial3D.new()               # pitch black behind the alien
+	back_m.albedo_color = Color(0, 0, 0)
+	back_m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	back_m.disable_fog = true
+	var back := CylinderMesh.new()
+	back.top_radius = 0.047
+	back.bottom_radius = 0.047
+	back.height = 0.002
+	_part(port, back, back_m, Vector3(0, 0, 0.001)).rotation.x = PI / 2.0
 	var rim := TorusMesh.new()
-	rim.inner_radius = 0.048
-	rim.outer_radius = 0.058
-	var r := _part(port, rim, _m(Color(0.25, 0.26, 0.3), 0.3, 0.9), Vector3.ZERO)
-	r.rotation.x = PI / 2.0
-	var hole := CylinderMesh.new()
-	hole.top_radius = 0.049
-	hole.bottom_radius = 0.049
-	hole.height = 0.01
-	var back := _part(port, hole, _glow(Color(0.12, 0.3, 0.26), 1.0), Vector3(0, 0, -0.03))   # the dim lit cabin behind
-	back.rotation.x = PI / 2.0
+	rim.inner_radius = 0.046
+	rim.outer_radius = 0.056
+	_part(port, rim, dark, Vector3(0, 0, 0.04)).rotation.x = PI / 2.0
 	var alien := Node3D.new()
 	alien.name = "Alien"
-	alien.position = Vector3(0, -0.004, -0.01)
+	alien.position = Vector3(0, -0.004, 0.02)
+	alien.scale = Vector3.ONE * 0.75
 	port.add_child(alien)
 	var skin := _m(Color(0.62, 0.64, 0.66), 0.6, 0.0)
 	skin.emission_enabled = true                       # lit by the cabin's own light, so it stays grey under the pink lamps
@@ -108,11 +125,11 @@ static func build() -> Node3D:
 	head.radius = 0.03
 	head.height = 0.06
 	var h := _part(alien, head, skin, Vector3(0, 0.006, 0))
-	h.scale = Vector3(1.0, 1.15, 0.9)
+	h.scale = Vector3(1.0, 1.15, 0.85)
 	var chin := SphereMesh.new()
 	chin.radius = 0.016
 	chin.height = 0.032
-	_part(alien, chin, skin, Vector3(0, -0.02, 0.006)).scale = Vector3(1.0, 1.2, 0.9)
+	_part(alien, chin, skin, Vector3(0, -0.02, 0.006)).scale = Vector3(1.0, 1.2, 0.85)
 	var eye_m := StandardMaterial3D.new()
 	eye_m.albedo_color = Color(0.0, 0.0, 0.0)
 	eye_m.roughness = 0.05
@@ -121,20 +138,19 @@ static func build() -> Node3D:
 		var em := SphereMesh.new()
 		em.radius = 1.0
 		em.height = 2.0
-		var e := _part(alien, em, eye_m, Vector3(sx * 0.0135, 0.004, 0.022))
+		var e := _part(alien, em, eye_m, Vector3(sx * 0.0135, 0.004, 0.021))
 		e.scale = Vector3(0.0145, 0.0078, 0.006)
 		e.rotation.z = sx * 0.5                        # big almond eyes, tilted up at the outer corners
-	_part(alien, SphereMesh.new(), skin, Vector3(0, -0.05, -0.005)).scale = Vector3(0.03, 0.02, 0.02)   # thin neck / shoulders
-	# the hatch: a curved plate that slides up over the cabin to uncover the port
+	# the hatch: a flat lid on the front of the porthole that slides straight up, clear of everything
 	var hatch := Node3D.new()
 	hatch.name = "Hatch"
 	port.add_child(hatch)
 	var plate := CylinderMesh.new()
-	plate.top_radius = 0.062
-	plate.bottom_radius = 0.062
-	plate.height = 0.008
-	var hp := _part(hatch, plate, hull, Vector3(0, 0, 0.006))
-	hp.rotation.x = PI / 2.0
+	plate.top_radius = 0.054
+	plate.bottom_radius = 0.054
+	plate.height = 0.006
+	plate.radial_segments = 32
+	_part(hatch, plate, hull, Vector3(0, 0, 0.047)).rotation.x = PI / 2.0
 	alien.visible = false
 
 	# the ring of lights round the edge

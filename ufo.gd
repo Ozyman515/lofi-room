@@ -323,12 +323,12 @@ func _process(delta: float) -> void:
 		open = 1.0
 	elif t >= t4 and t < t5:
 		open = 1.0 - (t - t4) / OPEN
-	_hatch.position.y = 0.13 * smoothstep(0.0, 1.0, open)
+	_hatch.position.y = 0.115 * smoothstep(0.0, 1.0, open)
 	_alien.visible = open > 0.02
 	if _alien.visible:
 		# it leans in a little, tilts its head, looks at you
 		_alien.rotation = Vector3(0.0, 0.2 * sin(t * 0.9), 0.18 * sin(t * 1.3))
-		_alien.position.z = -0.01 + 0.008 * open
+		_alien.position.z = 0.016 + 0.006 * open
 	_hum.volume_db = linear_to_db(clampf(1.0 - absf(x - STOP_X) / 18.0, 0.02, 1.0)) - 10.0
 	if x > TO_X - 0.5:
 		active = false
