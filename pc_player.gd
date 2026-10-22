@@ -298,14 +298,11 @@ func refresh_speakers() -> void:
 	all_lab.text = "ALL SPEAKERS"
 	all_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	all_row.add_child(all_lab)
-	var all_on := Button.new()
-	all_on.text = "  ALL ON  "
-	all_on.pressed.connect(audio.set_all_enabled.bind(true))
-	all_row.add_child(all_on)
-	var all_off := Button.new()
-	all_off.text = "  ALL OFF  "
-	all_off.pressed.connect(audio.set_all_enabled.bind(false))
-	all_row.add_child(all_off)
+	for m in ["pc", "tv", "off"]:
+		var ab := Button.new()
+		ab.text = "  ALL %s  " % m.to_upper()
+		ab.pressed.connect(audio.set_all_mode.bind(m))
+		all_row.add_child(ab)
 	_spk_rows.add_child(all_row)
 	_spk_rows.add_child(HSeparator.new())
 	for i in audio.speakers.size():
@@ -315,8 +312,9 @@ func refresh_speakers() -> void:
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r.add_child(l)
 		var b := Button.new()
-		b.text = "  ON  " if audio.is_enabled(i) else "  OFF  "
-		b.pressed.connect(audio.toggle.bind(i))
+		b.text = "  %s  " % audio.get_mode(i).to_upper()           # click: PC -> TV -> OFF
+		b.tooltip_text = "PC: plays the music.  TV: plays the TV's sound.  OFF: silent."
+		b.pressed.connect(audio.cycle.bind(i))
 		r.add_child(b)
 		_spk_rows.add_child(r)
 

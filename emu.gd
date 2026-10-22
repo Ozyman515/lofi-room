@@ -284,6 +284,12 @@ func set_pad(held: bool) -> void:
 		_refresh_screen()
 
 
+# which bus the game's sound goes out on: "Arcade" (the cabinet's grill) or "Console" (the TV, or the speakers set to TV)
+func set_bus(b: String) -> void:
+	if _audio != null and _audio.bus != b and AudioServer.get_bus_index(b) >= 0:
+		_audio.bus = b
+
+
 func set_volume(v: float) -> void:
 	volume = v
 	if _audio != null:

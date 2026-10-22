@@ -195,6 +195,19 @@ var sit_label: Label3D
 
 
 func _ready() -> void:
+	if get_tree().get_script() == null:       # (not under a test script)
+		var one := preload("res://single_instance.gd").new()
+		one.name = "SingleInstance"
+		add_child(one)
+		if not one.claim():
+			print("The room is already open: bringing that one to the front.")
+			set_process(false)
+			set_physics_process(false)
+			set_process_input(false)
+			set_process_unhandled_input(false)
+			get_tree().quit()
+			return
+		one.poked.connect(_on_second_copy)
 	_relaunch_ack.call_deferred()             # once the room is built: proof this copy really started
 	updater = Updater.new()
 	updater.name = "Updater"
@@ -845,7 +858,12 @@ func _make_speaker(spk_name: String, pos: Vector3, yaw: float, tilt: float, size
 
 
 func _speaker_label(idx: int, spk_name: String) -> String:
-	return "%s  [%s]" % [spk_name, "ON" if bank.is_enabled(idx) else "OFF"]
+	return "%s  [%s]" % [spk_name, bank.get_mode(idx).to_upper()]
+
+
+# [name, position, yaw] of the two speakers beside the TV (it stands across the front-left corner)
+func _tv_speaker_spots() -> Array:
+	return [["TV speaker L", Vector3(-3.9 + 0.12, 1.3, 1.5), 2.1], ["TV speaker R", Vector3(-1.95, 1.3, FRONT_Z - 0.12), 2.6]]
 
 
 func _tv_label(kind: String) -> String:
@@ -889,10 +907,12 @@ func _build_speakers() -> void:
 	# two desk speakers either side of the monitor
 	_make_speaker("Desk speaker L", Vector3(0.96, 0.915, -1.76), 0.15, 0.0, Vector3(0.14, 0.26, 0.16), 0.046)
 	_make_speaker("Desk speaker R", Vector3(1.94, 0.915, -1.76), -0.15, 0.0, Vector3(0.14, 0.26, 0.16), 0.046)
-	# wall speakers on the left wall beside the bed, angled down a little toward it
-	for i in 3:
-		var z := -1.55 + i * 0.8
-		_make_speaker("Wall speaker %d" % (i + 1), Vector3(-3.9 + 0.09, 2.05, z), PI / 2.0, 0.2, Vector3(0.18, 0.32, 0.16), 0.055)
+	# wall speakers: one up on the left wall over the recliner, tipped down toward it, and one either side of the
+	# TV (on the left wall and the front wall), both turned a little toward the room
+	var ws := Vector3(0.18, 0.32, 0.16)
+	_make_speaker("Recliner speaker", Vector3(-3.9 + 0.09, 1.8, RECLINER_POS.z), PI / 2.0, 0.25, ws, 0.055)
+	for sp in _tv_speaker_spots():
+		_make_speaker(str(sp[0]), sp[1], float(sp[2]), 0.06, ws, 0.055)
 	pc.refresh_speakers()
 
 
@@ -1073,7 +1093,7 @@ func _fill_shelf() -> void:
 		hit.visible = false
 		_shelf_nodes.append(hit)
 		var it := {"node": hit, "half": Vector3(0.05, 1.05, (z1 - z0) / 2.0), "guest_ok": true,
-			"hint_at": func() -> Vector3: return Vector3(2.05, 1.1, (z0 + z1) / 2.0),
+			"hint_at": func() -> Vector3: return Vector3(2.17, _shelf_boards[2], (z0 + z1) / 2.0),     # on the middle shelf's front edge
 			"label": func() -> String: return "PUT COMICS (.CBZ, OR A FOLDER OF THEM) IN THE BOOKS FOLDER",
 			"cb": func() -> void: updater.show_toast("Comics go in:  " + books_dir(), 10.0)}
 		interactables.append(it)
@@ -1084,7 +1104,7 @@ func _fill_shelf() -> void:
 # the sign for a book on the shelf: just under its shelf board, out in front, so it never covers the books
 func _shelf_hint_spot(node: Node3D, h: float) -> Vector3:
 	var p := node.global_position
-	return Vector3(2.08, p.y - h / 2.0 - 0.045, p.z)
+	return Vector3(2.17, p.y - h / 2.0 - 0.015, p.z)          # on the front edge of the shelf board the book stands on
 
 
 # Debug: the book titles' pointing signs on the shelf (off by default: the spines already say what they are)
@@ -1875,6 +1895,7 @@ func _process(delta: float) -> void:
 	if emu != null:
 		var gv: int = arcade_volume if slot_cart == "neo" else vcr.tv_volume
 		emu.set_volume(float(gv) / 10.0 if (vcr.tv_on or slot_cart == "neo") else 0.0)
+		emu.set_bus("Arcade" if slot_cart == "neo" else "Console")
 		if game_mode:
 			_pad_tick(delta)
 			if not xr_active and not Input.get_connected_joypads().is_empty():
@@ -2571,6 +2592,16 @@ func _relaunch_log(line: String) -> void:
 		return
 	f.seek_end()
 	f.store_line("%s  %s" % [Time.get_datetime_string_from_system(), line])
+
+
+# someone opened the room again while it was already open: show this one instead
+func _on_second_copy() -> void:
+	print("Another copy of the room tried to open; showing this one.")
+	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_move_to_foreground()
+	if updater != null:
+		updater.show_toast("The room is already open (this is it).", 4.0)
 
 
 # a copy started by _relaunch tells the old one it made it
@@ -3594,17 +3625,17 @@ func _build_arcade() -> void:
 	arcade_focus = arc_focus
 	# marquee: a lit panel above the monitor
 	arcade_marquee_m = _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9)
-	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), arcade_marquee_m, root)
-	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
-	_box(Vector3(0.7145, 1.56, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
+	var mq := _box(Vector3(0.7125, 1.68, 0), Vector3(0.004, 0.14, CAB_W - 0.09), arcade_marquee_m, root)
+	_box(Vector3(0.7145, 1.744, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
+	_box(Vector3(0.7145, 1.616, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
 	var ml := Label3D.new()
 	ml.text = "ARCADE"
 	ml.font_size = 90
-	ml.pixel_size = 0.0014
+	ml.pixel_size = 0.0012
 	ml.outline_size = 0
 	ml.modulate = Color(0.08, 0.45, 0.2)
 	ml.rotation = Vector3(0, PI / 2.0, 0)
-	ml.position = Vector3(0.7165, 1.65, 0)
+	ml.position = Vector3(0.7165, 1.68, 0)
 	root.add_child(ml)
 	arcade_marquee_label = ml
 	# the power switch: a red rocker low on the side panel, round the back
@@ -3644,6 +3675,7 @@ func _build_arcade() -> void:
 	_show_arcade_volume()
 	# the step from the monitor up to the marquee, the roof, and the sloped back
 	_box(Vector3(0.675, 1.515, 0), Vector3(0.08, 0.04, CAB_W - 0.07), white, root)
+	_arcade_grill(root)
 	var rf := Vector2(0.50, 1.80) - Vector2(0.71, 1.77)
 	_rbox(Vector3(0.605, 1.785, 0), Vector3(CAB_W - 0.07, 0.03, 0.23), Basis(Vector3(0, 0, 1), atan2(rf.y, rf.x) + PI) * Basis(Vector3.UP, PI / 2.0), white, root)
 	var bk := Vector2(0.0, 1.40) - Vector2(0.50, 1.80)
@@ -3711,6 +3743,61 @@ func set_share_poster(on: bool) -> void:
 	share_poster = on
 	_save_settings()
 	settings_changed.emit()
+
+
+# the cabinet's own speaker: a black perforated grill on the step under the marquee. Only the arcade's games
+# play out of it (their sound comes from right here, not from the room's speakers).
+var arcade_feed: Node
+
+
+func _arcade_grill(root: Node3D) -> void:
+	var gw := CAB_W - 0.1
+	var y0 := 1.497                                  # from the top of the monitor bezel up to the marquee
+	var y1 := 1.607
+	var plate := _mat(Color(0.11, 0.11, 0.12), 0.45, 0.5)
+	var holes := _mat(Color(0.0, 0.0, 0.0), 1.0)
+	_box(Vector3(0.7155, (y0 + y1) / 2.0, 0), Vector3(0.004, y1 - y0, gw), plate, root)
+	var hole := CylinderMesh.new()                   # rows of little round holes, as one multimesh
+	hole.top_radius = 0.0028
+	hole.bottom_radius = 0.0028
+	hole.height = 0.001
+	hole.radial_segments = 8
+	hole.rings = 1
+	var spots: Array[Vector3] = []
+	var step := 0.0105
+	var rows := int((y1 - y0 - 0.014) / (step * 0.87))
+	for r in rows:
+		var y := y0 + 0.008 + r * step * 0.87
+		var off := 0.5 * step if r % 2 == 1 else 0.0
+		for side in [-1.0, 1.0]:                     # two speaker patches, left and right, with the middle plain
+			var zc: float = side * gw * 0.27
+			var c := -int(gw * 0.21 / step)
+			while c <= int(gw * 0.21 / step):
+				var z := zc + c * step + off
+				var dz := (z - zc) / (gw * 0.21)
+				var dy := (y - (y0 + y1) / 2.0) / ((y1 - y0) * 0.5)
+				if dz * dz + dy * dy * 0.35 <= 1.0:
+					spots.append(Vector3(0.718, y, z))
+				c += 1
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = hole
+	mm.instance_count = spots.size()
+	for i in spots.size():
+		mm.set_instance_transform(i, Transform3D(Basis(Vector3(0, 0, 1), PI / 2.0), spots[i]))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = holes
+	root.add_child(mmi)
+	var BusFeed := preload("res://bus_feed.gd")
+	var p: AudioStreamPlayer3D = BusFeed.make_player(3.0)
+	p.position = Vector3(0.75, 1.55, 0)
+	root.add_child(p)
+	arcade_feed = BusFeed.new()
+	arcade_feed.name = "ArcadeFeed"
+	add_child(arcade_feed)
+	arcade_feed.setup("Arcade")
+	arcade_feed.set_targets([p] as Array[AudioStreamPlayer3D])
 
 
 func set_arcade_volume(v: int) -> void:
@@ -3959,7 +4046,7 @@ func _prefs_now() -> Dictionary:
 	d["weather_vol"] = snappedf(weather.volume, 0.01)
 	d["levels"] = [snappedf(weather.real_level(1), 0.01), snappedf(weather.real_level(2), 0.01), snappedf(weather.real_level(3), 0.01)]
 	for i in bank.speakers.size():
-		d["spk_" + String(bank.speakers[i]["name"])] = bank.is_enabled(i)
+		d["spk_" + String(bank.speakers[i]["name"])] = bank.get_mode(i)
 	for g in light_groups:
 		d["light_" + String(g["name"])] = bool(g["on"])
 	return d
@@ -4029,7 +4116,8 @@ func _load_prefs() -> void:
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
 			weather.snap()
 		for i in bank.speakers.size():
-			bank.set_enabled(i, bool(g.call("spk_" + String(bank.speakers[i]["name"]), true)))
+			var sv: Variant = g.call("spk_" + String(bank.speakers[i]["name"]), "pc")
+			bank.set_mode(i, ("pc" if sv else "off") if sv is bool else str(sv))     # (older copies saved on/off)
 		for gi in light_groups.size():
 			set_light(gi, bool(g.call("light_" + String(light_groups[gi]["name"]), true)))
 		var cu := clampf(float(g.call("curtain", 0.0)), 0.0, 1.0)
@@ -4570,13 +4658,13 @@ func _build_power() -> void:
 	_outlet(Vector3(-0.15, 0.3, -2.0), 0.0)           # nightstand lamp
 	_outlet(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)       # TV + console strip
 	_outlet(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)        # fairy lights
-	_outlet(Vector3(-3.9, 0.3, 0.3), PI / 2.0)                  # wall speakers
+	_outlet(Vector3(-3.9, 0.3, -0.62), PI / 2.0)                # the recliner's wall speaker
 	_plug(Vector3(1.1, 0.3, -2.0), 0.0)
 	_plug(Vector3(2.2, 0.3, -2.0), 0.0)
 	_plug(Vector3(-0.15, 0.3, -2.0), 0.0)
 	_plug(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)
 	_plug(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)
-	_plug(Vector3(-3.9, 0.3, 0.3), PI / 2.0)
+	_plug(Vector3(-3.9, 0.3, -0.62), PI / 2.0)
 
 	# desk: strip on the floor under the desk, monitor + keyboard, lamp
 	_power_strip(Vector3(1.5, 0.017, -1.88), PI / 2.0, 0.48)
@@ -4588,10 +4676,9 @@ func _build_power() -> void:
 	# desk speakers to the strip
 	_cord([Vector3(0.96, 0.84, -1.84), Vector3(0.97, 0.80, -1.93), Vector3(1.0, 0.5, -1.985), Vector3(1.2, 0.1, -1.95), Vector3(1.34, 0.036, -1.88)], 0.005, black)
 	_cord([Vector3(1.94, 0.84, -1.84), Vector3(1.93, 0.80, -1.935), Vector3(1.9, 0.5, -1.99), Vector3(1.7, 0.1, -1.95), Vector3(1.66, 0.036, -1.88)], 0.005, black)
-	# wall speakers: chained along the wall under them, then down to their own outlet
-	_cord([Vector3(-3.86, 1.89, -1.55), Vector3(-3.885, 1.82, -1.3), Vector3(-3.885, 1.80, -1.15), Vector3(-3.885, 1.82, -0.9), Vector3(-3.86, 1.89, -0.75)], 0.004, black)
-	_cord([Vector3(-3.86, 1.89, -0.75), Vector3(-3.885, 1.82, -0.5), Vector3(-3.885, 1.80, -0.35), Vector3(-3.885, 1.82, -0.1), Vector3(-3.86, 1.89, 0.05)], 0.004, black)
-	_cord([Vector3(-3.86, 1.89, 0.05), Vector3(-3.885, 1.82, 0.12), Vector3(-3.887, 1.0, 0.25), Vector3(-3.887, 0.45, 0.3), Vector3(-3.84, 0.3, 0.3)], 0.005, black)
+	# the recliner's wall speaker: down the wall behind the chair to its outlet
+	var rz := RECLINER_POS.z
+	_cord([Vector3(-3.86, 1.64, rz + 0.05), Vector3(-3.887, 1.5, rz + 0.12), Vector3(-3.887, 0.9, rz + 0.3), Vector3(-3.887, 0.45, -0.62), Vector3(-3.84, 0.3, -0.62)], 0.005, black)
 
 	# nightstand lamp
 	_cord([Vector3(-0.5, 0.475, -1.73), Vector3(-0.4, 0.465, -1.88), Vector3(-0.37, 0.44, -1.935), Vector3(-0.3, 0.3, -1.96), Vector3(-0.15, 0.3, -1.95)], 0.005, white)
@@ -4607,6 +4694,14 @@ func _build_power() -> void:
 	var c_back := console_root.to_global(Vector3(0.12, 0.035, -0.19))
 	_cord([c_back, _lg(Vector3(-2.9, 0.012, 2.75 + dz - 0.9)), _lg(Vector3(-3.5, 0.012, 2.7 + dz - 0.9)), _lg(Vector3(-4.0, 0.012, 2.3 + dz - 0.9)),
 			_lg(Vector3(-4.05, 0.012, 1.6 + dz - 0.9)), Vector3(-3.84, 0.034, strip.z + 0.2)], 0.005, black)
+	# the speakers beside the TV: straight down the wall, then along the skirting to the strip behind the TV
+	var tsp := _tv_speaker_spots()
+	var lz: float = (tsp[0][1] as Vector3).z
+	_cord([Vector3(-3.865, 1.15, lz), Vector3(-3.887, 1.0, lz + 0.02), Vector3(-3.887, 0.2, lz + 0.03), Vector3(-3.885, 0.02, lz + 0.05),
+			Vector3(-3.86, 0.012, strip.z + 0.15), Vector3(-3.84, 0.034, strip.z + 0.25)], 0.004, black)
+	var rx: float = (tsp[1][1] as Vector3).x
+	_cord([Vector3(rx, 1.15, FRONT_Z - 0.035), Vector3(rx - 0.02, 1.0, FRONT_Z - 0.013), Vector3(rx - 0.03, 0.2, FRONT_Z - 0.013), Vector3(rx - 0.06, 0.02, FRONT_Z - 0.015),
+			Vector3(-3.86, 0.012, FRONT_Z - 0.03), Vector3(-3.885, 0.012, FRONT_Z - 0.4), Vector3(-3.885, 0.012, strip.z + 0.6), Vector3(-3.84, 0.034, strip.z + 0.25)], 0.004, black)
 	# console to TV (video cable) and the two controller cables
 	var av_from := console_root.to_global(Vector3(-0.07, 0.05, -0.19))
 	var av_to := tv_root.to_global(Vector3(-(TV_WIDTH / 2.0 - 0.28), 0.1, 0.235))

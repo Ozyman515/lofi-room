@@ -1,11 +1,17 @@
 extends Node3D
-## All the room's speakers (2 on the desk, several on the walls). They play the same sound from
-## their own positions. Switching one off silences it (it keeps running muted so they stay in sync).
+## All the room's speakers (2 on the desk, several on the walls). Each one is set to PC, TV or OFF:
+## on PC it plays the PC's music (all of them in sync, from their own positions), on TV it plays the TV's
+## sound (tapes and the console games on it), and OFF is silent. Click a speaker to go PC -> TV -> OFF.
 
 signal finished
 signal changed
 
-var speakers: Array = []         # [{"name", "player", "enabled", "led"}]
+const BusFeed := preload("res://bus_feed.gd")
+const MODES := ["pc", "tv", "off"]
+
+var speakers: Array = []         # [{"name", "player", "enabled", "mode", "tv", "con", "led"}]  (enabled = mode is "pc")
+var _tv_feed: BusFeed            # the TV's tapes
+var _con_feed: BusFeed           # the console games shown on the TV
 var master := 0.7
 
 # A silent "clock" player runs the song all the time (on a muted bus) so a speaker that was switched
@@ -60,8 +66,15 @@ func add_speaker(spk_name: String, pos: Vector3, led_material: StandardMaterial3
 	p.position = pos
 	add_child(p)
 	_ensure_ref()
+	_ensure_feeds()
 	p.stream = _ref.stream
-	speakers.append({"name": spk_name, "player": p, "enabled": true, "led": led_material})
+	var tvp := BusFeed.make_player()
+	tvp.position = pos
+	add_child(tvp)
+	var conp := BusFeed.make_player()
+	conp.position = pos
+	add_child(conp)
+	speakers.append({"name": spk_name, "player": p, "enabled": true, "mode": "pc", "tv": tvp, "con": conp, "led": led_material})
 	if _ref.playing:
 		p.play(_ref.get_playback_position())
 		p.stream_paused = _paused
@@ -124,41 +137,95 @@ func _set_one(i: int, on: bool) -> void:
 
 
 func set_enabled(i: int, on: bool) -> void:
-	if i < 0 or i >= speakers.size():
-		return
-	_set_one(i, on)
-	_apply()
-	changed.emit()
+	set_mode(i, "pc" if on else "off")
 
 
 func set_all_enabled(on: bool) -> void:
-	for i in speakers.size():
-		_set_one(i, on)
+	set_all_mode("pc" if on else "off")
+
+
+func toggle(i: int) -> void:
+	cycle(i)
+
+
+func get_mode(i: int) -> String:
+	return str(speakers[i]["mode"]) if i >= 0 and i < speakers.size() else "off"
+
+
+# PC -> TV -> OFF -> PC
+func cycle(i: int) -> void:
+	set_mode(i, MODES[(MODES.find(get_mode(i)) + 1) % MODES.size()])
+
+
+func set_mode(i: int, m: String) -> void:
+	if i < 0 or i >= speakers.size() or not MODES.has(m):
+		return
+	speakers[i]["mode"] = m
+	_set_one(i, m == "pc")
+	_refresh_feeds()
 	_apply()
 	changed.emit()
 
 
-func toggle(i: int) -> void:
-	set_enabled(i, not is_enabled(i))
+func set_all_mode(m: String) -> void:
+	if not MODES.has(m):
+		return
+	for i in speakers.size():
+		speakers[i]["mode"] = m
+		_set_one(i, m == "pc")
+	_refresh_feeds()
+	_apply()
+	changed.emit()
+
+
+func _ensure_feeds() -> void:
+	if _tv_feed != null:
+		return
+	_tv_feed = BusFeed.new()
+	add_child(_tv_feed)
+	_tv_feed.setup("TV")
+	_con_feed = BusFeed.new()
+	add_child(_con_feed)
+	_con_feed.setup("Console")
+
+
+# the speakers set to TV take the TV's sound (and the TV's own placeless sound goes quiet while any do)
+func _refresh_feeds() -> void:
+	_ensure_feeds()
+	var tvs: Array[AudioStreamPlayer3D] = []
+	var cons: Array[AudioStreamPlayer3D] = []
+	for s in speakers:
+		if s["mode"] == "tv":
+			tvs.append(s["tv"])
+			cons.append(s["con"])
+	_tv_feed.set_targets(tvs)
+	_con_feed.set_targets(cons)
 
 
 func _apply() -> void:
 	var n := 0
+	var ntv := 0
 	for s in speakers:
 		if s["enabled"]:
 			n += 1
+		if s["mode"] == "tv":
+			ntv += 1
+	var tv_share := -3.0 * log(float(maxi(ntv, 1))) / log(2.0)
 	# more speakers on = each one a bit quieter so the total level stays about the same
 	var share_db := -3.0 * log(float(maxi(n, 1))) / log(2.0)
 	for s in speakers:
 		var p: AudioStreamPlayer3D = s["player"]
 		p.volume_db = (linear_to_db(maxf(master, 0.0001)) + share_db) if s["enabled"] else -80.0
+		for k in ["tv", "con"]:
+			(s[k] as AudioStreamPlayer3D).volume_db = tv_share if s["mode"] == "tv" else -80.0
 		var led: StandardMaterial3D = s["led"]
 		if led != null:
-			var on: bool = s["enabled"]
-			led.albedo_color = Color(0.2, 1.0, 0.4) if on else Color(0.35, 0.05, 0.05)
+			var c: Color = {"pc": Color(0.2, 1.0, 0.4), "tv": Color(0.25, 0.6, 1.0)}.get(s["mode"], Color(0.6, 0.05, 0.05))
+			var lit: bool = s["mode"] != "off"
+			led.albedo_color = c if lit else Color(0.35, 0.05, 0.05)
 			led.emission_enabled = true
-			led.emission = Color(0.2, 1.0, 0.4) if on else Color(0.6, 0.05, 0.05)
-			led.emission_energy_multiplier = 3.0 if on else 0.6
+			led.emission = c
+			led.emission_energy_multiplier = 3.0 if lit else 0.6
 
 
 # ---- live feed (music streamed from the host): every enabled speaker gets its own generator and the
