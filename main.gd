@@ -2640,6 +2640,8 @@ func _nearest_seat() -> int:
 	for i in seat_nodes.size():
 		if not seat_nodes[i].visible:
 			continue
+		if seat_nodes[i] == chair and noir != null and noir.visitor != null and noir.visitor.visible:
+			continue                                   # somebody's in it
 		var sp := seat_nodes[i].global_position
 		var dist := Vector2(p.x, p.z).distance_to(Vector2(sp.x, sp.z))
 		if dist < best_d:

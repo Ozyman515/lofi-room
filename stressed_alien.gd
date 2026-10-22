@@ -13,7 +13,7 @@ var _t := 0.0
 var _head: Node3D
 
 
-func build() -> void:
+func build(seat_y := 0.6) -> void:
 	var skin := StandardMaterial3D.new()
 	skin.albedo_color = Color(0.58, 0.61, 0.63)
 	skin.roughness = 0.55
@@ -26,7 +26,6 @@ func build() -> void:
 	black.albedo_color = Color(0, 0, 0)
 	black.roughness = 0.05
 	black.metallic_specular = 1.0
-	var seat_y := 0.6
 	# hips and a thin, hunched body leaning forward over the knees
 	add_child(U._tube([Vector3(0, seat_y + 0.02, -0.12), Vector3(0, seat_y + 0.16, -0.08), Vector3(0, seat_y + 0.3, 0.0),
 		Vector3(0, seat_y + 0.4, 0.09)] as Array[Vector3], [0.1, 0.09, 0.095, 0.07] as Array[float], skin))
@@ -78,8 +77,8 @@ func build() -> void:
 				[0.015, 0.011, 0.008] as Array[float], skin))
 	# the cigarette hanging from the mouth, and its smoke
 	var cig := Node3D.new()
-	cig.position = Vector3(0, 0.025, 0.06)
-	cig.rotation.x = 0.35
+	cig.position = Vector3(0, 0.03, 0.026)             # between the lips, hanging out and down
+	cig.rotation.x = -1.3
 	_head.add_child(cig)
 	var paper := StandardMaterial3D.new()
 	paper.albedo_color = Color(0.95, 0.94, 0.9)

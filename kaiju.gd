@@ -27,6 +27,7 @@ var _k: Node3D
 var _body: Node3D
 var _head: Node3D
 var _jaw: Node3D
+var _hat: Node3D
 var _legs: Array[Node3D] = []
 var _knees: Array[Node3D] = []
 var _arms: Array[Node3D] = []
@@ -54,6 +55,19 @@ func setup(m: Node3D) -> void:
 	_body = _k.get_node("Body")
 	_head = _body.get_node("Head")
 	_jaw = _head.get_node("Jaw")
+	# a fedora for Noir Night, tipped down over its brow (only worn while Noir Night is on)
+	_hat = load("res://noir_props.gd").fedora()
+	_hat.scale = Vector3.ONE * 0.95
+	_hat.position = Vector3(0.03, 0.07, 0.0)
+	_hat.rotation = Vector3(0.0, 0.0, -0.22)
+	for hm in _hat.find_children("*", "MeshInstance3D", true, false):    # a paler felt so it reads on the dark head
+		var mat := (hm as MeshInstance3D).material_override as StandardMaterial3D
+		if mat != null:
+			mat = mat.duplicate()
+			mat.albedo_color = mat.albedo_color.lightened(0.22)
+			(hm as MeshInstance3D).material_override = mat
+	_hat.visible = false
+	_head.add_child(_hat)
 	for n in ["LegL", "LegR"]:
 		var leg: Node3D = _body.get_node(n)
 		_legs.append(leg)
@@ -97,6 +111,7 @@ func start() -> void:
 	_peeked = false
 	_peek_t = 0.0
 	_k.visible = true
+	_hat.visible = main.noir != null and main.noir.active
 	_pose(0.0)
 
 

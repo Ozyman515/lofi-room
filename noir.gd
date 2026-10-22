@@ -59,9 +59,7 @@ func setup(m: Node3D) -> void:
 	visitor = load("res://stressed_alien.gd").new()
 	visitor.name = "NoirVisitor"
 	main.room.add_child(visitor)
-	visitor.build()
-	visitor.position = Vector3(-0.95, 0.0, -0.75)        # on the edge of the bed, facing the desk lamp
-	visitor.rotation.y = PI / 2.0
+	visitor.build(0.5)                                    # sitting on the desk chair
 	visitor.visible = false
 	_rng.randomize()
 	process_priority = 50             # after the incense, which also sets the colour
@@ -147,6 +145,14 @@ func start() -> void:
 	# sometimes there's somebody on the edge of the bed, having a worse night than you
 	visitor.visible = force_visitor or randf() < VISITOR_CHANCE
 	force_visitor = false
+	if visitor.visible:
+		# he takes the desk chair, turned round to face the room
+		if main.seated and main.seat_nodes[main.cur_seat] == main.chair:
+			main._toggle_sit()                          # (you get up)
+		_saved["chair_yaw"] = main.chair.rotation.y
+		main.chair.rotation.y = PI
+		visitor.global_position = main.chair.global_position + Vector3(0, 0, 0.08)
+		visitor.rotation.y = 0.0
 	# the desk
 	_sips = 0
 	_glasses = 0
@@ -181,6 +187,8 @@ func stop() -> void:
 		return
 	active = false
 	main.weather.end_noir()
+	if visitor.visible and _saved.has("chair_yaw"):
+		main.chair.rotation.y = float(_saved["chair_yaw"])
 	visitor.visible = false
 	if main.poster != null:
 		main.poster.clear_override()
@@ -488,10 +496,13 @@ static func _make_clack() -> AudioStreamWAV:
 	data.resize(n * 2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
+	var lp := 0.0
 	for i in n:
 		var t := float(i) / rate
-		var s := rng.randf_range(-1.0, 1.0) * exp(-t * 90.0) + sin(t * TAU * 1900.0) * exp(-t * 60.0) * 0.4
-		data.encode_s16(i * 2, int(clampf(s * 0.6, -1.0, 1.0) * 32767.0))
+		# a woody "tock": a low knock of the type bar on the platen, a quick thud of noise, no ringing
+		lp += (rng.randf_range(-1.0, 1.0) - lp) * 0.35
+		var s := (sin(t * TAU * 380.0) * 0.7 + sin(t * TAU * 720.0) * 0.3) * exp(-t * 70.0) + lp * exp(-t * 260.0) * 1.2
+		data.encode_s16(i * 2, int(clampf(s * 0.7, -1.0, 1.0) * 32767.0))
 	return _wav(data, rate)
 
 
@@ -502,8 +513,8 @@ static func _make_ding() -> AudioStreamWAV:
 	data.resize(n * 2)
 	for i in n:
 		var t := float(i) / rate
-		var s := (sin(t * TAU * 2093.0) + 0.5 * sin(t * TAU * 5230.0) * exp(-t * 6.0)) * exp(-t * 3.0)
-		data.encode_s16(i * 2, int(clampf(s * 0.35, -1.0, 1.0) * 32767.0))
+		var s := (sin(t * TAU * 1320.0) + 0.3 * sin(t * TAU * 2650.0) * exp(-t * 10.0)) * exp(-t * 4.0)   # a softer, lower bell
+		data.encode_s16(i * 2, int(clampf(s * 0.18, -1.0, 1.0) * 32767.0))
 	return _wav(data, rate)
 
 
