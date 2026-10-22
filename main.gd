@@ -1022,7 +1022,8 @@ func _fill_shelf() -> void:
 				var cw := ch * 0.66
 				var node := _face_out_book(rb, Vector3(2.30, _shelf_boards[i] + 0.015 + ch / 2.0, z + cw / 2.0 + 0.01), cw, ch)
 				_shelf_nodes.append(node)
-				var it := {"node": node, "half": Vector3(0.035, ch / 2.0, cw / 2.0 + 0.004), "guest_ok": true,
+				var it := {"node": node, "half": Vector3(0.035, ch / 2.0, cw / 2.0 + 0.004), "guest_ok": true, "shelf": true,
+					"hint_at": _shelf_hint_spot.bind(node, ch),
 					"label": _book_label.bind(rb), "cb": _open_book.bind(str(rb["path"]))}
 				interactables.append(it)
 				_shelf_items.append(it)
@@ -1050,7 +1051,8 @@ func _fill_shelf() -> void:
 				lb.rotation = Vector3(0.0, -PI / 2.0, -PI / 2.0)     # reads top to bottom along the spine, facing the room
 				room.add_child(lb)
 				_shelf_nodes.append(lb)
-				var it := {"node": bx, "half": Vector3(0.1, h / 2.0, w / 2.0 + 0.002), "guest_ok": true,
+				var it := {"node": bx, "half": Vector3(0.1, h / 2.0, w / 2.0 + 0.002), "guest_ok": true, "shelf": true,
+					"hint_at": _shelf_hint_spot.bind(bx, h),
 					"label": _book_label.bind(b), "cb": _open_book.bind(str(b["path"]))}
 				interactables.append(it)
 				_shelf_items.append(it)
@@ -1070,11 +1072,28 @@ func _fill_shelf() -> void:
 		hit.visible = false
 		_shelf_nodes.append(hit)
 		var it := {"node": hit, "half": Vector3(0.05, 1.05, (z1 - z0) / 2.0), "guest_ok": true,
+			"hint_at": func() -> Vector3: return Vector3(2.05, 1.1, (z0 + z1) / 2.0),
 			"label": func() -> String: return "PUT COMICS (.CBZ, OR A FOLDER OF THEM) IN THE BOOKS FOLDER",
 			"cb": func() -> void: updater.show_toast("Comics go in:  " + books_dir(), 10.0)}
 		interactables.append(it)
 		_shelf_items.append(it)
 	_shelf_mtime = FileAccess.get_modified_time(books_dir())
+
+
+# the sign for a book on the shelf: just under its shelf board, out in front, so it never covers the books
+func _shelf_hint_spot(node: Node3D, h: float) -> Vector3:
+	var p := node.global_position
+	return Vector3(2.08, p.y - h / 2.0 - 0.045, p.z)
+
+
+# Debug: the book titles' pointing signs on the shelf (off by default: the spines already say what they are)
+var shelf_hints := false
+
+
+func set_shelf_hints(on: bool) -> void:
+	shelf_hints = on
+	_save_settings()
+	settings_changed.emit()
 
 
 # the books in the diary, newest first
@@ -2344,8 +2363,11 @@ func _fade_veil(to: float, secs: float) -> void:
 	var tw := create_tween()
 	tw.tween_method(func(a: float) -> void:
 		_sleep_mat.albedo_color.a = a
-		_sleep_text.modulate.a = a, _sleep_mat.albedo_color.a, to, secs)
+		_sleep_text.modulate.a = a
+		_sleep_text.outline_modulate.a = a, _sleep_mat.albedo_color.a, to, secs)     # the outline too, or dark letters stay behind
 	await tw.finished
+	if to <= 0.0 and _sleep_veil != null and is_instance_valid(_sleep_veil):
+		_sleep_veil.visible = false
 
 
 # a nap from somewhere else (Noir Night's third whiskey), with its own words on the way out
@@ -2381,6 +2403,11 @@ func _go_to_sleep() -> void:
 	_save_prefs_tick()
 	pc.save_music_dir()
 	await get_tree().create_timer(0.9).timeout
+	if updater.state != "done" and not updated_this_session and not dry_relaunch:
+		# nothing new to load: the room just starts over inside this run (no second copy of the program needed)
+		_nap_message = ""
+		get_tree().reload_current_scene.call_deferred()
+		return
 	if not await _relaunch():
 		_sleep_text.text = "Could not restart the room"
 		bed_made = true
@@ -2388,7 +2415,8 @@ func _go_to_sleep() -> void:
 		await get_tree().create_timer(1.6).timeout
 		await _fade_veil(0.0, 1.0)
 		sleeping = false
-		updater.show_toast("The update is installed. Close the room and open it again to use it.")
+		_nap_message = ""
+		updater.show_toast("Couldn't reopen the room by itself. Close it and open it again (the update is installed).", 8.0)
 
 
 # Starts a fresh copy of the room (same display / VR options) and closes this one.
@@ -3880,6 +3908,7 @@ func _load_prefs() -> void:
 			guest_allow[gk] = bool(cfg.get_value("guests", gk, false))
 		arcade_volume = clampi(int(cfg.get_value("settings", "arcade_volume", 7)), 0, 10)
 		share_poster = bool(cfg.get_value("settings", "share_poster", false))
+		shelf_hints = bool(cfg.get_value("settings", "shelf_hints", false))
 		cat_purr_on = bool(cfg.get_value("settings", "cat_purr", true))
 		load("res://cozy_cat.gd").muted = not cat_purr_on
 		_show_arcade_volume()
@@ -3945,6 +3974,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "arcade_on", arcade_on)
 	cfg.set_value("settings", "arcade_volume", arcade_volume)
 	cfg.set_value("settings", "share_poster", share_poster)
+	cfg.set_value("settings", "shelf_hints", shelf_hints)
 	cfg.set_value("settings", "cat_purr", cat_purr_on)
 	for g in guest_allow:
 		cfg.set_value("guests", g, guest_allow[g])
@@ -4619,7 +4649,8 @@ func _update_pointer(delta: float) -> void:
 		hint_label.global_position = found_point + Vector3(0.0, 0.02 + 0.08 * k, 0.0)
 		if found_item.has("hint_at"):                 # a fixed spot for the sign (e.g. under a picture, not on it)
 			hint_label.global_position = (found_item["hint_at"] as Callable).call()
-		hint_label.visible = true
+			hint_label.scale = Vector3.ONE * clampf(found_t / 1.6, 0.35, 0.8)
+		hint_label.visible = not (found_item.get("shelf", false) and not shelf_hints)
 	elif diary != null and diary.open_book and book_hint_t > 0.0:
 		hint_label.text = ("GRIP  =  PUT IT DOWN" if xr_active else "G  =  PUT IT DOWN")
 		hint_label.scale = Vector3.ONE * 0.45

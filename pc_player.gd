@@ -669,6 +669,7 @@ func _open_credits_window() -> void:
 
 
 var _dbg_purr_btn: Button
+var _dbg_shelf_btn: Button
 
 
 func _build_debug_window() -> void:
@@ -714,6 +715,10 @@ func _build_debug_window() -> void:
 	_dbg_phone_btn.custom_minimum_size = Vector2(0, 42)
 	_dbg_phone_btn.pressed.connect(func() -> void: _main.set_phone_hidden(not _main.phone_hidden))
 	v.add_child(_dbg_phone_btn)
+	_dbg_shelf_btn = Button.new()
+	_dbg_shelf_btn.custom_minimum_size = Vector2(0, 42)
+	_dbg_shelf_btn.pressed.connect(func() -> void: _main.set_shelf_hints(not _main.shelf_hints))
+	v.add_child(_dbg_shelf_btn)
 	_dbg_purr_btn = Button.new()
 	_dbg_purr_btn.custom_minimum_size = Vector2(0, 42)
 	_dbg_purr_btn.pressed.connect(func() -> void: _main.set_cat_purr(not _main.cat_purr_on))
@@ -771,6 +776,8 @@ func _dbg_refresh() -> void:
 	for i in _dbg_seat_btns.size():
 		var on: bool = i == _main.debug_seats
 		_dbg_seat_btns[i].text = ("[ %s ]" if on else "%s") % ("Players" if i == 0 else str(i))
+	if _dbg_shelf_btn != null:
+		_dbg_shelf_btn.text = "Book titles when pointing at the shelf  [%s]" % ("ON" if _main.shelf_hints else "OFF")
 	if _dbg_purr_btn != null:
 		_dbg_purr_btn.text = "Cat purring  [%s]" % ("ON" if _main.cat_purr_on else "MUTED")
 	if _dbg_phone_btn != null:
