@@ -47,7 +47,7 @@ const BLOCKERS := [
 	Rect2(-2.6, -2.1, 1.95, 2.4),   # bed
 	Rect2(0.4, -2.1, 2.2, 1.05),    # desk
 	Rect2(2.0, -0.65, 0.6, 1.9),    # bookshelf
-	Rect2(-4.0, -1.8, 0.75, 1.2),   # dresser
+	Rect2(-4.0, -0.45, 0.75, 1.2),  # dresser (moved toward the TV corner)
 	Rect2(1.4, 1.55, 1.2, 0.8),   # arcade cabinet (right wall, by the bookshelf)
 ]
 
@@ -1483,6 +1483,7 @@ func _build_decor() -> void:
 	_cyl(Vector3(rug_c.x, 0.01, rug_c.z), 1.3, 0.02, _mat(Color(0.30, 0.10, 0.34), 1.0))
 	_cyl(Vector3(rug_c.x, 0.012, rug_c.z), 1.15, 0.02, _mat(Color(0.42, 0.15, 0.42), 1.0))
 	_build_beanbags()
+	_build_recliner()
 	_build_dresser()
 	# fairy lights: three strands, kept restrained
 	var bulb := _mat(WARM, 0.5, 3.0)
@@ -1880,6 +1881,7 @@ func _process(delta: float) -> void:
 				if down and not _pad_stick_prev:
 					_put_pad()
 				_pad_stick_prev = down
+	_recliner_tick()
 	_update_lighting(delta)
 	_update_focus_anim(delta)
 	_update_pointer(delta)
@@ -2159,6 +2161,11 @@ func _walkable(x: float, z: float) -> bool:
 		for r in LOUNGE_BLOCKERS:
 			if r.has_point(Vector2(l.x, l.z)):
 				return false
+	if recliner != null:
+		var rc := Vector2(recliner.global_position.x, recliner.global_position.z)
+		var fwd := Vector2(-sin(recliner.rotation.y), -cos(recliner.rotation.y))
+		if Vector2(x, z).distance_to(rc) < 0.55 or (recliner.reclined and Vector2(x, z).distance_to(rc + fwd * 0.55) < 0.4):
+			return false
 	for i in beanbags.size():
 		if beanbags[i].visible and Vector2(x, z).distance_to(Vector2(beanbags[i].global_position.x, beanbags[i].global_position.z)) < 0.55:
 			return false
@@ -2209,6 +2216,87 @@ func _build_beanbags() -> void:
 		ball.scale = Vector3.ONE * 1.12
 		beanbags.append(root)
 	set_beanbag_count(1)
+
+
+# ---- the recliner on the rug: swivels in 45 degree steps, leans back, starts facing the window
+
+const RECLINER_POS := Vector3(-3.2, 0.0, -1.12)    # in the corner by the window, where the dresser used to be
+const RECLINER_YAW := 0.0                           # facing the window
+var recliner: Node3D
+var recliner_seat := -1
+var _rec_base_y := 0.0
+var _rec_view_k := 0.0
+
+
+func _build_recliner() -> void:
+	recliner = load("res://recliner.gd").new()
+	recliner.name = "Recliner"
+	recliner.position = RECLINER_POS
+	room.add_child(recliner)
+	recliner.build()
+	recliner.rotation.y = RECLINER_YAW
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_FILE) == OK:
+		recliner.rotation.y = float(cfg.get_value("room", "recliner_yaw", RECLINER_YAW))
+		recliner.reclined = bool(cfg.get_value("room", "recliner_back", false))
+	recliner_seat = seat_nodes.size()
+	seat_nodes.append(recliner)
+	seat_eye.append(0.98)
+	seat_swivel.append(false)
+	recliner.turned.connect(_on_recliner_turned)
+	for side in [-1, 1]:
+		var sd: int = side
+		interactables.append({"node": recliner.arm_node(sd), "half": Vector3(0.12, 0.1, 0.12), "guest_ok": true,
+			"label": func() -> String: return "TURN THE RECLINER  " + ("LEFT" if sd < 0 else "RIGHT"),
+			"cb": func() -> void: recliner.turn(-1 if sd < 0 else 1)})
+	interactables.append({"node": recliner.lever_node(), "half": Vector3(0.06, 0.12, 0.08), "guest_ok": true,
+		"label": func() -> String: return "SIT UP" if recliner.reclined else "LEAN BACK",
+		"cb": func() -> void:
+			recliner.toggle_recline()
+			_save_recliner()})
+
+
+func _on_recliner_turned(dy: float) -> void:
+	_save_recliner.call_deferred()
+	if not (seated and cur_seat == recliner_seat):
+		return
+	# turning in it turns you with it
+	if xr_active:
+		var pivot := head.global_position
+		pivot.y = 0.0
+		var tw := create_tween()
+		var done := [0.0]
+		tw.tween_method(func(k: float) -> void:
+			var step: float = dy * k - float(done[0])
+			done[0] = dy * k
+			origin.global_translate(-pivot)
+			origin.global_rotate(Vector3.UP, step)
+			origin.global_translate(pivot), 0.0, 1.0, 0.45)
+	else:
+		var tw2 := create_tween()
+		tw2.tween_property(desktop_cam, "rotation:y", desktop_cam.rotation.y + dy, 0.45).set_trans(Tween.TRANS_SINE)
+
+
+func _save_recliner() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_FILE)
+	cfg.set_value("room", "recliner_yaw", wrapf(recliner.rotation.y, -PI, PI))
+	cfg.set_value("room", "recliner_back", recliner.reclined)
+	cfg.save(SETTINGS_FILE)
+
+
+# sitting down in it: face the way it faces; leaning back lowers you a little and tips the view up
+func _recliner_tick() -> void:
+	if recliner == null or not seated or cur_seat != recliner_seat:
+		_rec_view_k = 0.0
+		return
+	var k: float = recliner.recline_amount()
+	origin.global_position.y = _rec_base_y - 0.1 * k
+	if not xr_active:
+		pitch += (0.22 * k - 0.22 * _rec_view_k)
+		pitch = clampf(pitch, -1.2, 1.2)
+		desktop_cam.rotation.x = pitch
+	_rec_view_k = k
 
 
 func set_beanbag_count(n: int) -> void:
@@ -2578,6 +2666,13 @@ func _toggle_sit() -> void:
 	origin.global_position.y = clampf(seat_eye[idx] - head.position.y, -1.0, 0.2)
 	seated = true
 	cur_seat = idx
+	if idx == recliner_seat:
+		_rec_base_y = origin.global_position.y
+		_rec_view_k = 0.0
+		if not xr_active:
+			desktop_cam.rotation.y = recliner.rotation.y      # settle in facing the way it faces
+			pitch = 0.0
+			desktop_cam.rotation.x = 0.0
 
 
 # ---------------------------------------------------------------- optional 3D assets
@@ -4339,17 +4434,20 @@ func _controller(pos: Vector3, yaw_off: float) -> void:
 		"when": func() -> bool: return root.visible or idx == held_pad_idx})       # a pad a friend is holding can't be grabbed
 
 
+const DRESSER_Z := 0.15                  # the dresser's middle along the left wall
+
+
 func _build_dresser() -> void:
 	var wood := _mat(Color(0.34, 0.14, 0.22), 0.6)
 	var inset := _mat(Color(0.26, 0.10, 0.18), 0.6)
 	var brass := _mat(Color(0.95, 0.75, 0.50), 0.3, 0.5)
-	_box(Vector3(-3.62, 0.38, -1.2), Vector3(0.55, 0.76, 1.1), wood)
+	_box(Vector3(-3.62, 0.38, DRESSER_Z), Vector3(0.55, 0.76, 1.1), wood)
 	for dy in [0.2, 0.42, 0.64]:
-		_box(Vector3(-3.335, dy, -1.2), Vector3(0.01, 0.17, 0.96), inset)
-		_sphere(Vector3(-3.325, dy, -1.2), 0.016, brass, Vector3.ONE, null, 8)
-	_plant(Vector3(-3.6, 0.76, -1.45), 0.6)
+		_box(Vector3(-3.335, dy, DRESSER_Z), Vector3(0.01, 0.17, 0.96), inset)
+		_sphere(Vector3(-3.325, dy, DRESSER_Z), 0.016, brass, Vector3.ONE, null, 8)
+	_plant(Vector3(-3.6, 0.76, DRESSER_Z - 0.25), 0.6)
 	incense = Incense.new()
-	incense.setup(self, Vector3(-3.6, 0.76, -0.95))      # a stick of incense on the dresser, under the speakers
+	incense.setup(self, Vector3(-3.6, 0.76, DRESSER_Z + 0.25))      # a stick of incense on the dresser
 
 
 # ---------------------------------------------------------------- power: outlets, strips, cords

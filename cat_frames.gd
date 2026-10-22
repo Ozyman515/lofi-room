@@ -9,10 +9,11 @@ const ScreenUI := preload("res://screen_ui.gd")
 const PHOTO_DIR := "res://photos/"
 # [key, photo, empty photo, position on the dresser (x, z), picture size]
 const FRAMES := [
-	["tux", "cat_tux.png", "frame_empty.png", Vector2(-3.70, -1.30), Vector2(0.104, 0.13)],
-	["both", "cats_together.png", "frame_empty_wide.png", Vector2(-3.72, -1.13), Vector2(0.152, 0.114)],
-	["calico", "cat_calico.png", "frame_empty.png", Vector2(-3.70, -0.76), Vector2(0.104, 0.13)],
+	["tux", "cat_tux.png", "frame_empty.png", Vector2(-3.70, -1.30 + DZ), Vector2(0.104, 0.13)],
+	["both", "cats_together.png", "frame_empty_wide.png", Vector2(-3.72, -1.13 + DZ), Vector2(0.152, 0.114)],
+	["calico", "cat_calico.png", "frame_empty.png", Vector2(-3.70, -0.76 + DZ), Vector2(0.104, 0.13)],
 ]
+const DZ := 1.35                            # the dresser moved this far toward the TV
 const TOP_Y := 0.76                         # the dresser's top
 const BORDER := 0.014
 const MAX_NAME := 12
@@ -137,7 +138,7 @@ func _build_panel() -> void:
 	_panel_mesh = MeshInstance3D.new()
 	_panel_mesh.mesh = quad
 	_panel_mesh.material_override = sm
-	_panel_mesh.position = Vector3(-3.18, 1.12, -1.08)
+	_panel_mesh.position = Vector3(-3.18, 1.12, -1.08 + DZ)
 	_panel_mesh.rotation.y = PI / 2.0                # faces +x, into the room
 	main.room.add_child(_panel_mesh)
 	ui = ScreenUI.new()
