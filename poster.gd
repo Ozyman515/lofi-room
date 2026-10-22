@@ -317,6 +317,12 @@ func _on_chosen(path: String) -> void:
 		_note.text = "Couldn't open that picture. Try a PNG or JPG."
 
 
+# where the pointing sign goes: just under the frame, a little out from the wall, so it never covers the picture
+func hint_spot() -> Vector3:
+	var h: float = (_frame_mesh.size.y * 0.5) + 0.06
+	return to_global(Vector3(0.0, -h, 0.06))
+
+
 func label() -> String:
 	if _override_on:
 		return "THE CITY NEVER SLEEPS"

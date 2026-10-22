@@ -793,6 +793,7 @@ func _build_desk() -> void:
 	screens.append(poster.ui)
 	interactables.append({"node": poster.frame, "half": Vector3(0.6, 0.55, 0.05), "guest_ok": true,
 		"half_fn": func() -> Vector3: return poster.frame.mesh.size * 0.5 + Vector3(0, 0, 0.03),
+		"hint_at": func() -> Vector3: return poster.hint_spot(),
 		"label": func() -> String: return poster.label(), "cb": func() -> void: poster.toggle_picker()})
 	# paper lantern hanging from the ceiling on a cord
 	_cyl(Vector3(1.6, 2.65, 0.3), 0.004, 0.3, _mat(Color(0.10, 0.04, 0.12)))
@@ -4616,6 +4617,8 @@ func _update_pointer(delta: float) -> void:
 		var k := clampf(found_t / 1.2, 0.2, 1.0)
 		hint_label.scale = Vector3.ONE * k
 		hint_label.global_position = found_point + Vector3(0.0, 0.02 + 0.08 * k, 0.0)
+		if found_item.has("hint_at"):                 # a fixed spot for the sign (e.g. under a picture, not on it)
+			hint_label.global_position = (found_item["hint_at"] as Callable).call()
 		hint_label.visible = true
 	elif diary != null and diary.open_book and book_hint_t > 0.0:
 		hint_label.text = ("GRIP  =  PUT IT DOWN" if xr_active else "G  =  PUT IT DOWN")
