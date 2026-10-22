@@ -1,5 +1,5 @@
 {
- "version": 99,
+ "version": 100,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -266,8 +266,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "15e89096d9afe609c9f13feb7a811bf792b2ba2f8011b2f2cf5e981d776de003",
-   "size": 199869
+   "sha": "934e12b6715a9e7953e97ea3334fa6a377a75952bf68c95526fbdbb9096c46cf",
+   "size": 199973
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -486,8 +486,8 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "7e332bcee418f7d700927c946d36341f0651d6d90997b58d3d5441dec96b2e74",
-   "size": 3
+   "sha": "eea8254c7500ba3de996aa8ad6af399183f04e17d4a8102fde539dbc93a90012",
+   "size": 4
   },
   "weather.gd": {
    "sha": "8b8ecd8aa548c8f1d6d04cc14c11cc13fdd49e1dc0fff81e7b9040ae5a823572",
