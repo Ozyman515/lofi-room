@@ -3625,17 +3625,17 @@ func _build_arcade() -> void:
 	arcade_focus = arc_focus
 	# marquee: a lit panel above the monitor
 	arcade_marquee_m = _mat(Color(0.95, 0.97, 0.92), 0.4, 0.9)
-	var mq := _box(Vector3(0.7125, 1.68, 0), Vector3(0.004, 0.14, CAB_W - 0.09), arcade_marquee_m, root)
-	_box(Vector3(0.7145, 1.744, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
-	_box(Vector3(0.7145, 1.616, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
+	var mq := _box(Vector3(0.7125, 1.65, 0), Vector3(0.004, 0.2, CAB_W - 0.09), arcade_marquee_m, root)
+	_box(Vector3(0.7145, 1.74, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
+	_box(Vector3(0.7145, 1.56, 0), Vector3(0.002, 0.012, CAB_W - 0.09), green, root)
 	var ml := Label3D.new()
 	ml.text = "ARCADE"
 	ml.font_size = 90
-	ml.pixel_size = 0.0012
+	ml.pixel_size = 0.0014
 	ml.outline_size = 0
 	ml.modulate = Color(0.08, 0.45, 0.2)
 	ml.rotation = Vector3(0, PI / 2.0, 0)
-	ml.position = Vector3(0.7165, 1.68, 0)
+	ml.position = Vector3(0.7165, 1.65, 0)
 	root.add_child(ml)
 	arcade_marquee_label = ml
 	# the power switch: a red rocker low on the side panel, round the back
@@ -3675,7 +3675,7 @@ func _build_arcade() -> void:
 	_show_arcade_volume()
 	# the step from the monitor up to the marquee, the roof, and the sloped back
 	_box(Vector3(0.675, 1.515, 0), Vector3(0.08, 0.04, CAB_W - 0.07), white, root)
-	_arcade_grill(root)
+	_arcade_grill(root, white)
 	var rf := Vector2(0.50, 1.80) - Vector2(0.71, 1.77)
 	_rbox(Vector3(0.605, 1.785, 0), Vector3(CAB_W - 0.07, 0.03, 0.23), Basis(Vector3(0, 0, 1), atan2(rf.y, rf.x) + PI) * Basis(Vector3.UP, PI / 2.0), white, root)
 	var bk := Vector2(0.0, 1.40) - Vector2(0.50, 1.80)
@@ -3745,18 +3745,22 @@ func set_share_poster(on: bool) -> void:
 	settings_changed.emit()
 
 
-# the cabinet's own speaker: a black perforated grill on the step under the marquee. Only the arcade's games
+# the cabinet's own speaker: a black perforated grill in the underside of a hood along the marquee, facing down. Only the arcade's games
 # play out of it (their sound comes from right here, not from the room's speakers).
 var arcade_feed: Node
 
 
-func _arcade_grill(root: Node3D) -> void:
-	var gw := CAB_W - 0.1
-	var y0 := 1.497                                  # from the top of the monitor bezel up to the marquee
-	var y1 := 1.607
+func _arcade_grill(root: Node3D, body: Material) -> void:
+	# a shallow hood along the bottom of the marquee, sticking out over the screen, with the grill in its
+	# underside facing down at the player
+	var gw := CAB_W - 0.07
+	var x0 := 0.714
+	var x1 := 0.80
+	var yb := 1.517                                  # the hood's underside
+	_box(Vector3((x0 + x1) / 2.0, yb + 0.015, 0), Vector3(x1 - x0, 0.03, gw), body, root)
 	var plate := _mat(Color(0.11, 0.11, 0.12), 0.45, 0.5)
 	var holes := _mat(Color(0.0, 0.0, 0.0), 1.0)
-	_box(Vector3(0.7155, (y0 + y1) / 2.0, 0), Vector3(0.004, y1 - y0, gw), plate, root)
+	_box(Vector3((x0 + x1) / 2.0 + 0.002, yb - 0.001, 0), Vector3(x1 - x0 - 0.016, 0.002, gw - 0.05), plate, root)
 	var hole := CylinderMesh.new()                   # rows of little round holes, as one multimesh
 	hole.top_radius = 0.0028
 	hole.bottom_radius = 0.0028
@@ -3765,33 +3769,38 @@ func _arcade_grill(root: Node3D) -> void:
 	hole.rings = 1
 	var spots: Array[Vector3] = []
 	var step := 0.0105
-	var rows := int((y1 - y0 - 0.014) / (step * 0.87))
-	for r in rows:
-		var y := y0 + 0.008 + r * step * 0.87
-		var off := 0.5 * step if r % 2 == 1 else 0.0
-		for side in [-1.0, 1.0]:                     # two speaker patches, left and right, with the middle plain
-			var zc: float = side * gw * 0.27
-			var c := -int(gw * 0.21 / step)
-			while c <= int(gw * 0.21 / step):
+	var xc := (x0 + x1) / 2.0 + 0.002
+	var hx := (x1 - x0 - 0.03) / 2.0
+	var hz := gw * 0.19
+	for side in [-1.0, 1.0]:                         # two round-ish speaker patches, left and right
+		var zc: float = side * gw * 0.25
+		var r := 0
+		var x := xc - hx
+		while x <= xc + hx:
+			var off := 0.5 * step if r % 2 == 1 else 0.0
+			var c := -int(hz / step) - 1
+			while c <= int(hz / step) + 1:
 				var z := zc + c * step + off
-				var dz := (z - zc) / (gw * 0.21)
-				var dy := (y - (y0 + y1) / 2.0) / ((y1 - y0) * 0.5)
-				if dz * dz + dy * dy * 0.35 <= 1.0:
-					spots.append(Vector3(0.718, y, z))
+				var dz := (z - zc) / hz
+				var dx := (x - xc) / hx
+				if dz * dz + dx * dx * 0.5 <= 1.0:
+					spots.append(Vector3(x, yb - 0.0025, z))
 				c += 1
+			x += step * 0.87
+			r += 1
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = hole
 	mm.instance_count = spots.size()
 	for i in spots.size():
-		mm.set_instance_transform(i, Transform3D(Basis(Vector3(0, 0, 1), PI / 2.0), spots[i]))
+		mm.set_instance_transform(i, Transform3D(Basis(), spots[i]))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = holes
 	root.add_child(mmi)
 	var BusFeed := preload("res://bus_feed.gd")
 	var p: AudioStreamPlayer3D = BusFeed.make_player(3.0)
-	p.position = Vector3(0.75, 1.55, 0)
+	p.position = Vector3(0.76, 1.5, 0)
 	root.add_child(p)
 	arcade_feed = BusFeed.new()
 	arcade_feed.name = "ArcadeFeed"
