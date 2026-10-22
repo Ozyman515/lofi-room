@@ -12,6 +12,9 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y -qq coturn openssl curl
 # one secret shared by the relay and the room server; kept if this script runs again
 if [ -f /etc/lofi-turn.secret ]; then SECRET=$(cat /etc/lofi-turn.secret); else SECRET=$(openssl rand -hex 24); echo "$SECRET" > /etc/lofi-turn.secret; chmod 600 /etc/lofi-turn.secret; fi
 
+# this machine's own public address: the relay must never be usable to reach the droplet itself
+PUBIP=$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+
 echo "== writing /etc/turnserver.conf"
 cat > /etc/turnserver.conf <<EOF
 listening-port=3478
@@ -28,6 +31,10 @@ no-tls
 no-dtls
 no-multicast-peers
 no-loopback-peers
+# bandwidth: about 2 MB/s per link (plenty for the room), 40 MB/s for everyone together
+max-bps=2000000
+bps-capacity=40000000
+${PUBIP:+denied-peer-ip=$PUBIP}
 denied-peer-ip=0.0.0.0-0.255.255.255
 denied-peer-ip=10.0.0.0-10.255.255.255
 denied-peer-ip=100.64.0.0-100.127.255.255

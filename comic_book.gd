@@ -492,9 +492,12 @@ static func _decode_pdf_image(path: String, desc: String, max_dim: int) -> Image
 	f.close()
 	var img := Image.new()
 	if filt == "dct":
-		if img.load_jpg_from_buffer(data) != OK:
+		img = preload("res://safe_image.gd").jpeg(data, 12000)
+		if img == null:
 			return null
 	else:
+		if w <= 0 or h <= 0 or w > 12000 or h > 12000:
+			return null                        # a page claiming to be enormous: not unpacked
 		var raw := data.decompress_dynamic(w * h * 4 + 1024, FileAccess.COMPRESSION_DEFLATE)
 		var chans := 1 if cs == "gray" else 3
 		if raw.size() < w * h * chans:

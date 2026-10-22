@@ -85,6 +85,34 @@ function open(port) {
 	assert.deepStrictEqual(again, [2, 3]);
 	assert.strictEqual((await g1.next()).t, "host_back");
 
+	// a room that asks first: the guest waits, nothing reaches it until the host lets it in
+	const ah = await open(port); ah.send({ t: "host", ver: 68, name: "Asker", approve: true });
+	const ahd = await ah.next(); assert.strictEqual(ahd.t, "hosted");
+	const k1 = await open(port); k1.send({ t: "join", code: ahd.code, ver: 68, name: "Knocker" });
+	const w = await k1.next(); assert.strictEqual(w.t, "waiting"); assert.strictEqual(w.ice, undefined);   // no relay logins yet
+	const kn = await ah.next(); assert.deepStrictEqual([kn.t, kn.id, kn.name], ["knock", 2, "Knocker"]);
+	k1.send({ t: "sig", to: 1, data: { early: true } });                       // not let in: dropped
+	k1.ws.send(new Uint8Array([1, 3, 3]));                                    // nor relayed
+	ah.send({ t: "ping" }); assert.strictEqual((await ah.next()).t, "pong");
+	k1.ws.send(new Uint8Array(70000));                                        // big packets only once inside: closed
+	await k1.closed();
+	assert.deepStrictEqual([(await ah.next()).t], ["knock_gone"]);
+	const k2 = await open(port); k2.send({ t: "join", code: ahd.code, ver: 68, name: "Friend" });
+	assert.strictEqual((await k2.next()).t, "waiting");
+	const kn2 = await ah.next(); assert.strictEqual(kn2.t, "knock");
+	ah.send({ t: "admit", id: kn2.id });
+	const jj = await k2.next(); assert.strictEqual(jj.t, "joined"); assert.ok(Array.isArray(jj.ice));
+	assert.strictEqual((await ah.next()).t, "peer_join");
+	k2.send({ t: "sig", to: 1, data: { ok: 1 } }); assert.strictEqual((await ah.next()).t, "sig");
+
+	// opening rooms is limited per address (here: 3 open at once)
+	let refused = false;
+	for (let i = 0; i < 6 && !refused; i++) {
+		const hx = await open(port); hx.send({ t: "host", ver: 68, name: "Spam" });
+		refused = (await hx.next()).code === "rate";
+	}
+	assert.ok(refused);
+
 	// join attempts are rate limited per address
 	let limited = false;
 	for (let i = 0; i < 20 && !limited; i++) { gx.send({ t: "join", code: "AAAAAA", ver: 68, name: "x" }); limited = (await gx.next()).code === "rate"; }

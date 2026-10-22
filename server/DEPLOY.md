@@ -53,9 +53,16 @@ the first 1,000 GB a month, then $0.05/GB. Put its details in the config:
 
 ## Settings (environment variables)
 `PORT` (8787), `MAX_PLAYERS` (4), `GRACE_MS` (90000: how long a host can come back to the same code),
-`JOIN_PER_MIN` (12 join tries per IP per minute), `MAX_ROOMS` (2000), `MAX_CONNS` (4000),
-`MAX_CONNS_PER_IP` (8), `TRUST_PROXY` (set to 1 only behind Caddy/nginx, so the real client address is used
-for the per-address limits; never when the server is reachable directly). Test with `node test.js`.
+`JOIN_PER_MIN` (12 join tries per IP per minute), `HOST_PER_MIN` (6 rooms opened per IP per minute),
+`ROOMS_PER_IP` (3 rooms open at once per IP), `MAX_ROOMS` (2000), `MAX_CONNS` (400), `MAX_CONNS_PER_IP` (8),
+`MAX_PENDING` (96 MB of half-received messages across everyone; past that, the sender is dropped),
+`TRUST_PROXY` (set to 1 only behind Caddy/nginx, so the real client address is used for the per-address
+limits; with it set the server listens on 127.0.0.1 only, so nobody can reach it around the proxy),
+`BIND` (override the listen address). Test with `node test.js`.
+
+Rooms opened by the room (version 104 on) ask the host before anyone comes in: the guest waits, the host
+gets a "knock" and lets them in ("admit") or turns them away ("kick"). A guest that hasn't been let in gets
+no relay login, no handshakes, and can't send big packets.
 
 ## What the server knows and keeps
 Nothing is stored on disk. In memory, per connection: the address, the display name, the room code, the

@@ -274,6 +274,8 @@ func _build_multiplayer() -> void:
 	screens.append(net_phone.ui)
 	net.state_changed.connect(_on_net_state)
 	net.roster_changed.connect(_on_net_roster)
+	net.knock.connect(func(_id: int, who: String) -> void:
+		updater.show_toast("%s is knocking. Let them in (or not) on the phone." % who, 10.0))
 	net_game = load("res://net_game.gd").new()
 	net_game.name = "NetGame"
 	add_child(net_game)

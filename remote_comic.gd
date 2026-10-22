@@ -67,8 +67,8 @@ func receive(i: int, jpeg: PackedByteArray) -> void:
 	if jpeg.is_empty():
 		_tex[i] = null
 		return
-	var img := Image.new()
-	if img.load_jpg_from_buffer(jpeg) != OK or img.get_width() > 2048 or img.get_height() > 2048:
+	var img := preload("res://safe_image.gd").jpeg(jpeg, 2048)
+	if img == null:
 		_tex[i] = null
 		return
 	img.generate_mipmaps()

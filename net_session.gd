@@ -23,6 +23,7 @@ signal roster_changed
 signal packet(from_id: int, kind: int, payload: PackedByteArray)
 signal failed(message: String)
 signal kicked
+signal knock(id: int, player_name: String)   # hosting: someone is asking to come in
 
 var state := State.OFFLINE
 var code := ""
@@ -32,6 +33,8 @@ var my_name := ""
 var status := ""                         # short text for the phone screen
 var roster := {}                         # id -> {name, color}
 var host_away := false
+var knocks := {}                         # hosting: id -> name of players waiting at the door
+var _waiting := false                    # joining: waiting for the host to let us in
 
 var _ws: WebSocketPeer
 var _mp: WebRTCMultiplayerPeer
@@ -93,7 +96,21 @@ func leave() -> void:
 func kick(id: int) -> void:
 	if is_host() and id != 1:
 		_send_ws({"t": "kick", "id": id})
+		knocks.erase(id)
 		_drop_peer(id)
+		roster_changed.emit()
+
+
+# hosting: let a waiting player in, or turn them away
+func admit(id: int) -> void:
+	if is_host() and knocks.has(id):
+		knocks.erase(id)
+		_send_ws({"t": "admit", "id": id})
+		roster_changed.emit()
+
+
+func turn_away(id: int) -> void:
+	kick(id)
 
 
 # ---- public: packets ----
@@ -184,6 +201,8 @@ func _teardown() -> void:
 	code = ""
 	my_id = 0
 	roster = {}
+	knocks = {}
+	_waiting = false
 	host_away = false
 	_set_state(State.OFFLINE, "")
 	roster_changed.emit()
@@ -198,7 +217,7 @@ func _process(delta: float) -> void:
 	if _ws != null:
 		_ws.poll()
 		var st := _ws.get_ready_state()
-		if st == WebSocketPeer.STATE_OPEN:
+		if st == WebSocketPeer.STATE_OPEN or (st == WebSocketPeer.STATE_CLOSING and _ws_open):
 			if not _ws_open:
 				_ws_open = true
 				_on_ws_open()
@@ -217,8 +236,19 @@ func _process(delta: float) -> void:
 				_ping_t = 0.0
 				_send_ws({"t": "ping"})
 		elif st == WebSocketPeer.STATE_CLOSED and not _closing:
+			# the server's last words (e.g. "kicked") can arrive together with the close: read them first
+			while _ws != null and _ws.get_available_packet_count() > 0:
+				var last := _ws.get_packet()
+				if _ws.was_string_packet():
+					var lm = JSON.parse_string(last.get_string_from_utf8())
+					if lm is Dictionary:
+						_on_server_msg(lm)
+			if _ws == null or _closing:
+				return
 			var was_online := is_online()
-			if state == State.CONNECTING or state == State.JOINING:
+			if _waiting:
+				_fail("The host didn't let you in this time.")
+			elif state == State.CONNECTING or state == State.JOINING:
 				_fail("Can't reach the room server.")
 			else:
 				_fail("Lost connection to the room server." if not was_online else "The room closed.")
@@ -235,7 +265,8 @@ func _process(delta: float) -> void:
 
 func _on_ws_open() -> void:
 	if _want == "host":
-		_send_ws({"t": "host", "ver": Cfg.build_version(), "name": my_name, "code": _want_code, "token": host_token if _want_code != "" else ""})
+		_send_ws({"t": "host", "ver": Cfg.build_version(), "name": my_name, "code": _want_code, "token": host_token if _want_code != "" else "",
+			"approve": Cfg.ask_to_join()})
 	else:
 		_set_state(State.JOINING, "Joining...")
 		_send_ws({"t": "join", "code": _want_code, "ver": Cfg.build_version(), "name": my_name})
@@ -254,7 +285,22 @@ func _on_server_msg(m: Dictionary) -> void:
 			roster = {1: {"name": my_name, "color": COLORS[0]}}
 			_set_state(State.HOSTING, "Room open")
 			roster_changed.emit()
+		"waiting":
+			_waiting = true
+			code = str(m.get("code", _want_code))
+			_set_state(State.JOINING, "Knocking...\nWaiting for %s to let you in." % str(m.get("host_name", "the host")).left(20))
+		"knock":
+			if is_host():
+				var kid := int(m.get("id", 0))
+				var kname := str(m.get("name", "Guest")).left(20)
+				knocks[kid] = kname
+				knock.emit(kid, kname)
+				roster_changed.emit()
+		"knock_gone":
+			if knocks.erase(int(m.get("id", 0))):
+				roster_changed.emit()
 		"joined":
+			_waiting = false
 			_relay = m.get("ice", []) if m.get("ice", []) is Array else []
 			code = str(m.get("code", _want_code))
 			my_id = int(m.get("id", 0))
@@ -268,6 +314,7 @@ func _on_server_msg(m: Dictionary) -> void:
 		"peer_join":
 			if is_host():
 				var id := int(m.get("id", 0))
+				knocks.erase(id)
 				roster[id] = {"name": str(m.get("name", "Guest")).left(20), "color": COLORS[(id - 1) % 4]}
 				_make_conn(id, true)
 		"peer_leave":
@@ -283,8 +330,9 @@ func _on_server_msg(m: Dictionary) -> void:
 			status = ""
 			state_changed.emit()
 		"kicked":
+			var was_waiting := _waiting
 			_teardown()
-			status = "You were removed from the room."
+			status = "The host didn't let you in this time." if was_waiting else "You were removed from the room."
 			kicked.emit()
 			state_changed.emit()
 		"closed":

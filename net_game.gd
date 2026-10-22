@@ -4,6 +4,7 @@ extends Node
 ## the emulator as player 2 (or player 1 when the host plays the right-hand arcade stick).
 ## Guests mirror what the host did to the console: cart in, console power, TV power.
 
+const SafeImage := preload("res://safe_image.gd")
 const Net := preload("res://net_session.gd")
 
 const VIDEO_FPS := 30.0
@@ -350,8 +351,8 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 			Net.K_VIDEO:
 				# a guest's tape: show it here and pass it on to the others
 				if from == tv_source and payload.size() >= 2 and payload.size() <= 2 * 1024 * 1024 and payload[0] == 1:
-					var img := Image.new()
-					if img.load_jpg_from_buffer(payload.slice(1)) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
+					var img := SafeImage.jpeg(payload.slice(1), 2048)
+					if img != null:
 						main.vcr.remote_video_frame(img, tv_source_name())
 						for id in net.peer_ids():
 							if id != from:
@@ -393,8 +394,8 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 		Net.K_VIDEO:
 			if payload.size() > 2 * 1024 * 1024 or payload.size() < 2:
 				return                                  # no honest frame is that big
-			var img := Image.new()
-			if img.load_jpg_from_buffer(payload.slice(1)) == OK and img.get_width() <= 2048 and img.get_height() <= 2048:
+			var img := SafeImage.jpeg(payload.slice(1), 2048)
+			if img != null:
 				if payload[0] == 1:
 					if tv_source != net.my_id:
 						main.vcr.remote_video_frame(img, tv_source_name())
@@ -466,8 +467,8 @@ func _guest_poster_part(d: Dictionary) -> void:
 	for k in n:
 		all.append_array(entry["got"][k])
 	_poster_parts.erase(rev)
-	var img := Image.new()
-	if img.load_jpg_from_buffer(all) == OK and img.get_width() <= 4096 and img.get_height() <= 4096 and main.poster != null:
+	var img := SafeImage.jpeg(all, 4096)
+	if img != null and main.poster != null:
 		main.poster.show_remote(img, str(net.roster.get(1, {}).get("name", "The host")))
 
 

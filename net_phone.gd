@@ -138,7 +138,14 @@ func _render() -> void:
 			_label("ROOM CODE", 20, Color(0.7, 0.6, 0.9))
 			_label(net.code, 50, Color(1.0, 0.95, 0.5))
 			_label("Tell your buddy bois this code.", 18, Color(0.7, 0.6, 0.9))
+			_render_knocks()
 			_render_players(true)
+			var ask := Cfg.ask_to_join()
+			var ab := _button("Ask before people join: %s" % ("ON" if ask else "OFF"), func() -> void:
+				Cfg.set_ask_to_join(not ask)
+				_render(), 16)
+			ab.custom_minimum_size.y = 38
+			ab.tooltip_text = "Applies the next time you host a room."
 			_button("CLOSE ROOM", func() -> void: net.leave())
 		net.State.JOINED:
 			_label("In %s's room" % str(net.roster.get(1, {}).get("name", "the")), 24)
@@ -224,6 +231,22 @@ func _type(ch: String) -> void:
 func _refresh_code() -> void:
 	if _code_label != null:
 		_code_label.text = _shown_code()
+
+
+# people at the door: let them in or not
+func _render_knocks() -> void:
+	for id in net.knocks:
+		var who: String = net.knocks[id]
+		_label("%s wants to come in" % who, 20, Color(1.0, 0.85, 0.5))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		_content.add_child(row)
+		var yes := _button("LET IN", func() -> void: net.admit(id), 20, row)
+		yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		yes.custom_minimum_size.y = 42
+		var no := _button("NO", func() -> void: net.turn_away(id), 20, row)
+		no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		no.custom_minimum_size.y = 42
 
 
 func _render_players(can_kick: bool) -> void:

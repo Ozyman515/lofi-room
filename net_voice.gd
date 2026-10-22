@@ -15,7 +15,7 @@ const SETTINGS_FILE := "user://lofi_room.cfg"
 var net: Node
 var main: Node3D
 var avatars: Node3D
-var mic_on := true                 # the master switch (false = muted)
+var mic_on := false                # the master switch (false = muted); muted until you turn it on the first time
 var push_to_talk := false
 var talking := false               # held key / button while push-to-talk
 var gate := 0.012                  # open-mic noise gate (RMS)
@@ -49,7 +49,7 @@ func setup(session: Node, m: Node3D, av: Node3D) -> void:
 	_ratio = _mix_rate / RATE
 	var cf := ConfigFile.new()
 	if cf.load(SETTINGS_FILE) == OK:
-		mic_on = bool(cf.get_value("voice", "mic_on", true))
+		mic_on = bool(cf.get_value("voice", "mic_on", false))
 		push_to_talk = bool(cf.get_value("voice", "push_to_talk", false))
 
 
@@ -116,10 +116,20 @@ func is_speaking(id: int) -> bool:
 
 # ---- mic
 
+var _was_online := false
+
+
 func _on_state() -> void:
 	if net.is_online():
 		_ensure_mic()
+		if not _was_online and is_available() and main.updater != null:
+			# say where the mic stands every time you go online, so nobody is live without knowing it
+			var how := ("on (push to talk)" if push_to_talk else "ON: everyone here can hear you") if mic_on else "muted"
+			var change := "Use the Microphone button on the PC to change it." if main.xr_active else "Press M to change it."
+			main.updater.show_toast("Your microphone is %s. %s" % [how, change], 8.0)
+		_was_online = true
 	else:
+		_was_online = false
 		_stop_all()
 
 

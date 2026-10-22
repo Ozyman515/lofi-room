@@ -42,6 +42,21 @@ static func ice_servers() -> Array:
 	return servers
 
 
+# Hosting: ask before anyone comes in (on by default). [net] ask_to_join in the settings file.
+static func ask_to_join() -> bool:
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_FILE) == OK:
+		return bool(cf.get_value("net", "ask_to_join", true))
+	return true
+
+
+static func set_ask_to_join(on: bool) -> void:
+	var cf := ConfigFile.new()
+	cf.load(SETTINGS_FILE)
+	cf.set_value("net", "ask_to_join", on)
+	cf.save(SETTINGS_FILE)
+
+
 # Both sides must run the same build; the server compares these strings.
 static func build_version() -> String:
 	var f := FileAccess.open("res://version.txt", FileAccess.READ)
