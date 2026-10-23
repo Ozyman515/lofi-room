@@ -1,5 +1,5 @@
 extends Node3D
-## Kaiju (an easter egg): an original giant reptile (kaiju_model.gd) lumbers down the street outside the
+## Kaiju (an easter egg): the owner's white, ice-crested tyrannosaur (kaiju_model.gd) lumbers down the street outside the
 ## window. Every footfall is a deep thump: the view jolts (on a screen; in a headset the controllers rumble
 ## instead, since shaking someone's view in VR makes them sick), the window rattles and the lamps flicker.
 ## Halfway across it stops, turns its head and looks in at you with a low rumble, then walks on.
@@ -58,8 +58,8 @@ func setup(m: Node3D) -> void:
 	# a fedora for Noir Night, tipped down over its brow (only worn while Noir Night is on)
 	_hat = load("res://noir_props.gd").fedora()
 	_hat.scale = Vector3.ONE * 0.95
-	_hat.position = Vector3(0.03, 0.07, 0.0)
-	_hat.rotation = Vector3(0.0, 0.0, -0.22)
+	_hat.position = Vector3(0.05, 0.185, 0.0)          # on the crown of the skull (the head pivots at the neck)
+	_hat.rotation = Vector3(0.0, 0.0, -0.02)           # the head is tipped up, so the brim sits level over the brow
 	for hm in _hat.find_children("*", "MeshInstance3D", true, false):    # a paler felt so it reads on the dark head
 		var mat := (hm as MeshInstance3D).material_override as StandardMaterial3D
 		if mat != null:
@@ -218,7 +218,7 @@ const TOY_PLAYS := 10                # stomps it takes to call the real one
 
 
 func _build_toy() -> void:
-	_toy = Model.build()
+	_toy = Model.build(true)                     # the lighter toy version
 	_toy.scale = Vector3.ONE * TOY_SCALE
 	_toy.position = TOY_POS
 	_toy.rotation.y = -PI * 0.62                 # facing out into the room, looking a little toward the bed
