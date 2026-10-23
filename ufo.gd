@@ -75,25 +75,48 @@ func _build_figure() -> void:
 	black.albedo_color = Color(0, 0, 0)
 	black.roughness = 0.03
 	black.metallic_specular = 1.0
-	var base_m := StandardMaterial3D.new()
-	base_m.albedo_color = Color(0.1, 0.35, 0.3)
-	base_m.emission_enabled = true
-	base_m.emission = Color(0.2, 0.9, 0.7)
-	base_m.emission_energy_multiplier = 0.9       # a glow-in-the-dark stand
-	var base := CylinderMesh.new()
-	base.top_radius = 0.03
-	base.bottom_radius = 0.034
-	base.height = 0.01
-	base.radial_segments = 32
-	var bm := MeshInstance3D.new()
-	bm.mesh = base
-	bm.material_override = base_m
-	bm.position = Vector3(0, 0.005, 0)
-	fig.add_child(bm)
+	# the stand: the top half of a little flying saucer, its ring of lights glowing, the alien on the cabin roof
+	var hull := StandardMaterial3D.new()
+	hull.albedo_color = Color(0.62, 0.64, 0.68)
+	hull.metallic = 0.85
+	hull.roughness = 0.3
+	hull.emission_enabled = true
+	hull.emission = Color(0.2, 0.22, 0.24)
+	hull.emission_energy_multiplier = 0.5
+	var parts := [[0.0347, 0.0347, 0.0026, 0.0013], [0.015, 0.034, 0.006, 0.0056], [0.0133, 0.0144, 0.0043, 0.01075]]   # [top r, bottom r, height, y]
+	for pr in parts:
+		var cm := CylinderMesh.new()
+		cm.top_radius = pr[0]
+		cm.bottom_radius = pr[1]
+		cm.height = pr[2]
+		cm.radial_segments = 40
+		var mi := MeshInstance3D.new()
+		mi.mesh = cm
+		mi.material_override = hull
+		mi.position.y = pr[3]
+		fig.add_child(mi)
+	for i in 16:
+		var a := TAU * i / 16.0 + PI / 16.0
+		var lm := StandardMaterial3D.new()
+		var col := Color(1.0, 0.85, 0.3) if i % 2 == 0 else Color(0.3, 1.0, 0.8)
+		lm.albedo_color = col
+		lm.emission_enabled = true
+		lm.emission = col
+		lm.emission_energy_multiplier = 2.5
+		var sm := SphereMesh.new()
+		sm.radius = 0.0017
+		sm.height = 0.0034
+		sm.radial_segments = 8
+		sm.rings = 4
+		var l := MeshInstance3D.new()
+		l.mesh = sm
+		l.material_override = lm
+		l.position = Vector3(cos(a) * 0.029, 0.0041, sin(a) * 0.029)
+		fig.add_child(l)
 	# a slim body, one smooth piece from the hips to a thin neck
 	var body := _lathe([[0.0, 0.0], [0.002, 0.009], [0.012, 0.0122], [0.024, 0.0115], [0.032, 0.0118], [0.037, 0.0128],
 		[0.042, 0.0118], [0.047, 0.0082], [0.053, 0.0048], [0.062, 0.0038], [0.066, 0.0]], 0.8, grey)          # sloping shoulders
-	body.position.y = 0.01
+	body.position.y = 0.013
 	fig.add_child(body)
 	# long thin arms that grow out of the shoulders: thick where they join the body, curving out and down,
 	# elbows in a little, ending in small rounded hands by the hips
@@ -103,11 +126,11 @@ func _build_figure() -> void:
 			Vector3(sx * 0.0146, 0.012, 0.0035)]
 		var radii: Array[float] = [0.0056, 0.0048, 0.0036, 0.0027, 0.0023, 0.0021, 0.0026]
 		var arm := _tube(path, radii, grey)
-		arm.position.y = 0.01
+		arm.position.y = 0.013
 		fig.add_child(arm)
 	# the head on a spring (it bobbles): a smooth inverted teardrop, a big rounded cranium tapering to a narrow chin
 	_fig_head = Node3D.new()
-	_fig_head.position = Vector3(0, 0.07, 0)
+	_fig_head.position = Vector3(0, 0.073, 0)
 	fig.add_child(_fig_head)
 	var head := _lathe([[0.0, 0.0], [0.002, 0.0045], [0.008, 0.0085], [0.016, 0.013], [0.026, 0.018], [0.036, 0.022],
 		[0.046, 0.0245], [0.054, 0.025], [0.061, 0.0235], [0.067, 0.0195], [0.072, 0.013], [0.075, 0.006], [0.076, 0.0]], 0.84, grey)
@@ -127,7 +150,7 @@ func _build_figure() -> void:
 		e.rotation = Vector3(0.0, sx * 0.5, sx * 0.48)              # tilted up at the outer corners, following the curve
 		_fig_head.add_child(e)
 	var hit := Node3D.new()
-	hit.position = FIG_POS + Vector3(0, 0.07, 0)
+	hit.position = FIG_POS + Vector3(0, 0.073, 0)
 	main.room.add_child(hit)
 	main.interactables.append({"node": hit, "half": Vector3(0.045, 0.075, 0.045), "guest_ok": true,
 		"label": func() -> String: return "A LITTLE ALIEN" if not active else "A LITTLE ALIEN  (it's waving)", "cb": tap_figure})
