@@ -52,6 +52,10 @@ var _rng := RandomNumberGenerator.new()
 const VISITOR_CHANCE := 0.33         # how often the grey visitor is sitting on the bed when Noir Night starts
 var visitor: Node3D
 var force_visitor := false
+var _bubble: Node3D                  # the visitor's speech bubble: he tells you the case as it is typed
+var _bubble_text: Label3D
+const BUBBLE_W := 1.0
+const BUBBLE_H := 0.5
 
 
 func setup(m: Node3D) -> void:
@@ -59,8 +63,9 @@ func setup(m: Node3D) -> void:
 	visitor = load("res://stressed_alien.gd").new()
 	visitor.name = "NoirVisitor"
 	main.room.add_child(visitor)
-	visitor.build(0.5)                                    # sitting on the desk chair
+	visitor.build(0.5)                                    # sitting in the recliner
 	visitor.visible = false
+	_build_bubble()
 	_rng.randomize()
 	process_priority = 50             # after the incense, which also sets the colour
 	for gi in main.light_groups.size():
@@ -194,6 +199,7 @@ func stop() -> void:
 		main.recliner.rotation.y = float(_saved["rec_yaw"])
 		main.recliner.reclined = bool(_saved["rec_back"])
 	visitor.visible = false
+	_bubble.visible = false
 	if main.poster != null:
 		main.poster.clear_override()
 	if bool(_saved.get("console", false)) and not main.console_on:
@@ -235,6 +241,7 @@ func _process(delta: float) -> void:
 	for b in _blinds:
 		(b.material_override as StandardMaterial3D).albedo_color.a = 0.22 * amount
 	_type_tick(delta)
+	_bubble_tick()
 	if not active and amount <= 0.0:
 		_music.stop()
 		_desk.visible = false
@@ -394,6 +401,8 @@ func new_case() -> void:
 	_case = t
 	_typed = 0.0
 	_text.text = ""
+	if _bubble_text != null:
+		_bubble_text.text = ""
 
 
 # the cats' names, as the player named them
@@ -417,6 +426,7 @@ func _type_tick(delta: float) -> void:
 	_typed += delta * 22.0
 	var n := mini(int(_typed), _case.length())
 	_text.text = _case.left(n)
+	_bubble_text.text = _said(_case.left(n))
 	_clack_t -= delta
 	if n > before and _clack_t <= 0.0 and _case[n - 1] != " ":
 		_clack.pitch_scale = _rng.randf_range(0.9, 1.15)
@@ -424,6 +434,103 @@ func _type_tick(delta: float) -> void:
 		_clack_t = 0.035
 	if n >= _case.length():
 		_ding.play()                # the bell at the end of the line
+
+
+# ---- the visitor's speech bubble: a paper-white bubble over his hat that always turns to face you, with the
+# part of the case being typed right now (the heading, then each paragraph as it comes)
+
+func _build_bubble() -> void:
+	_bubble = Node3D.new()
+	_bubble.name = "VisitorBubble"
+	main.room.add_child(_bubble)
+	_bubble.visible = false
+	var paper := StandardMaterial3D.new()
+	paper.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paper.albedo_color = Color(0.8, 0.79, 0.76)          # (not pure white: the bloom would make it glow)
+	paper.disable_fog = true
+	var edge := StandardMaterial3D.new()
+	edge.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	edge.albedo_color = Color(0.08, 0.08, 0.09)
+	edge.disable_fog = true
+	# a rounded panel: a box with round caps on the corners, a dark rim behind, and a little tail toward his head
+	for layer in 2:
+		var grow := 0.012 if layer == 0 else 0.0
+		var m: Material = edge if layer == 0 else paper
+		var z := -0.002 if layer == 0 else 0.0
+		var r := 0.05 + grow
+		for k in 2:
+			var bm := BoxMesh.new()
+			bm.size = Vector3(BUBBLE_W + 2.0 * grow - (2.0 * r if k == 0 else 0.0), BUBBLE_H + 2.0 * grow - (0.0 if k == 0 else 2.0 * r), 0.002)
+			var mi := MeshInstance3D.new()
+			mi.mesh = bm
+			mi.material_override = m
+			mi.position.z = z
+			_bubble.add_child(mi)
+		for cx in [-1.0, 1.0]:
+			for cy in [-1.0, 1.0]:
+				var cm := CylinderMesh.new()
+				cm.top_radius = r
+				cm.bottom_radius = r
+				cm.height = 0.002
+				cm.radial_segments = 20
+				var c := MeshInstance3D.new()
+				c.mesh = cm
+				c.material_override = m
+				c.rotation.x = PI / 2.0
+				c.position = Vector3(cx * (BUBBLE_W / 2.0 - 0.05), cy * (BUBBLE_H / 2.0 - 0.05), z)
+				_bubble.add_child(c)
+		var tail := PrismMesh.new()
+		tail.size = Vector3(0.09 + 2.0 * grow, 0.11 + grow, 0.002)
+		var t := MeshInstance3D.new()
+		t.mesh = tail
+		t.material_override = m
+		t.rotation.z = PI
+		t.position = Vector3(-BUBBLE_W * 0.22, -BUBBLE_H / 2.0 - 0.045, z)
+		_bubble.add_child(t)
+	_bubble_text = Label3D.new()
+	_bubble_text.font_size = 34
+	_bubble_text.pixel_size = 0.0017
+	_bubble_text.outline_size = 0
+	_bubble_text.modulate = Color(0.06, 0.06, 0.07)
+	_bubble_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bubble_text.width = (BUBBLE_W - 0.08) / 0.0017
+	_bubble_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_bubble_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_bubble_text.position = Vector3(-(BUBBLE_W - 0.08) / 2.0, BUBBLE_H / 2.0 - 0.035, 0.002)     # (left-aligned text starts at the label's origin)
+	_bubble_text.shaded = false
+	_bubble_text.no_depth_test = false
+	_bubble.add_child(_bubble_text)
+
+
+# the bit he's saying right now: the paragraph being typed, cut to its last few sentences if it runs long
+static func _said(typed: String) -> String:
+	var paras := typed.split("\n\n")
+	var p := paras[paras.size() - 1]
+	if p.strip_edges() == "" and paras.size() > 1:
+		p = paras[paras.size() - 2]
+	p = p.replace("\n", "  -  ") if p.begins_with("CASE #") else p
+	while p.length() > 140:
+		var cut := p.find(". ", 20)
+		if cut < 0:
+			p = p.right(140)
+			break
+		p = p.substr(cut + 2)
+	return p
+
+
+func _bubble_tick() -> void:
+	var show := active and visitor.visible and _bubble_text.text != ""
+	_bubble.visible = show
+	if not show:
+		return
+	var cam := main.get_viewport().get_camera_3d()
+	var top: Vector3 = visitor.global_position + Vector3(0, 1.98, 0.05)
+	_bubble.global_position = top
+	if cam != null:
+		var to := cam.global_position - top
+		to.y = 0.0
+		if to.length() > 0.01:
+			_bubble.rotation = Vector3(0.0, atan2(to.x, to.z), 0.0)     # turns to face you, stays upright
 
 
 # ---- blinds: the light through the window slats, across the floor and up the right-hand wall
