@@ -2220,11 +2220,38 @@ func _walkable(x: float, z: float) -> bool:
 
 func _try_move(motion: Vector3) -> void:
 	var p := head.global_position
-	if _walkable(p.x + motion.x, p.z):
+	# something ended up on top of me (a seat appeared, a friend swung the recliner round): never lock me in,
+	# let me walk out of it
+	var stuck := not _walkable(p.x, p.z)
+	if _walkable(p.x + motion.x, p.z) or (stuck and _in_room(p.x + motion.x, p.z)):
 		origin.global_position.x += motion.x
 		p.x += motion.x
-	if _walkable(p.x, p.z + motion.z):
+	if _walkable(p.x, p.z + motion.z) or (stuck and _in_room(p.x, p.z + motion.z)):
 		origin.global_position.z += motion.z
+
+
+func _in_room(x: float, z: float) -> bool:
+	return x >= ROOM_X_MIN and x <= ROOM_HALF.x and z >= -ROOM_HALF.y and z <= FRONT_Z - 0.25
+
+
+# if I'm standing inside something, step to the nearest clear spot
+func _unstick() -> void:
+	if seated or head == null:
+		return
+	var p := head.global_position
+	if _walkable(p.x, p.z):
+		return
+	for ring in range(1, 25):                    # 5 cm rings out to 1.2 m
+		var r := ring * 0.05
+		var steps := 8 + ring * 2
+		for k in steps:
+			var a := TAU * k / steps
+			var x := p.x + cos(a) * r
+			var z := p.z + sin(a) * r
+			if _walkable(x, z):
+				origin.global_position.x += x - p.x
+				origin.global_position.z += z - p.z
+				return
 
 
 func _snap_turn(deg: float) -> void:
@@ -2428,6 +2455,7 @@ func _rec_net_tick(delta: float) -> void:
 	if absf(d) < 0.002:
 		recliner.rotation.y = _rec_target
 		_rec_target = NAN
+		_unstick()                                   # a friend swung it round onto me
 		return
 	recliner.rotation.y = lerp_angle(recliner.rotation.y, _rec_target, 1.0 - exp(-8.0 * delta))
 
@@ -2466,6 +2494,16 @@ func set_beanbag_count(n: int) -> void:
 			var sp: Vector2 = layout[i]
 			beanbags[i].position = Vector3(sp.x, 0.0, sp.y)
 			beanbags[i].rotation.y = atan2(-(screen.x - sp.x), -(screen.z - sp.y))     # local -z looks at the screen
+	# the seats moved: if I'm in one, I go with it (or stand up if it went away); if one landed on me, step off it
+	if seated and cur_seat >= 0 and cur_seat < seat_nodes.size() and seat_nodes[cur_seat] in beanbags:
+		var sn := seat_nodes[cur_seat]
+		if not sn.visible:
+			_toggle_sit()
+		else:
+			var hp := head.global_position
+			origin.global_position.x += sn.global_position.x - hp.x
+			origin.global_position.z += sn.global_position.z - hp.z
+	_unstick.call_deferred()
 
 
 # ---------------------------------------------------------------- door (front wall)
@@ -2827,6 +2865,7 @@ func _toggle_sit() -> void:
 		origin.global_position = stand_origin
 		seated = false
 		cur_seat = -1
+		_unstick()                                   # (where I stood up from may have filled up meanwhile)
 		if net_game != null:
 			net_game.report_seat(-1)
 		return
