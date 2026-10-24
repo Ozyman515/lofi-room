@@ -94,6 +94,8 @@ func _player(s: AudioStream, db: float) -> AudioStreamPlayer:
 func request_walk() -> void:
 	if active or main.egg_active or main.sleeping:
 		return
+	if main.gaboon != null and main.gaboon.active:
+		return                                            # one giant at a time
 	var ng = main.net_game
 	if ng != null and ng.net.is_online() and not ng.net.is_host():
 		ng.net.send_var(1, ng.Net.K_EVENT, {"k": "kaiju_on"})       # the host's window: ask the host
@@ -165,6 +167,11 @@ func _footfall() -> void:
 	_thump.volume_db = linear_to_db(near)
 	_thump.pitch_scale = _rng.randf_range(0.9, 1.05)
 	_thump.play()
+	jolt(near)
+
+
+# the window rattles, a screen jolts, lamps flicker and pads/controllers rumble (King Gaboon's steps use it too)
+func jolt(near: float) -> void:
 	_rattle.volume_db = linear_to_db(near * 0.35)
 	_rattle.play()
 	_shake = 0.06 * near
