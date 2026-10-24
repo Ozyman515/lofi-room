@@ -496,7 +496,7 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 				main.gaboon.request_walk()
 		"fight_on":
 			if main.fight != null:
-				main.fight.request_fight()
+				main.fight.request_fight(str(d.get("end", "")) if str(d.get("end", "")) in ["", "k", "g", "draw"] else "")
 		"noir_on":
 			if main.noir != null:
 				main.noir.on_guest_event(d)

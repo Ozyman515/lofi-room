@@ -111,17 +111,22 @@ func toy_played(which: String) -> bool:
 	return request_fight()
 
 
-func request_fight() -> bool:
+# force = "" for a random ending, or "k" (the T-Rex wins), "g" (King Gaboon wins), "draw" (the Debug window's buttons).
+# The choice rides in the seed's last two bits, so a shared room plays the same ending everywhere.
+const ENDINGS := ["", "k", "g", "draw"]
+
+
+func request_fight(force := "") -> bool:
 	if active or main.egg_active or main.sleeping:
 		return false
 	if (main.kaiju != null and main.kaiju.active) or (main.gaboon != null and main.gaboon.active):
 		return false
 	var ng = main.net_game
 	if ng != null and ng.net.is_online() and not ng.net.is_host():
-		ng.net.send_var(1, ng.Net.K_EVENT, {"k": "fight_on"})        # the host's city: ask the host
+		ng.net.send_var(1, ng.Net.K_EVENT, {"k": "fight_on", "end": force})        # the host's city: ask the host
 		return true
 	count += 1
-	fight_seed = randi() % 100000
+	fight_seed = (randi() % 25000) * 4 + maxi(0, ENDINGS.find(force))
 	start()
 	return true
 
@@ -214,6 +219,8 @@ func _plan() -> void:
 		used += mt
 	var r := _rng.randf()
 	winner = "k" if r < 0.43 else ("g" if r < 0.86 else "draw")
+	if fight_seed % 4 != 0:
+		winner = ENDINGS[fight_seed % 4]
 	_beats.append({"n": "circle", "d": 6.0})
 	match winner:
 		"k":

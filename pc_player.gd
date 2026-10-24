@@ -749,6 +749,19 @@ func _build_debug_window() -> void:
 		if _main.fight != null:
 			_main.fight.request_fight())
 	v.add_child(fb)
+	var fe := HBoxContainer.new()                  # ...or pick how it ends
+	fe.add_theme_constant_override("separation", 6)
+	for spec in [["T-Rex wins", "k"], ["King Gaboon wins", "g"], ["Draw (black kaiju + UFO fleet)", "draw"]]:
+		var eb := Button.new()
+		eb.text = spec[0]
+		eb.custom_minimum_size = Vector2(0, 38)
+		eb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var end_code: String = spec[1]
+		eb.pressed.connect(func() -> void:
+			if _main.fight != null:
+				_main.fight.request_fight(end_code))
+		fe.add_child(eb)
+	v.add_child(fe)
 	var ub := Button.new()
 	ub.text = "UFO: stop at the window now"
 	ub.custom_minimum_size = Vector2(0, 42)
