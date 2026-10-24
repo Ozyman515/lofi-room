@@ -69,6 +69,7 @@ var seat_eye: Array[float] = []
 var seat_swivel: Array[bool] = []
 var cur_seat := -1
 var tv_root: Node3D
+var tv_rating: Node3D             # thumbs up / down on the TV
 var lounge: Node3D                    # TV, console, controllers and carts live here (built in old wall coordinates, then turned into the corner)
 var console_root: Node3D
 var console_on := false
@@ -3050,6 +3051,11 @@ func _build_tv() -> void:
 	interactables.append({"node": vu, "half": Vector3(0.04, 0.03, 0.04),
 		"label": _tv_label.bind("vol_up"), "group": "tv",
 		"cb": vcr.volume_up, "hover": _glow_hover(vu_m)})
+	# thumbs up / down for the video that's on, between the speaker slits and the jacks
+	tv_rating = load("res://tv_rating.gd").new()
+	for it in tv_rating.build(self, root, Vector3(px, 0.2, fz + 0.01)):
+		it["egg_lock"] = true
+		interactables.append(it)
 	for lab in [["PWR", cy + 0.45, 0.0], ["VOL  -  +", cy + 0.035, 0.0], ["CH", cy + 0.34, 0.0]]:
 		var l3 := Label3D.new()
 		l3.text = lab[0]
