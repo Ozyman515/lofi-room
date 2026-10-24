@@ -2,8 +2,8 @@ extends Node
 ## Breaking news: while the T-Rex and King Gaboon fight (fight.gd), the TV cuts in with a live report. An
 ## old-school 1950s newsman stands on a rooftop with the fight going on behind him, chrome microphone in hand,
 ## and talks you through it; the broadcast cuts between him and the station's cameras on other rooftops.
-## Lower third: CH 3 NEWS, LIVE, what he's saying, and a ticker. His voice is a mumbling old-TV murmur on the
-## TV's sound (so speakers set to TV carry it too); his words are in the caption.
+## Lower third: CH 3 NEWS, LIVE, what he's saying, and a ticker. His words are in the caption (no fake voice);
+## the broadcast plays a news sting and a faint line hiss on the TV's sound (speakers set to TV carry it too).
 ## The picture is a small SubViewport looking at the same city (240 lines, like the CRT; the headset renders it
 ## at a lower rate). He and his rooftop are on visual layer 3, which only the news camera sees.
 ## The TV is borrowed only when it isn't busy with a game: a playing tape pauses and resumes afterwards, and a
@@ -36,7 +36,8 @@ var _T := 0.0
 var _frame := 0
 var _was_tv_on := true
 var _paused_tape := false
-var _murmur: AudioStreamPlayer
+var _hiss: AudioStreamPlayer
+var _sting: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
 var _end_t := -1.0
 var _look := 0.0                     # how far he has turned to look back at the fight
@@ -72,11 +73,17 @@ func _build() -> void:
 			(c as Camera3D).cull_mask &= ~LAYER
 	_build_reporter()
 	_build_overlay()
-	_murmur = AudioStreamPlayer.new()
-	_murmur.stream = _make_murmur()
-	_murmur.bus = "TV" if AudioServer.get_bus_index("TV") >= 0 else "Master"
-	_murmur.volume_db = -8.0
-	add_child(_murmur)
+	var bus := "TV" if AudioServer.get_bus_index("TV") >= 0 else "Master"
+	_hiss = AudioStreamPlayer.new()
+	_hiss.stream = _make_hiss()
+	_hiss.bus = bus
+	_hiss.volume_db = -26.0
+	add_child(_hiss)
+	_sting = AudioStreamPlayer.new()
+	_sting.stream = _make_sting()
+	_sting.bus = bus
+	_sting.volume_db = -6.0
+	add_child(_sting)
 
 
 # ---- the newsman: dark suit, white shirt, thin tie, slicked-back hair going grey at the temples, heavy brows,
@@ -251,6 +258,8 @@ func _start() -> void:
 	main.vcr._show_status("")
 	main.vcr._osd_show("BREAKING NEWS", 3.0)
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_sting.play()
+	_hiss.play()
 	_ticker.text = "  BREAKING: TWO GIANT MONSTERS CLASH DOWNTOWN  *  RESIDENTS URGED TO STAY INDOORS  *  BRIDGES CLOSED  *  NEWS CHOPPERS ON THE SCENE  *  STAY TUNED TO CH 3  *"
 	_cut("rep", 10.0)
 	_say("We interrupt this program for a special bulletin. I'm on a rooftop downtown, and something enormous is moving out there.", 7.0)
@@ -261,7 +270,7 @@ func _stop() -> void:
 	on_air = false
 	set_process(false)
 	_rep.visible = false
-	_murmur.stop()
+	_hiss.stop()
 	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	var tm: ShaderMaterial = main.tv_mat
 	var vt: Texture2D = main.vcr.current_frame_texture()
@@ -285,6 +294,7 @@ func _on_moment(kind: String) -> void:
 	if kind == "end":
 		_cut("rep", 99.0)
 		_say(_pick(LINES["signoff"]), 6.0)
+		_sting.play()
 		_end_t = _T + 7.0
 		return
 	if kind == "enter" or _T < 8.0:
@@ -307,8 +317,7 @@ func _say(text: String, _secs: float) -> void:
 	_line = text
 	_shown = 0.0
 	_speak = 0.4 + text.length() / 16.0
-	if not _murmur.playing:
-		_murmur.play(_rng.randf() * 4.0)
+
 
 
 func _cut(shot: String, hold: float) -> void:
@@ -346,8 +355,7 @@ func _process(delta: float) -> void:
 	_shown = minf(_shown + delta * 22.0, _line.length())
 	_caption.text = "\"" + _line.left(int(_shown)) + ("\"" if int(_shown) >= _line.length() else "")
 	_speak -= delta
-	if _speak <= 0.0 and _murmur.playing:
-		_murmur.stop()
+
 	_ticker.position.x -= delta * 40.0 * (_vp.size.x / 320.0)
 	if _ticker.position.x < -_ticker.size.x:
 		_ticker.position.x = _vp.size.x
@@ -439,42 +447,50 @@ const LINES := {
 }
 
 
-# an old TV voice: a muffled, pitched murmur in syllables (no real words; his words are in the caption)
-static func _make_murmur() -> AudioStreamWAV:
+# a faint broadcast line hiss, looping smoothly (soft filtered noise, no tones)
+static func _make_hiss() -> AudioStreamWAV:
 	var rate := 22050
-	var n := rate * 6
+	var n := rate * 2
 	var data := PackedByteArray()
 	data.resize(n * 2)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 77
-	var ph := 0.0
+	rng.seed = 12
 	var lp := 0.0
-	var bp := 0.0
-	var syl := 0.0
-	var syl_len := 0.18
-	var pitch := 115.0
 	for i in n:
-		var t := float(i) / rate
-		syl += 1.0 / rate
-		if syl > syl_len:
-			syl = 0.0
-			syl_len = rng.randf_range(0.09, 0.26)
-			pitch = rng.randf_range(100.0, 140.0)
-		var env := sin(PI * clampf(syl / syl_len, 0.0, 1.0))
-		if fmod(t, 2.3) > 2.05:
-			env *= 0.1                               # a breath now and then
-		ph += pitch / rate
-		var buzz := 2.0 * fmod(ph, 1.0) - 1.0
-		lp += (buzz - lp) * 0.18                     # muffled, like a small TV speaker
-		bp += (lp - bp) * 0.04
-		var s := (lp - bp) * env * 0.9
-		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 26000.0))
+		lp += (rng.randf_range(-1.0, 1.0) - lp) * 0.35
+		var edge := minf(1.0, minf(i, n - 1 - i) / 400.0)       # fades at the ends so the loop never clicks
+		data.encode_s16(i * 2, int(clampf(lp * 0.6 * (0.6 + 0.4 * edge), -1.0, 1.0) * 20000.0))
 	var w := AudioStreamWAV.new()
 	w.format = AudioStreamWAV.FORMAT_16_BITS
 	w.mix_rate = rate
 	w.data = data
 	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	w.loop_end = n
+	return w
+
+
+# the station's news sting: three bright, rising notes and a held chord, like an old bulletin intro
+static func _make_sting() -> AudioStreamWAV:
+	var rate := 22050
+	var n := int(2.4 * rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var notes := [[0.0, 523.25], [0.22, 659.25], [0.44, 783.99]]
+	for i in n:
+		var t := float(i) / rate
+		var s := 0.0
+		for nt in notes:
+			var dt: float = t - float(nt[0])
+			if dt >= 0.0:
+				var f: float = nt[1]
+				var env := minf(1.0, dt * 60.0) * exp(-dt * (1.2 if t > 0.44 else 4.0))
+				s += (sin(TAU * f * dt) + 0.3 * sin(TAU * f * 2.0 * dt) + 0.12 * sin(TAU * f * 3.0 * dt)) * env * 0.28
+		s *= 1.0 - smoothstep(1.9, 2.4, t)
+		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 26000.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.data = data
 	return w
 
 
