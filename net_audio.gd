@@ -24,6 +24,9 @@ var _tv_silent_t := 0.0
 var _tv_gen: AudioStreamGenerator
 var _tv_player: AudioStreamPlayer3D
 var _tv_pending: Array = []
+var _tv_primed := false                 # a little sound is queued up before playing starts (or restarts after a gap)
+var _tv_skips := 0
+const TV_PRIME := 5                     # packets (200 ms) to have in hand before starting
 var _mix_rate := 48000.0
 var _acc := PackedVector2Array()
 var _ratio := 2.0
@@ -200,6 +203,8 @@ func _stop_remote() -> void:
 func _ensure_tv_player() -> void:
 	if _tv_player != null:
 		return
+	_tv_primed = false
+	_tv_skips = 0
 	_tv_gen = AudioStreamGenerator.new()
 	_tv_gen.mix_rate = RATE
 	_tv_gen.buffer_length = 0.6
@@ -216,7 +221,19 @@ func _ensure_tv_player() -> void:
 func _play_tv() -> void:
 	if _tv_player != null:
 		var pb := _tv_player.get_stream_playback() as AudioStreamGeneratorPlayback
-		while pb != null and not _tv_pending.is_empty():
+		if pb == null:
+			return
+		# ran dry (a late packet): wait for a small cushion again instead of playing scraps with gaps between
+		var skips := pb.get_skips()
+		if skips != _tv_skips:
+			_tv_skips = skips
+			if _tv_pending.size() < 2:
+				_tv_primed = false
+		if not _tv_primed:
+			if _tv_pending.size() < TV_PRIME:
+				return
+			_tv_primed = true
+		while not _tv_pending.is_empty():
 			var fr: PackedVector2Array = _tv_pending[0]
 			if pb.get_frames_available() < fr.size():
 				break
@@ -251,7 +268,7 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 		return
 	if payload[0] == CH_TV:
 		_ensure_tv_player()
-		while _tv_pending.size() > 12:
+		while _tv_pending.size() > 16:
 			_tv_pending.pop_front()
 		_tv_pending.append(frames)
 		return

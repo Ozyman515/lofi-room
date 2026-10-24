@@ -138,6 +138,21 @@ func send_to(id: int, kind: int, payload: PackedByteArray, reliable := true) -> 
 	_mp.put_packet(b)
 
 
+# bytes still waiting to go out to a player (their data channels, or the server link when relayed). Pictures
+# check this and wait their turn when the line is busy, so sound never gets crowded out.
+func backlog(id: int) -> int:
+	if _relayed.has(id):
+		return _ws.get_current_outbound_buffered_amount() if _ws != null else 0
+	if _mp == null or not _mp.has_peer(id):
+		return 0
+	var total := 0
+	var info: Dictionary = _mp.get_peer(id)
+	for ch in info.get("channels", []):
+		if ch is WebRTCDataChannel:
+			total += (ch as WebRTCDataChannel).get_buffered_amount()
+	return total
+
+
 func broadcast(kind: int, payload: PackedByteArray, reliable := true) -> void:
 	if _mp == null:
 		return

@@ -9,10 +9,11 @@ const Net := preload("res://net_session.gd")
 
 const VIDEO_FPS := 30.0
 const TV_FPS := 12.0
-const TV_WIDTH := 640
+const TV_WIDTH := 512                   # (a lighter picture leaves room for the sound)
 var _last_tv := 0
 const JPEG_QUALITY := 0.6
 const MAX_VIDEO_BYTES := 48000          # stay under the data channel's message size
+const VIDEO_BACKLOG := 64 * 1024        # a picture waits while this much is still queued to that player (sound first)
 
 var net: Node
 var main: Node3D
@@ -191,7 +192,8 @@ func _on_frame(img: Image) -> void:
 	var pk := PackedByteArray([0])
 	pk.append_array(buf)
 	for id in net.peer_ids():
-		net.send_to(id, Net.K_VIDEO, pk, false)
+		if net.backlog(id) < VIDEO_BACKLOG:
+			net.send_to(id, Net.K_VIDEO, pk, false)
 
 
 # the host's tape: the TV picture goes out at a lower rate and size than a game
@@ -219,8 +221,9 @@ func _tv_video_tick() -> void:
 	pk.append_array(buf)
 	if net.is_host():
 		for id in net.peer_ids():
-			net.send_to(id, Net.K_VIDEO, pk, false)
-	else:
+			if net.backlog(id) < VIDEO_BACKLOG:
+				net.send_to(id, Net.K_VIDEO, pk, false)
+	elif net.backlog(1) < VIDEO_BACKLOG:
 		net.send_to(1, Net.K_VIDEO, pk, false)      # the host passes it on
 
 
@@ -355,7 +358,7 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 					if img != null:
 						main.vcr.remote_video_frame(img, tv_source_name())
 						for id in net.peer_ids():
-							if id != from:
+							if id != from and net.backlog(id) < VIDEO_BACKLOG:
 								net.send_to(id, Net.K_VIDEO, payload, false)
 			Net.K_INPUT:
 				if payload.size() >= 2 and from == p2_id:
