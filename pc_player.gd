@@ -735,6 +735,13 @@ func _build_debug_window() -> void:
 		if _main.kaiju != null:
 			_main.kaiju.request_walk())
 	v.add_child(kb)
+	var gb := Button.new()
+	gb.text = "King Gaboon: walk past and roar now"
+	gb.custom_minimum_size = Vector2(0, 42)
+	gb.pressed.connect(func() -> void:
+		if _main.gaboon != null:
+			_main.gaboon.request_walk())
+	v.add_child(gb)
 	var ub := Button.new()
 	ub.text = "UFO: stop at the window now"
 	ub.custom_minimum_size = Vector2(0, 42)
