@@ -1924,7 +1924,7 @@ func _process(delta: float) -> void:
 				if down and not _pad_stick_prev:
 					_put_pad()
 				_pad_stick_prev = down
-	_recliner_tick()
+	_recliner_tick(delta)
 	_update_lighting(delta)
 	_update_focus_anim(delta)
 	_update_pointer(delta)
@@ -2329,6 +2329,30 @@ func _on_recliner_turned(dy: float) -> void:
 		tw2.tween_property(desktop_cam, "rotation:y", desktop_cam.rotation.y + dy, 0.45).set_trans(Tween.TRANS_SINE)
 
 
+# the chair swivels round with you: turn your view (mouse, stick, snap turn or your head) and it turns too.
+# In a headset it lets you glance around a little first, so it isn't twitching with every look.
+const REC_FOLLOW_SLACK := 0.4          # radians of head turn before the chair comes round (headset only)
+var _rec_following := false
+
+func _recliner_follow(delta: float) -> void:
+	if recliner._turning:
+		return                                       # the arm buttons are already turning it (and you with it)
+	var fwd := -head.global_basis.z
+	fwd.y = 0.0
+	if fwd.length_squared() < 0.0001:
+		return                                       # looking straight up or down: no heading to follow
+	var yaw := atan2(-fwd.x, -fwd.z)
+	var diff := angle_difference(recliner.rotation.y, yaw)
+	if xr_active and not _rec_following:
+		if absf(diff) < REC_FOLLOW_SLACK:
+			return
+		_rec_following = true
+	if absf(diff) < 0.01:
+		_rec_following = false
+		return
+	recliner.rotation.y = lerp_angle(recliner.rotation.y, yaw, 1.0 - exp(-(6.0 if xr_active else 12.0) * delta))
+
+
 func _save_recliner() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SETTINGS_FILE)
@@ -2338,10 +2362,11 @@ func _save_recliner() -> void:
 
 
 # sitting down in it: face the way it faces; leaning back lowers you a little and tips the view up
-func _recliner_tick() -> void:
+func _recliner_tick(delta: float) -> void:
 	if recliner == null or not seated or cur_seat != recliner_seat:
 		_rec_view_k = 0.0
 		return
+	_recliner_follow(delta)
 	var k: float = recliner.recline_amount()
 	origin.global_position.y = _rec_base_y - 0.1 * k
 	if not xr_active:
@@ -2714,6 +2739,9 @@ func _nearest_seat() -> int:
 
 func _toggle_sit() -> void:
 	if seated:
+		if cur_seat == recliner_seat:
+			_save_recliner()                     # keep whichever way you swivelled it
+		_rec_following = false
 		origin.global_position = stand_origin
 		seated = false
 		cur_seat = -1
