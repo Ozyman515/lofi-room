@@ -51,6 +51,9 @@ var _my_idx_sent := -2
 var _my_mask_sent := -1
 var _running_seen := false
 var _rate := 44100.0
+var seats_held := {}                    # host side: player id -> the seat they're in (host included)
+var seats_seen := {}                    # everyone: id -> seat, from the host's state
+var _my_seat_sent := -2
 
 
 func setup(session: Node, m: Node3D, emulator: Node) -> void:
@@ -94,6 +97,9 @@ func _on_net_state() -> void:
 		pad_of_seen.clear()
 		sticks_seen.clear()
 		guest_mask.clear()
+		seats_held.clear()
+		seats_seen.clear()
+		_my_seat_sent = -2
 		_state_known.clear()
 		p2_id = 0
 		emu.set_remote_buttons(0)
@@ -103,6 +109,9 @@ func _on_net_state() -> void:
 func _on_roster() -> void:
 	if not net.is_host():
 		return
+	for sid in seats_held.keys():
+		if sid != 1 and not net.roster.has(sid):
+			seats_held.erase(sid)
 	for id in guest_pad.keys():
 		if not net.roster.has(id):
 			guest_pad.erase(id)
@@ -164,11 +173,20 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
 func _publish_state() -> void:
+	if main.seated:
+		if int(seats_held.get(1, -1)) != main.cur_seat:
+			for sid in seats_held.keys():            # sat down at the same moment as a guest: the host keeps it
+				if sid != 1 and int(seats_held[sid]) == main.cur_seat:
+					seats_held.erase(sid)
+					net.send_var(sid, Net.K_EVENT, {"k": "seat_no"})
+		seats_held[1] = main.cur_seat
+	else:
+		seats_held.erase(1)
 	var st := _current_state()
 	for id in net.peer_ids():
 		if _state_known.get(id, {}) != st:
@@ -323,9 +341,53 @@ func _on_buttons_out(mask: int) -> void:
 	net.send_to(1, Net.K_INPUT, b, true)
 
 
+# ---- one player per seat
+
+# somebody else is sitting in seat i
+func seat_taken(i: int) -> bool:
+	if net == null or not net.is_online():
+		return false
+	var held: Dictionary = seats_held if net.is_host() else seats_seen
+	for id in held:
+		if int(id) != net.my_id and int(held[id]) == i:
+			return true
+	return false
+
+
+# I sat down (i) or got up (-1)
+func report_seat(i: int) -> void:
+	if net == null or not net.is_online():
+		return
+	if net.is_host():
+		if i < 0:
+			seats_held.erase(1)
+		else:
+			seats_held[1] = i
+	else:
+		_my_seat_sent = i
+		net.send_var(1, Net.K_EVENT, {"k": "seat", "i": i})
+
+
+# host: a guest sat down or got up; two at once on the same seat: the first one keeps it
+func _host_seat(from: int, i: int) -> void:
+	if i < 0:
+		seats_held.erase(from)
+		return
+	for id in seats_held:
+		if int(id) != from and int(seats_held[id]) == i:
+			seats_held.erase(from)
+			net.send_var(from, Net.K_EVENT, {"k": "seat_no"})
+			return
+	seats_held[from] = clampi(i, 0, 63)
+
+
 func _send_pad_state() -> void:
 	if net.is_host():
 		return
+	var seat: int = main.cur_seat if main.seated else -1
+	if seat != _my_seat_sent:
+		_my_seat_sent = seat
+		net.send_var(1, Net.K_EVENT, {"k": "seat", "i": seat})
 	var held: bool = main.game_mode
 	var arc: bool = held and main.held_pad_idx < 0
 	var idx: int = main.held_pad_idx if held else -1
@@ -391,6 +453,10 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 						_poster_parts.clear()
 						if main.poster != null:
 							main.poster.clear_remote()
+					"seat_no":
+						if main.seated:
+							main._toggle_sit()
+							main.updater.show_toast("Somebody just sat there.", 3.0)
 					"tv_voted":
 						if main.tv_rating != null:
 							main.tv_rating.on_voted(d)
@@ -515,6 +581,8 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 							net.send_var(id, Net.K_EVENT, d)
 		"rec":
 			main.recliner_from_guest(d)
+		"seat":
+			_host_seat(from, int(d.get("i", -1)))
 		"tv_tape", "tv_vote":
 			if main.tv_rating != null:
 				main.tv_rating.on_guest_event(from, d)
@@ -541,6 +609,8 @@ func _apply_state(d: Dictionary) -> void:
 	if main.tv_rating != null:
 		main.tv_rating.apply_state(d.get("tv_rate", []))
 	main.recliner_from_host(d.get("rec", []))
+	var se = d.get("seats", {})
+	seats_seen = se if se is Dictionary else {}
 	main.net_apply_game(d)
 	if not bool(d.get("run", false)):
 		emu.remote_stopped()

@@ -2809,6 +2809,8 @@ func _nearest_seat() -> int:
 			continue
 		if i == recliner_seat and noir != null and noir.visitor != null and noir.visitor.visible:
 			continue                                   # somebody's in it
+		if net_game != null and net_game.seat_taken(i):
+			continue                                   # another player is sitting there
 		var sp := seat_nodes[i].global_position
 		var dist := Vector2(p.x, p.z).distance_to(Vector2(sp.x, sp.z))
 		if dist < best_d:
@@ -2825,6 +2827,8 @@ func _toggle_sit() -> void:
 		origin.global_position = stand_origin
 		seated = false
 		cur_seat = -1
+		if net_game != null:
+			net_game.report_seat(-1)
 		return
 	var idx := _nearest_seat()
 	if idx < 0:
@@ -2838,6 +2842,8 @@ func _toggle_sit() -> void:
 	origin.global_position.y = clampf(seat_eye[idx] - head.position.y, -1.0, 0.2)
 	seated = true
 	cur_seat = idx
+	if net_game != null:
+		net_game.report_seat(idx)
 	if idx == recliner_seat:
 		_rec_base_y = origin.global_position.y
 		_rec_view_k = 0.0
