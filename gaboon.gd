@@ -83,7 +83,7 @@ static func _parts(g: Node3D) -> Dictionary:
 func request_walk() -> void:
 	if active or main.egg_active or main.sleeping:
 		return
-	if main.kaiju != null and main.kaiju.active:
+	if (main.kaiju != null and main.kaiju.active) or (main.fight != null and main.fight.active):
 		return                                            # one giant at a time
 	var ng = main.net_game
 	if ng != null and ng.net.is_online() and not ng.net.is_host():
@@ -250,6 +250,8 @@ func pick_up_toy() -> void:
 		return
 	_toy_t = 0.0
 	_toy_plays += 1
+	if main.fight != null and main.fight.toy_played("gaboon"):
+		_toy_plays = 0                                    # the T-Rex was played with too: they fight instead
 
 
 func _toy_process(delta: float) -> void:

@@ -163,7 +163,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -494,6 +494,9 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 		"gaboon_on":
 			if main.gaboon != null:
 				main.gaboon.request_walk()
+		"fight_on":
+			if main.fight != null:
+				main.fight.request_fight()
 		"noir_on":
 			if main.noir != null:
 				main.noir.on_guest_event(d)

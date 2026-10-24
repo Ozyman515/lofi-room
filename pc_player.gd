@@ -742,6 +742,13 @@ func _build_debug_window() -> void:
 		if _main.gaboon != null:
 			_main.gaboon.request_walk())
 	v.add_child(gb)
+	var fb := Button.new()
+	fb.text = "Kaiju vs King Gaboon: fight now"
+	fb.custom_minimum_size = Vector2(0, 42)
+	fb.pressed.connect(func() -> void:
+		if _main.fight != null:
+			_main.fight.request_fight())
+	v.add_child(fb)
 	var ub := Button.new()
 	ub.text = "UFO: stop at the window now"
 	ub.custom_minimum_size = Vector2(0, 42)

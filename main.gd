@@ -83,6 +83,7 @@ var noir: Node3D                       # noir.gd: Noir Night (an easter egg)
 var ufo: Node3D                        # ufo.gd: a saucer stops at the window and an alien looks in (an easter egg)
 var kaiju: Node3D                      # kaiju.gd: a giant monster walks past the window (an easter egg)
 var gaboon: Node3D                     # gaboon.gd: King Gaboon, the owner's giant ape, walks past and roars (figure on the bookshelf)
+var fight: Node3D                      # fight.gd: the T-Rex and King Gaboon fight out past the rooftops, helicopters circling
 var keyboard_node: Node3D              # the desk's keyboard and mug (Noir Night swaps in a typewriter and a whiskey)
 var mug_node: Node3D
 var cats: Node3D                       # cats.gd: the tuxedo (shake the treats) and the calico (drops by now and then)
@@ -363,6 +364,8 @@ func net_apply_game(d: Dictionary) -> void:
 		kaiju.apply_remote(int(d.get("kaiju", 0)))
 	if gaboon != null and d.has("gaboon"):
 		gaboon.apply_remote(int(d.get("gaboon", 0)))
+	if fight != null and d.has("fight"):
+		fight.apply_remote(int(d.get("fight", 0)))
 	if noir != null and d.has("noir"):
 		noir.apply_remote(bool(d.get("noir", false)))
 	var cd = d.get("cats", null)
@@ -1747,6 +1750,10 @@ func _build_weather() -> void:
 	gaboon.name = "KingGaboon"
 	add_child(gaboon)
 	gaboon.setup(self)
+	fight = load("res://fight.gd").new()
+	fight.name = "KaijuFight"
+	add_child(fight)
+	fight.setup(self)
 	noir = load("res://noir.gd").new()
 	noir.name = "NoirNight"
 	add_child(noir)

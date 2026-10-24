@@ -3,8 +3,9 @@ extends Node3D
 ## window. Every footfall is a deep thump: the view jolts (on a screen; in a headset the controllers rumble
 ## instead, since shaking someone's view in VR makes them sick), the window rattles and the lamps flicker.
 ## Halfway across it stops, turns its head and looks in at you with a low rumble, then walks on.
-## It comes when you play with the little toy of it on the nightstand ten times (or from the Debug window). In a
-## shared room the host's kaiju walks past everybody's window.
+## It comes when you play with the little toy of it on the bookshelf ten times (or from the Debug window). Play
+## with it and the King Gaboon figure beside it one after the other and the two fight out in the city (fight.gd).
+## In a shared room the host's kaiju walks past everybody's window.
 
 const Model := preload("res://kaiju_model.gd")
 
@@ -17,8 +18,8 @@ const STEP_TIME := 1.6               # seconds per footfall: slow and heavy
 const STRIDE := 2.6                  # how far it moves each step (city units)
 const PEEK_X := -1.5 - HEAD_X        # where it stops, head in the middle of the window, to look in
 const PEEK_TIME := 4.5
-const TOY_POS := Vector3(-0.63, 0.46, -1.57)   # on the nightstand, by the lamp (the drawer below holds the secret cart)
-const TOY_SCALE := 0.15
+const TOY_POS := Vector3(2.32, 2.215, 0.38)    # on top of the bookshelf, a collectable beside King Gaboon's figure
+const TOY_SCALE := 0.2                 # the same size as King Gaboon's figure beside it
 
 var main: Node3D
 var active := false
@@ -94,7 +95,7 @@ func _player(s: AudioStream, db: float) -> AudioStreamPlayer:
 func request_walk() -> void:
 	if active or main.egg_active or main.sleeping:
 		return
-	if main.gaboon != null and main.gaboon.active:
+	if (main.gaboon != null and main.gaboon.active) or (main.fight != null and main.fight.active):
 		return                                            # one giant at a time
 	var ng = main.net_game
 	if ng != null and ng.net.is_online() and not ng.net.is_host():
@@ -216,7 +217,7 @@ func _flicker(delta: float) -> void:
 		(l as OmniLight3D).light_energy = _light_base[l] * (0.35 if _rng.randf() < 0.5 else 1.0)
 
 
-# ---- the toy on the nightstand: pick it up, give it a stomp, and the real one comes
+# ---- the toy on the bookshelf: give it a stomp, and the real one comes
 
 var _toy: Node3D
 var _toy_plays := 0
@@ -228,7 +229,7 @@ func _build_toy() -> void:
 	_toy = Model.build(true)                     # the lighter toy version
 	_toy.scale = Vector3.ONE * TOY_SCALE
 	_toy.position = TOY_POS
-	_toy.rotation.y = -PI * 0.62                 # facing out into the room, looking a little toward the bed
+	_toy.rotation.y = PI + 0.3                   # facing out into the room, turned a little toward King Gaboon
 	main.room.add_child(_toy)
 	var stand := MeshInstance3D.new()            # a little round display base
 	var cm := CylinderMesh.new()
@@ -255,6 +256,7 @@ func play_with_toy() -> void:
 		return
 	_toy_busy = true
 	_toy_plays += 1
+	var fight_on: bool = main.fight != null and main.fight.toy_played("kaiju")
 	# a little stomp-stomp on the nightstand; the tenth time, something out there answers
 	var tw := create_tween()
 	for i in 2:
@@ -265,6 +267,9 @@ func play_with_toy() -> void:
 	tw.tween_property(_toy, "rotation:z", 0.0, 0.15)
 	await tw.finished
 	_toy_busy = false
+	if fight_on:
+		_toy_plays = 0
+		return
 	if _toy_plays < TOY_PLAYS:
 		return
 	_toy_plays = 0
