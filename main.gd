@@ -1856,6 +1856,7 @@ func _setup_player() -> void:
 		dot.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 		hud.add_child(dot)
 		print("OpenXR not available - desktop mode (click to look, WASD to move, Esc to release mouse).")
+		_apply_fullscreen_setting()
 
 
 # True while the TV is really showing a video or a running game and the view is pointed at the glass.
@@ -2138,6 +2139,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_Q:
 			if not egg_active and not game_mode:
 				vcr.cycle_aspect()
+		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
+			set_fullscreen(not fullscreen)
 		elif event.keycode == KEY_ESCAPE:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		return
@@ -4183,9 +4186,41 @@ func _apply_reticle() -> void:
 		reticle.dot_color = RETICLE_COLORS[reticle_color_idx][1]
 
 
+# ---- fullscreen on a screen (F11 or Alt+Enter, or the PC's Settings); on by default, remembered
+
+var fullscreen := true
+
+
+func _apply_fullscreen_setting() -> void:
+	if get_tree().get_script() != null:
+		return                                   # (test scripts keep their own window size)
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_FILE) == OK:
+		fullscreen = bool(cfg.get_value("settings", "fullscreen", true))
+	_set_window(fullscreen)
+
+
+func set_fullscreen(on: bool) -> void:
+	fullscreen = on
+	_set_window(on)
+	_save_settings()
+	settings_changed.emit()
+
+
+func _set_window(on: bool) -> void:
+	if xr_active or Plat.is_android() or DisplayServer.get_name() == "headless":
+		return
+	var cur := DisplayServer.window_get_mode()
+	if on and cur != DisplayServer.WINDOW_MODE_FULLSCREEN and cur != DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)      # borderless: no title bar, no taskbar
+	elif not on and cur != DisplayServer.WINDOW_MODE_WINDOWED and cur != DisplayServer.WINDOW_MODE_MAXIMIZED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
+
+
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SETTINGS_FILE)
+	cfg.set_value("settings", "fullscreen", fullscreen)
 	cfg.set_value("settings", "reticle_on", reticle_on)
 	cfg.set_value("settings", "reticle_color", reticle_color_idx)
 	cfg.set_value("settings", "weather_start", weather_start)

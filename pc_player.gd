@@ -35,6 +35,7 @@ var _st_weather_btn: Button
 var _st_resume_btn: Button
 var _st_cart_btn: Button
 var _st_reticle_btn: Button
+var _st_full_btn: Button
 var _st_color_btns: Array[Button] = []
 var _ct_window: PanelContainer
 var _dbg_window: PanelContainer
@@ -448,6 +449,11 @@ func _build_settings_window() -> void:
 	close.text = " x "
 	close.pressed.connect(_toggle_settings)
 	head.add_child(close)
+	_st_full_btn = Button.new()
+	_st_full_btn.tooltip_text = "F11 or Alt+Enter does the same"
+	_st_full_btn.pressed.connect(func() -> void: _main.set_fullscreen(not _main.fullscreen))
+	head.add_child(_st_full_btn)
+	head.move_child(_st_full_btn, 1)
 	_st_reticle_btn = Button.new()
 	_st_reticle_btn.custom_minimum_size = Vector2(0, 42)
 	_st_reticle_btn.pressed.connect(func() -> void: _main.set_reticle_on(not _main.reticle_on))
@@ -865,6 +871,8 @@ func _st_refresh() -> void:
 	if _st_reticle_btn == null:
 		return
 	_st_reticle_btn.text = "Aiming dot:  %s" % ("ON" if _main.reticle_on else "OFF")
+	if _st_full_btn != null:
+		_st_full_btn.text = "  Fullscreen: %s (F11)  " % ("ON" if _main.fullscreen else "OFF")
 	if _st_resume_btn != null:
 		_st_resume_btn.text = "Games keep your place:  " + ("ON" if _main.emu.resume_games else "OFF")
 	if _st_cart_btn != null:
