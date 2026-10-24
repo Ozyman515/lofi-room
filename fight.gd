@@ -29,6 +29,8 @@ const CONTACT := 0.42                # how close (in S) their middles get when t
 const PAIR_WINDOW := 20.0            # seconds between playing with the two figures
 const HELIS := 5
 
+signal moment(kind: String)          # "start", each beat's name as it begins, "end" (news.gd reports on these)
+
 var main: Node3D
 var active := false
 var count := 0
@@ -60,6 +62,7 @@ var _g0 := 0.0
 var _kph := 0.0
 var _gph := 0.0
 var K := {}                          # this frame's pose for the T-Rex
+var B := {}                          # ... for the black kaiju (only in a draw)
 var G := {}                          # ... and for King Gaboon
 
 # effects
@@ -146,6 +149,7 @@ func start() -> void:
 	_gh.rotation.y = PI
 	_kt.rotation = Vector3.ZERO
 	_gt.rotation = Vector3.ZERO
+	_hide_fleet()
 	_over_k(0.0)
 	_over_g(0.0)
 	for i in _helis.size():
@@ -156,6 +160,8 @@ func start() -> void:
 		main.updater.show_toast("The whole city is shaking... look out the window.", 6.0)
 	_kroar.volume_db = -14.0
 	_kroar.play()
+	moment.emit("start")
+	moment.emit("enter")
 
 
 func _end() -> void:
@@ -180,7 +186,9 @@ func _end() -> void:
 	for p in _puffs:
 		(p[0] as Node3D).visible = false
 	_ice_mat.emission_energy_multiplier = _ice_glow_base
+	_hide_fleet()
 	set_process(false)
+	moment.emit("end")
 
 
 # ---- the fight, planned from its seed
@@ -213,7 +221,9 @@ func _plan() -> void:
 		"g":
 			_beats.append_array([{"n": "fireball", "d": 9.0}, {"n": "k_retreat", "d": 24.0}, {"n": "g_victory", "d": 8.0}, {"n": "g_exit", "d": 30.0}])
 		_:
-			_beats.append_array([{"n": "close", "d": 3.0}, {"n": "clash", "d": 7.0}, {"n": "both_exit", "d": 30.0}])
+			# a draw: the black kaiju turns up, then a fleet of saucers swarms in and carries all three away
+			_beats.append_array([{"n": "close", "d": 3.0}, {"n": "clash", "d": 7.0}, {"n": "bk_arrive", "d": 24.0}, {"n": "bk_roar", "d": 9.0},
+				{"n": "ufo_swarm", "d": 34.0}, {"n": "abduct", "d": 32.0}, {"n": "fleet_leaves", "d": 14.0}])
 
 
 func _move_time(mv: String) -> float:
@@ -243,6 +253,9 @@ func _process(delta: float) -> void:
 	_beat(str(b["n"]), _bt, was, float(b["d"]), delta)
 	_apply_k()
 	_apply_g()
+	if _bh != null and _bh.visible:
+		_rex(_bp, _bh, _bkt, B, _bph, bx, bz)
+	_fleet_tick(delta)
 	_helis_tick(delta)
 	_fx_tick(delta)
 	_sounds_tick()
@@ -253,6 +266,8 @@ func _process(delta: float) -> void:
 		_g0 = gx
 		if _bi >= _beats.size():
 			_end()
+		elif str(_beats[_bi]["n"]) != "close":
+			moment.emit(str(_beats[_bi]["n"]))
 
 
 static func _at(t: float, was: float, mark: float) -> bool:
@@ -470,6 +485,84 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 			G["roar"] = _pulse(t, 4.7, 5.2, 6.4, 7.0)
 			if _at(t, was, 4.6):
 				_play(_kroar, -3.0, 1.0)
+		"bk_arrive":
+			# the ground shakes harder: the black kaiju rises over the skyline behind them and walks in
+			if t < delta * 1.5:
+				_show_bk()
+			var u := _rise(t, 0.0, d - 2.0)
+			bz = lerpf(BK_FROM_Z, BK_TO_Z, u)
+			B["yaw"] = -PI / 2.0
+			_walk_bk(delta, 1.0 - _rise(t, d - 2.5, d - 1.0))
+			if _at(t, was, 0.5):
+				_play(_kroar, -10.0, 0.6)
+			K["yaw"] = _face(kx, Z, bx, bz) * _rise(t, 8.0, 11.0)
+			G["yaw"] = lerp_angle(PI, _face(gx, Z, bx, bz), _rise(t, 9.0, 12.0))
+			K["roar"] = 0.4 * _pulse(t, 12.0, 12.6, 14.0, 14.8)
+			G["rear"] = 1.0
+		"bk_roar":
+			B["roar"] = _pulse(t, 0.3, 1.0, 4.5, 5.5)
+			B["arms"] = 0.6 * B["roar"]
+			_bk_glow(1.0 + 3.0 * B["roar"])
+			if _at(t, was, 0.4):
+				_play(_kroar, 2.0, 0.55)
+				_jolt_later(0.3, 0.8)
+			K["yaw"] = _face(kx, Z, bx, bz)
+			G["yaw"] = _face(gx, Z, bx, bz)
+			K["roar"] = _pulse(t, 5.2, 5.7, 7.0, 7.6)
+			G["roar"] = _pulse(t, 5.6, 6.0, 7.4, 8.0)
+			G["beat"] = _pulse(t, 5.0, 5.2, 5.6, 5.8)
+			if _at(t, was, 5.3):
+				_play(_groar, -2.0, 0.95)
+			_walk_bk(delta, 0.0)
+		"ufo_swarm":
+			# lights in the clouds, then saucers everywhere, circling; the three look up and roar at them
+			if t < delta * 1.5:
+				_show_fleet()
+			_fleet_t = t
+			var up := _rise(t, 6.0, 9.0)
+			K["yaw"] = _face(kx, Z, bx, bz)
+			G["yaw"] = _face(gx, Z, bx, bz)
+			K["roar"] = up * (0.5 + 0.5 * _pulse(fmod(t, 7.0), 1.0, 1.5, 3.0, 3.6))
+			B["roar"] = up * (0.5 + 0.5 * _pulse(fmod(t + 3.0, 7.0), 1.0, 1.5, 3.0, 3.6))
+			G["roar"] = up * _pulse(fmod(t + 5.0, 7.0), 1.0, 1.5, 3.0, 3.6)
+			K["arms"] = 0.8 * up
+			B["arms"] = 0.8 * up
+			G["grab"] = 0.6 * up
+			if int(was / 7.0) != int(t / 7.0) and t > 6.0:
+				_play([_kroar, _groar][int(t / 7.0) % 2], -3.0, 0.9)
+			_walk_bk(delta, 0.0)
+		"abduct":
+			# tractor beams lock on and lift all three into the sky, kicking and roaring
+			_fleet_t = 34.0 + t
+			var lift := _rise(t, 3.0, d) * 2.4 * S
+			K["lift"] = lift
+			G["lift"] = lift * 1.05
+			B["lift"] = lift * 0.95
+			K["flail"] = _rise(t, 3.0, 6.0)
+			B["flail"] = _rise(t, 3.0, 6.0)
+			G["grab"] = 0.5 + 0.5 * sin(t * 4.0)
+			G["rear"] = 1.0
+			K["roar"] = _pulse(fmod(t, 6.0), 0.5, 1.0, 2.5, 3.2) * _rise(t, 3.0, 4.0)
+			B["roar"] = _pulse(fmod(t + 2.0, 6.0), 0.5, 1.0, 2.5, 3.2) * _rise(t, 3.0, 4.0)
+			G["roar"] = _pulse(fmod(t + 4.0, 6.0), 0.5, 1.0, 2.5, 3.2) * _rise(t, 3.0, 4.0)
+			K["yaw"] = _face(kx, Z, bx, bz) + 0.4 * sin(t * 0.3)
+			G["yaw"] = _face(gx, Z, bx, bz) - 0.4 * sin(t * 0.3)
+			B["yaw"] = -PI / 2.0 + 0.5 * sin(t * 0.25)
+			if _at(t, was, 2.5):
+				_play(_zap, -6.0, 0.5)
+			if int(was / 6.0) != int(t / 6.0):
+				_play([_kroar, _groar, _kroar][int(t / 6.0) % 3], -6.0, 1.1)
+		"fleet_leaves":
+			# up into the clouds and gone
+			_fleet_t = 66.0 + t
+			var lift := 2.4 * S + t * t * 2.0
+			K["lift"] = lift
+			G["lift"] = lift
+			B["lift"] = lift
+			K["flail"] = 0.5
+			B["flail"] = 0.5
+			K["yaw"] = _face(kx, Z, bx, bz)
+			G["yaw"] = _face(gx, Z, bx, bz)
 		"both_exit":
 			K["yaw"] = PI
 			G["yaw"] = 0.0
@@ -479,6 +572,138 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 			_walk(delta, 1.0, 1.0, 1.75, 1.3)
 			if t > 26.0:
 				_bt = d
+
+
+# ---- the black kaiju (only in a draw)
+
+const BK_SCALE := 1.15               # a little bigger than the other two
+const BK_FROM_Z := -150.0
+const BK_TO_Z := -86.0
+var _bh: Node3D
+var _bkt: Node3D
+var _bp := {}
+var _bk_glows: Array[StandardMaterial3D] = []
+var _bk_glow_base: Array[float] = []
+var bx := CX
+var bz := BK_FROM_Z
+var _bph := 0.0
+
+
+func _show_bk() -> void:
+	if _bh == null:
+		_bh = Node3D.new()
+		_bh.name = "FightBlackKaiju"
+		main.room.add_child(_bh)
+		_bkt = Node3D.new()
+		_bh.add_child(_bkt)
+		var m: Node3D = load("res://black_kaiju_model.gd").build()
+		m.scale = Vector3.ONE * S * BK_SCALE
+		_bkt.add_child(m)
+		var body: Node3D = m.get_node("Body")
+		_bp = {"body": body, "head": body.get_node("Head"), "jaw": body.get_node("Head/Jaw"),
+			"legs": [body.get_node("LegL"), body.get_node("LegR")], "knees": [body.get_node("LegL/Knee"), body.get_node("LegR/Knee")],
+			"arms": [body.get_node("ArmL"), body.get_node("ArmR")]}
+		for mi in m.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).layers = 1 | 2                 # the fight's own lights reach it
+			var mat := (mi as MeshInstance3D).material_override as StandardMaterial3D
+			if mat != null and mat.emission_enabled and not _bk_glows.has(mat):
+				_bk_glows.append(mat)
+				_bk_glow_base.append(mat.emission_energy_multiplier)
+	bx = CX
+	bz = BK_FROM_Z
+	_bh.visible = true
+
+
+func _bk_glow(k: float) -> void:
+	for i in _bk_glows.size():
+		_bk_glows[i].emission_energy_multiplier = _bk_glow_base[i] * k
+
+
+func _walk_bk(delta: float, amt: float) -> void:
+	if amt <= 0.0:
+		return
+	var before := int(_bph / PI)
+	_bph += delta * PI / 2.0
+	B["walk"] = amt
+	if int(_bph / PI) != before:
+		_later.append([_T + 0.35, _thump, 0.65, linear_to_db(0.7)])
+		_jolt_later(0.4, 0.5)
+
+
+# the yaw that turns a monster (facing +x) at (x, z) toward (tx, tz)
+static func _face(x: float, z: float, tx: float, tz: float) -> float:
+	return atan2(-(tz - z), tx - x)
+
+
+# ---- the saucer fleet (only in a draw)
+
+const FLEET := 14
+const UFO_SIZE := 20.0
+var _fleet: Array = []
+var _fleet_t := 0.0
+
+
+func _show_fleet() -> void:
+	if _fleet.is_empty():
+		var UM := preload("res://ufo_model.gd")
+		for i in FLEET:
+			var u: Node3D = UM.build()
+			u.scale = Vector3.ONE * UFO_SIZE * (1.0 if i >= 3 else 1.4)      # three big ones do the lifting
+			for l in u.find_children("*", "OmniLight3D", true, false):
+				l.queue_free()                                  # a light each would be too many; they glow anyway
+			main.room.add_child(u)
+			_fleet.append({"node": u, "beam": u.get_node("Beam"), "a": TAU * i / FLEET, "r": 60.0 + 25.0 * (i % 4),
+				"h": 62.0 + 12.0 * (i % 3), "w": 0.25 + 0.04 * (i % 5)})
+	for f in _fleet:
+		(f["node"] as Node3D).visible = true
+		(f["beam"] as Node3D).visible = false
+	_fleet_t = 0.0
+
+
+func _fleet_tick(_delta: float) -> void:
+	if _fleet.is_empty() or not (_fleet[0]["node"] as Node3D).visible:
+		return
+	var UM := preload("res://ufo_model.gd")
+	var t := _fleet_t
+	var targets := [Vector3(kx, 0, Z), Vector3(gx, 0, Z), Vector3(bx, 0, bz)]
+	var lifts := [float(K.get("lift", 0.0)), float(G.get("lift", 0.0)), float(B.get("lift", 0.0))]
+	for i in _fleet.size():
+		var f: Dictionary = _fleet[i]
+		var u: Node3D = f["node"]
+		var arrive := smoothstep(0.0, 8.0, t - i * 0.5)
+		var pos: Vector3
+		if i < 3 and t > 30.0:
+			# the three lifters take station over a monster each, beams down
+			var tg: Vector3 = targets[i]
+			var over := Vector3(tg.x, GROUND + float(lifts[i]) + 1.45 * S, tg.z)
+			var hold := smoothstep(30.0, 34.0, t)
+			var a: float = float(f["a"]) + float(f["w"]) * t
+			var circling := Vector3(CX + cos(a) * float(f["r"]), float(f["h"]), Z - 10.0 + sin(a) * float(f["r"]) * 0.35)
+			pos = circling.lerp(over, hold)
+			var beam: Node3D = f["beam"]
+			beam.visible = hold > 0.6
+			if beam.visible:
+				var reach := (pos.y - (GROUND + float(lifts[i]) + 0.2 * S)) / u.scale.x
+				beam.scale = Vector3(2.2, reach / 1.4, 2.2)
+				beam.position = Vector3(0, -reach * 0.5, 0)
+		else:
+			var a: float = float(f["a"]) + float(f["w"]) * t
+			pos = Vector3(CX + cos(a) * float(f["r"]), float(f["h"]) + 6.0 * sin(t * 0.8 + i), Z - 10.0 + sin(a) * float(f["r"]) * 0.35)
+		pos.y += (1.0 - arrive) * 220.0                    # they drop out of the clouds
+		if t > 66.0:
+			pos.y += (t - 66.0) * (t - 66.0) * 2.0           # and leave the same way
+		u.global_position = pos
+		u.rotation.y = t * 0.7
+		u.rotation.z = 0.12 * sin(t * 0.5 + i)
+		UM.animate_lights(u, _T + i)
+
+
+func _hide_fleet() -> void:
+	for f in _fleet:
+		(f["node"] as Node3D).visible = false
+	if _bh != null:
+		_bh.visible = false
+		_bk_glow(1.0)
 
 
 func _fall_k(t: float, hit: float, up: float, done: float) -> void:
@@ -579,29 +804,36 @@ func _fireball_attack(t: float, was: float, d: float) -> void:
 # ---- poses
 
 func _reset_pose() -> void:
+	B = {"walk": 0.0, "roar": 0.0, "lunge": 0.0, "bite": 0.0, "snap": 0.0, "arms": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": -PI / 2.0}
 	K = {"walk": 0.0, "roar": 0.0, "lunge": 0.0, "bite": 0.0, "snap": 0.0, "arms": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": 0.0}
 	G = {"walk": 0.0, "rear": 1.0, "beat": 0.0, "roar": 0.0, "grab": 0.0, "punch_r": 0.0, "punch_l": 0.0, "recoil": 0.0,
 		"snap": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": PI}
 
 
 func _apply_k() -> void:
-	var s := sin(_kph) * float(K["walk"])
-	var lunge: float = K["lunge"]
-	var roar: float = K["roar"]
-	(_kp["body"] as Node3D).rotation = Vector3(0.05 * s, 0.0, 0.04 * sin(_kph * 2.0) * float(K["walk"]) + 0.12 * roar - 0.35 * lunge)
+	_rex(_kp, _kh, _kt, K, _kph, kx, Z)
+
+
+# the T-Rex and the black kaiju share a body plan: faces +x, legs and arms swing about z, Head > Jaw
+func _rex(parts: Dictionary, holder: Node3D, tilt: Node3D, P: Dictionary, ph: float, x: float, z: float) -> void:
+	var s := sin(ph) * float(P["walk"])
+	var lunge: float = P["lunge"]
+	var roar: float = P["roar"]
+	(parts["body"] as Node3D).rotation = Vector3(0.05 * s, 0.0, 0.04 * sin(ph * 2.0) * float(P["walk"]) + 0.12 * roar - 0.35 * lunge)
 	for i in 2:
 		var side := 1.0 if i == 0 else -1.0
 		var sw := s * side
-		(_kp["legs"][i] as Node3D).rotation.z = -0.38 * sw + lunge * (0.25 if i == 0 else -0.15)
-		(_kp["knees"][i] as Node3D).rotation.z = 0.45 * maxf(0.0, sw) + 0.2 * lunge
-		(_kp["arms"][i] as Node3D).rotation.z = 0.2 * sw + 0.9 * float(K["arms"]) + 0.4 * lunge
-	(_kp["head"] as Node3D).rotation = Vector3(0.0, 0.5 * float(K["snap"]), 0.42 * roar - 0.2 * lunge + 0.04 * sin(_T * 0.7))
-	var open := maxf(roar, float(K["bite"]))
-	(_kp["jaw"] as Node3D).rotation.z = -0.5 * open - 0.04 * open * sin(_T * 30.0)
-	_kt.rotation.z = K["tilt"]
-	var bob := -absf(cos(_kph)) * 0.012 * S * float(K["walk"])
-	_kh.position = Vector3(kx, GROUND - float(K["sink"]) * S + bob, Z)
-	_kh.rotation.y = K["yaw"]
+		var flail := float(P.get("flail", 0.0)) * sin(_T * 5.0 + i * 2.0)
+		(parts["legs"][i] as Node3D).rotation.z = -0.38 * sw + lunge * (0.25 if i == 0 else -0.15) + 0.3 * flail
+		(parts["knees"][i] as Node3D).rotation.z = 0.45 * maxf(0.0, sw) + 0.2 * lunge + 0.3 * absf(flail)
+		(parts["arms"][i] as Node3D).rotation.z = 0.2 * sw + 0.9 * float(P["arms"]) + 0.4 * lunge + 0.8 * flail
+	(parts["head"] as Node3D).rotation = Vector3(0.0, 0.5 * float(P["snap"]), 0.42 * roar - 0.2 * lunge + 0.04 * sin(_T * 0.7))
+	var open := maxf(roar, float(P["bite"]))
+	(parts["jaw"] as Node3D).rotation.z = -0.5 * open - 0.04 * open * sin(_T * 30.0)
+	tilt.rotation.z = P["tilt"]
+	var bob := -absf(cos(ph)) * 0.012 * S * float(P["walk"])
+	holder.position = Vector3(x, GROUND - float(P["sink"]) * S + bob + float(P.get("lift", 0.0)), z)
+	holder.rotation.y = P["yaw"]
 
 
 func _apply_g() -> void:
@@ -630,7 +862,7 @@ func _apply_g() -> void:
 		(p["knees"][i] as Node3D).rotation = Vector3(0.5 * maxf(0.0, back) - 0.25 * rear, 0.0, 0.0)
 	_gt.rotation.z = G["tilt"]
 	var bob := absf(sin(_gph)) * 0.008 * S * w
-	_gh.position = Vector3(gx, GROUND - float(G["sink"]) * S + bob, Z)
+	_gh.position = Vector3(gx, GROUND - float(G["sink"]) * S + bob + float(G.get("lift", 0.0)), Z)
 	_gh.rotation.y = G["yaw"]
 
 
@@ -1122,8 +1354,12 @@ func _mesh(parent: Node3D, m: Mesh, mat: Material, pos: Vector3) -> MeshInstance
 	return mi
 
 
+var _flee_t := 0.0                   # how long the choppers have been clearing off
+
+
 func _helis_tick(delta: float) -> void:
-	var ending := _bi >= _beats.size() - 1
+	var ending := _bi >= _beats.size() - 1 or str(_beats[mini(_bi, _beats.size() - 1)]["n"]) in ["ufo_swarm", "abduct", "fleet_leaves"]
+	_flee_t = _flee_t + delta if ending else 0.0
 	for h in _helis:
 		var root: Node3D = h["node"]
 		h["t"] = float(h["t"]) + delta
@@ -1135,7 +1371,7 @@ func _helis_tick(delta: float) -> void:
 			(h["sound"] as AudioStreamPlayer3D).play()
 		# fly in from the side, then circle the fight, bobbing and banking; leave as it ends
 		var arrive := smoothstep(0.0, 12.0, t)
-		var leave := smoothstep(0.0, 1.0, (_bt - 6.0) / 14.0) if ending else 0.0
+		var leave := smoothstep(0.0, 1.0, (_flee_t - 6.0) / 14.0)
 		var a: float = float(h["a0"]) + float(h["w"]) * t
 		var r: float = float(h["r"]) * (1.0 + 2.5 * (1.0 - arrive) + 3.0 * leave)
 		var pos := Vector3(CX + cos(a) * r, float(h["h"]) + 3.0 * sin(t * 0.6 + a), float(h["cz"]) + sin(a) * r * 0.55)

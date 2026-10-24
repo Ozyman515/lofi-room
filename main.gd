@@ -1754,6 +1754,10 @@ func _build_weather() -> void:
 	fight.name = "KaijuFight"
 	add_child(fight)
 	fight.setup(self)
+	var news: Node = load("res://news.gd").new()
+	news.name = "BreakingNews"
+	add_child(news)
+	news.setup(self, fight)
 	noir = load("res://noir.gd").new()
 	noir.name = "NoirNight"
 	add_child(noir)
