@@ -1,5 +1,5 @@
 {
- "version": 106,
+ "version": 107,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -149,6 +149,10 @@
    "sha": "9d7e9a847dc6a2e30d79c4d9715c318905fb501a0b191bda10faead797c1ca6c",
    "size": 23184
   },
+  "black_kaiju_model.gd": {
+   "sha": "d72b18f7eafb12a3bf7f3ddfbbbc5ecad35bf2352cc1f8945fb1e374db02525d",
+   "size": 10263
+  },
   "book.gd": {
    "sha": "81de8dc89a2af16f7711d1099218d7f5a7737e4a7ebb9ea217e9a689124c4e31",
    "size": 12169
@@ -233,9 +237,21 @@
    "sha": "11c820f466edcf6e02f7dfbc24c8d5289c4fe1686c49db65f7444592dece88f7",
    "size": 22629
   },
+  "fight.gd": {
+   "sha": "93be0c7e4389df77a3bead5767c9af257f2c8adbea0d6c7cc7f9dfd3e1c1a4a4",
+   "size": 55931
+  },
   "file_browser.gd": {
    "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
    "size": 4561
+  },
+  "gaboon.gd": {
+   "sha": "86f8fbf33d2959655965e3678135ab40062903c4d73bb7f573edde517735fcda",
+   "size": 13062
+  },
+  "gaboon_model.gd": {
+   "sha": "d36234825b72f576c946b96c95025350bcbfccce422d49282ecb5a9c6cc16b8b",
+   "size": 13196
   },
   "gif_player.gd": {
    "sha": "270391ad48b3737e208cada68917b3a1165dc7e67d205b504798cd195f61c700",
@@ -258,8 +274,8 @@
    "size": 8732
   },
   "kaiju.gd": {
-   "sha": "b60903fa5a2852205d7e00779eae1fad786045564d81ad15ea5a607479e6d4ea",
-   "size": 11597
+   "sha": "23aaadea8ecf705ea51f62720d870a6f3edd216fc9c64de0e2b57b754ffa54d7",
+   "size": 12210
   },
   "kaiju/full/armL.res": {
    "sha": "a86ca459a8555bee5d50bf6dea6ac0d2719d55f8cd2a2cf6c8dbccfc6251ea49",
@@ -390,8 +406,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "464c6e346b86c254f5a4fe65262805fac3efaf91548e18f71e8a64b84064c56b",
-   "size": 204739
+   "sha": "5243660a84dfc8a63afa04d7c0ab2ea5bfed8b5e84a6ad183eb3d00bed49f46e",
+   "size": 205496
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -446,8 +462,8 @@
    "size": 2098
   },
   "net_game.gd": {
-   "sha": "67952092d5e83179f2a59b036a8aae17e5db5c9539f1af933a8da9cedeae6753",
-   "size": 20112
+   "sha": "6092abdb45e0a5306d483cdcf7af0e5d87af11a8518ca9558b6ee4fa898f6e39",
+   "size": 20375
   },
   "net_phone.gd": {
    "sha": "a133313051d50eeb3406f541403d3be11ef11a26281b20e9b4e59b6bb9d6d007",
@@ -460,6 +476,10 @@
   "net_voice.gd": {
    "sha": "b5f4a93b7563e0df244b4483bf950e95429a0681b974dc0a1fd3acdc7a5f0040",
    "size": 9088
+  },
+  "news.gd": {
+   "sha": "da4693a7868a5378a6eafd89222a2876fb63212f7d4810e3a0fd733a917ae65c",
+   "size": 22375
   },
   "noir.gd": {
    "sha": "bc936a9dc0431cdbdb51c8b8db809a5ce31a6a4bade8c04b263384ef00a8f165",
@@ -494,8 +514,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "b8d663c268f36951ab994a201a9290eb9f657fb3616dc530c82fc3139e7e94e2",
-   "size": 48286
+   "sha": "9ce988c87365186c2e346b582f440926cf0fe0d1ee5a8e9618c8313a2bae0385",
+   "size": 48733
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -618,7 +638,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "79f0cdc11a64b21e76816c25cc0d066a873134770fba891b54e01445c2620c4c",
+   "sha": "bcea5d7d8b256f1bda5f90a3ede41899e94b89fccb4e4d2786073b5bfaa0002a",
    "size": 4
   },
   "weather.gd": {
