@@ -2301,7 +2301,8 @@ func _build_recliner() -> void:
 		"label": func() -> String: return "SIT UP" if recliner.reclined else "LEAN BACK",
 		"cb": func() -> void:
 			recliner.toggle_recline()
-			_save_recliner()})
+			_save_recliner()
+			_rec_report(recliner.rotation.y, true)})
 
 
 # Noir Night's grey visitor is sitting in it
@@ -2311,6 +2312,7 @@ func _recliner_taken() -> bool:
 
 func _on_recliner_turned(dy: float) -> void:
 	_save_recliner.call_deferred()
+	_rec_report(recliner.rotation.y + dy, true)
 	if not (seated and cur_seat == recliner_seat):
 		return
 	# turning in it turns you with it
@@ -2352,6 +2354,82 @@ func _recliner_follow(delta: float) -> void:
 		_rec_following = false
 		return
 	recliner.rotation.y = lerp_angle(recliner.rotation.y, yaw, 1.0 - exp(-(6.0 if xr_active else 12.0) * delta))
+	_rec_report(recliner.rotation.y, false)
+
+
+# ---- everyone in a room sees the same recliner: the host's copy is the real one and goes out with the room
+# state; a guest who turns it, swivels in it or leans it back tells the host. Whoever's sitting in it steers.
+const NetSession := preload("res://net_session.gd")
+var _rec_target := NAN                # a turn that came over the network, eased into
+var _rec_sent_ms := 0
+var _rec_local_ms := -100000          # when I last moved it myself (the room state lags behind that a little)
+var _rec_sent_yaw := NAN
+var _rec_sent_back := false
+
+func _in_recliner() -> bool:
+	return seated and cur_seat == recliner_seat
+
+
+func _rec_report(yaw: float, now: bool) -> void:
+	_rec_local_ms = Time.get_ticks_msec()
+	if net == null or not net.is_online() or net.is_host():
+		return                                       # (the host's chair goes out with the room state)
+	var t := Time.get_ticks_msec()
+	if not now and t - _rec_sent_ms < 100:
+		return
+	if not now and is_equal_approx(yaw, _rec_sent_yaw) and recliner.reclined == _rec_sent_back:
+		return
+	_rec_sent_ms = t
+	_rec_sent_yaw = yaw
+	_rec_sent_back = recliner.reclined
+	net.send_var(1, NetSession.K_EVENT, {"k": "rec", "y": wrapf(yaw, -PI, PI), "b": recliner.reclined})
+
+
+# host: what goes out in the room state
+func recliner_state() -> Array:
+	if recliner == null:
+		return []
+	var y := recliner.rotation.y if is_nan(_rec_target) else _rec_target
+	return [snappedf(wrapf(y, -PI, PI), 0.001), recliner.reclined]
+
+
+# host: a guest moved it
+func recliner_from_guest(d: Dictionary) -> void:
+	if recliner == null or _in_recliner() or _recliner_taken():
+		return                                       # I'm in it (or the Noir visitor is): I steer
+	var y := float(d.get("y", 0.0))
+	if is_nan(y) or is_inf(y):
+		return
+	_rec_target = wrapf(y, -PI, PI)
+	recliner.reclined = bool(d.get("b", false))
+
+
+# guest: the host's room state
+func recliner_from_host(s) -> void:
+	if recliner == null or not (s is Array) or s.size() < 2:
+		return
+	if _in_recliner() or Time.get_ticks_msec() - _rec_local_ms < 1500:
+		return                                       # I'm steering it, or the host hasn't heard my last move yet
+	var y := float(s[0])
+	if is_nan(y) or is_inf(y):
+		return
+	_rec_target = y
+	recliner.reclined = bool(s[1])
+
+
+# eases a turn that came over the network
+func _rec_net_tick(delta: float) -> void:
+	if recliner == null or is_nan(_rec_target):
+		return
+	if _in_recliner() or recliner._turning:
+		_rec_target = NAN
+		return
+	var d := angle_difference(recliner.rotation.y, _rec_target)
+	if absf(d) < 0.002:
+		recliner.rotation.y = _rec_target
+		_rec_target = NAN
+		return
+	recliner.rotation.y = lerp_angle(recliner.rotation.y, _rec_target, 1.0 - exp(-8.0 * delta))
 
 
 func _save_recliner() -> void:
@@ -2364,6 +2442,7 @@ func _save_recliner() -> void:
 
 # sitting down in it: face the way it faces; leaning back lowers you a little and tips the view up
 func _recliner_tick(delta: float) -> void:
+	_rec_net_tick(delta)
 	if recliner == null or not seated or cur_seat != recliner_seat:
 		_rec_view_k = 0.0
 		return

@@ -164,7 +164,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -513,6 +513,8 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 					for id in net.peer_ids():
 						if id != from:
 							net.send_var(id, Net.K_EVENT, d)
+		"rec":
+			main.recliner_from_guest(d)
 		"tv_tape", "tv_vote":
 			if main.tv_rating != null:
 				main.tv_rating.on_guest_event(from, d)
@@ -538,6 +540,7 @@ func _apply_state(d: Dictionary) -> void:
 	tv_live = bool(d.get("tv_live", false))
 	if main.tv_rating != null:
 		main.tv_rating.apply_state(d.get("tv_rate", []))
+	main.recliner_from_host(d.get("rec", []))
 	main.net_apply_game(d)
 	if not bool(d.get("run", false)):
 		emu.remote_stopped()

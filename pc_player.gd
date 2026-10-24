@@ -449,24 +449,34 @@ func _build_settings_window() -> void:
 	close.text = " x "
 	close.pressed.connect(_toggle_settings)
 	head.add_child(close)
-	_st_full_btn = Button.new()
-	_st_full_btn.tooltip_text = "F11 or Alt+Enter does the same"
-	_st_full_btn.pressed.connect(func() -> void: _main.set_fullscreen(not _main.fullscreen))
-	head.add_child(_st_full_btn)
-	head.move_child(_st_full_btn, 1)
 	_st_reticle_btn = Button.new()
 	_st_reticle_btn.custom_minimum_size = Vector2(0, 42)
 	_st_reticle_btn.pressed.connect(func() -> void: _main.set_reticle_on(not _main.reticle_on))
-	v.add_child(_st_reticle_btn)
+	var pair1 := HBoxContainer.new()            # two to a row, so it all fits on the monitor
+	pair1.add_theme_constant_override("separation", 8)
+	v.add_child(pair1)
+	var pair2 := HBoxContainer.new()
+	pair2.add_theme_constant_override("separation", 8)
+	v.add_child(pair2)
+	_st_reticle_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair1.add_child(_st_reticle_btn)
+	_st_full_btn = Button.new()                 # (in the list, not the top row: the top row is full)
+	_st_full_btn.custom_minimum_size = Vector2(0, 42)
+	_st_full_btn.tooltip_text = "F11 or Alt+Enter does the same"
+	_st_full_btn.pressed.connect(func() -> void: _main.set_fullscreen(not _main.fullscreen))
+	_st_full_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair1.add_child(_st_full_btn)
 	var wst := Button.new()
 	wst.custom_minimum_size = Vector2(0, 42)
 	wst.pressed.connect(func() -> void: _main.set_weather_start("random" if _main.weather_start == "remember" else "remember"))
-	v.add_child(wst)
+	wst.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair2.add_child(wst)
 	_st_weather_btn = wst
 	_st_resume_btn = Button.new()
 	_st_resume_btn.custom_minimum_size = Vector2(0, 42)
 	_st_resume_btn.pressed.connect(func() -> void: _main.set_resume_games(not _main.emu.resume_games))
-	v.add_child(_st_resume_btn)
+	_st_resume_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair2.add_child(_st_resume_btn)
 	_st_cart_btn = Button.new()
 	_st_cart_btn.custom_minimum_size = Vector2(0, 42)
 	_st_cart_btn.pressed.connect(func() -> void: _main.set_cart_style(not _main.cart_wash))
@@ -872,7 +882,7 @@ func _st_refresh() -> void:
 		return
 	_st_reticle_btn.text = "Aiming dot:  %s" % ("ON" if _main.reticle_on else "OFF")
 	if _st_full_btn != null:
-		_st_full_btn.text = "  Fullscreen: %s (F11)  " % ("ON" if _main.fullscreen else "OFF")
+		_st_full_btn.text = "Fullscreen:  %s   (F11)" % ("ON" if _main.fullscreen else "OFF")
 	if _st_resume_btn != null:
 		_st_resume_btn.text = "Games keep your place:  " + ("ON" if _main.emu.resume_games else "OFF")
 	if _st_cart_btn != null:
