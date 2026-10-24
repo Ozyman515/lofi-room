@@ -1,5 +1,5 @@
 {
- "version": 105,
+ "version": 106,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -258,12 +258,132 @@
    "size": 8732
   },
   "kaiju.gd": {
-   "sha": "a4d457db26e9b9c528b91bc9dabfad1df53085be866cb4b216f568ab1b60501d",
-   "size": 11390
+   "sha": "b60903fa5a2852205d7e00779eae1fad786045564d81ad15ea5a607479e6d4ea",
+   "size": 11597
+  },
+  "kaiju/full/armL.res": {
+   "sha": "a86ca459a8555bee5d50bf6dea6ac0d2719d55f8cd2a2cf6c8dbccfc6251ea49",
+   "size": 76615
+  },
+  "kaiju/full/armR.res": {
+   "sha": "10a010702da79b673fafe322f1e51dd0229089ce56cc732a89398eb885729549",
+   "size": 76661
+  },
+  "kaiju/full/armspikesL.res": {
+   "sha": "b8d8f4e49c92cf3be871cbb78ee2e0ca8dedc159e38da68c40e73b5bf932b3e8",
+   "size": 1023
+  },
+  "kaiju/full/armspikesR.res": {
+   "sha": "5b2a86ce43d2bce1e91f7ba3a758ce2e14b4e3ef997f87260104d48a22ec1624",
+   "size": 1019
+  },
+  "kaiju/full/body.res": {
+   "sha": "32ba9ca31b4a0b6d990a12e29df63c05aa86a8062c473782f2854a10e50efda3",
+   "size": 275809
+  },
+  "kaiju/full/head.res": {
+   "sha": "da86626f93a7029f77448d2eba55489ae951d19ebba30a758fcd5bc9d5525bee",
+   "size": 199631
+  },
+  "kaiju/full/jaw.res": {
+   "sha": "cdcb481145fd09277da3d768e179c026a130721c43ca5c053343c349706379c5",
+   "size": 79156
+  },
+  "kaiju/full/shinL.res": {
+   "sha": "d933c1d1b1c209fbaa31f6dd6a1134cdfcdd37fd9a52a02738a7ebab0b703ab0",
+   "size": 96316
+  },
+  "kaiju/full/shinR.res": {
+   "sha": "ad740d9d1b4713e1084338718327a056ad4c988d7b3bf91c79f29754a18f9e3b",
+   "size": 96099
+  },
+  "kaiju/full/spikes.res": {
+   "sha": "e54b070bf7c6c55ecba33063e68d26872b8ccd2303b3dc36abf38079b65001e9",
+   "size": 63440
+  },
+  "kaiju/full/teeth_lo.res": {
+   "sha": "c2fba8257edc072135a7518516ac90f7308b3a1a5f7298eed6d44ef9361097a4",
+   "size": 4179
+  },
+  "kaiju/full/teeth_up.res": {
+   "sha": "7d4e9475ee0d31518632b7f4250c7f4177ab1a3ad543855679ed8cb353d824d7",
+   "size": 4764
+  },
+  "kaiju/full/thighL.res": {
+   "sha": "5cadec66cd3e3bd6962376eabf8bb2b373fbce612e5a4c175b1320eb1625df77",
+   "size": 87774
+  },
+  "kaiju/full/thighR.res": {
+   "sha": "dd4535aafb097e89120732e7e38ff2ce93e14ac24d7a2fd236bf944b8636a678",
+   "size": 87642
+  },
+  "kaiju/full/tongue.res": {
+   "sha": "8084c4ea8e1b46b2081154a7d77a447f54dd01476a9740f6d3074db3c5270e2e",
+   "size": 17618
+  },
+  "kaiju/toy/armL.res": {
+   "sha": "a81549725dd85fe6fb8f5ff919b5f1176585853e1da120417547c49867c22c99",
+   "size": 15274
+  },
+  "kaiju/toy/armR.res": {
+   "sha": "ed5894cc63af909afacfd9e8e43a5484b1d455da8d884fb6c463e2af9236e776",
+   "size": 15222
+  },
+  "kaiju/toy/armspikesL.res": {
+   "sha": "8142c934613056a026ae17c65bd2d58469c3d3f8539506a23e202a2a092e58f9",
+   "size": 1022
+  },
+  "kaiju/toy/armspikesR.res": {
+   "sha": "e558160d10afc77fed822d49d4876c1db1e7d45bc9f7ef15571cb307e3914ccf",
+   "size": 1020
+  },
+  "kaiju/toy/body.res": {
+   "sha": "884080ab159aeac10f4f89bf744a221015dbb16e482956955c9865ad7046ffb9",
+   "size": 57215
+  },
+  "kaiju/toy/head.res": {
+   "sha": "369a9a981967d9f4cb97b628e4855c1491f0eb932698041bc1917ca3a6e4033f",
+   "size": 44510
+  },
+  "kaiju/toy/jaw.res": {
+   "sha": "c670fce51531fd3d3004c873aaa7e661a2afe0135873ab445c98572f7fcee9ea",
+   "size": 18103
+  },
+  "kaiju/toy/shinL.res": {
+   "sha": "8f009f3a023c3612a9ac949217f267ea1c5bfbcccde56706872064ae210822a0",
+   "size": 19731
+  },
+  "kaiju/toy/shinR.res": {
+   "sha": "ab902a364d44d94a3009b4360b37d6ae977d43a25e36fc623ba93cb680054fe7",
+   "size": 19460
+  },
+  "kaiju/toy/spikes.res": {
+   "sha": "f8dacf040ed9eee98ea6731b4576cbb6a35c887a021b1a26f68d15d26cb5c420",
+   "size": 63440
+  },
+  "kaiju/toy/teeth_lo.res": {
+   "sha": "d5a30cda380ae1837ff791b24c58e589b667cea8a7119eb117a9a9bdce476cfd",
+   "size": 4181
+  },
+  "kaiju/toy/teeth_up.res": {
+   "sha": "d0d20273a204571f02813163c52eacb43552d3f52a1f3182a25c5e5d1328d050",
+   "size": 4763
+  },
+  "kaiju/toy/thighL.res": {
+   "sha": "93fee777dc9614b121662a3b1a0bd2df767647f8b075a5674ce681a51b834a94",
+   "size": 18012
+  },
+  "kaiju/toy/thighR.res": {
+   "sha": "3712028eb7fc5c34442a82ed08835f63c6547b5b9e09dc81a878321cb9c22f66",
+   "size": 18014
+  },
+  "kaiju/toy/tongue.res": {
+   "sha": "697faf746e9615b1ba85b7411165fd021a67f395a67d4f3cfc715bd2295479fe",
+   "size": 3943
   },
   "kaiju_model.gd": {
-   "sha": "9794c8b1d09e9fdeb8ca33d9b01c610ad22e9876e50c940723656733d266a710",
-   "size": 10100
+   "sha": "2bcc37f1f4cf1b766e61d96888e497b407d36f708d11f47c7a36d80c75651969",
+   "size": 3620
   },
   "lofi_theme.gd": {
    "sha": "3ecf7eb4936ed43b2e90831ded4ab8cf3ef049b5437e4b70c238582f618e6917",
@@ -498,7 +618,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "2fcae9c346ff9530cd3b7303a6456e3a296ff1876b18b50c324343638ec2bdf3",
+   "sha": "79f0cdc11a64b21e76816c25cc0d066a873134770fba891b54e01445c2620c4c",
    "size": 4
   },
   "weather.gd": {
