@@ -601,19 +601,37 @@ func _field_rep(r: Node3D, pos: Vector3, yaw: float) -> Dictionary:
 	return p
 
 
-# her arm: the upper arm points from the shoulder toward where the mic has to be, the forearm carries on
+# her arm, by two-bone IK: her hand goes to just short of the target (the mic's head ends up under his mouth), the
+# elbow bending naturally, down and out to the side. k blends from holding the mic to herself (0) to held out (1).
 func _reach(p: Dictionary, target: Vector3, k: float) -> void:
 	var arm: Node3D = p["arm_r"]
 	var parent := arm.get_parent() as Node3D
 	var reach := target - arm.global_position
-	reach -= reach.normalized() * 0.2                      # her hand stops short: the mic's head ends up just under his mouth
-	var d := parent.global_transform.basis.inverse() * reach
-	if d.length() < 0.01:
-		return
-	var want := Quaternion(Vector3.DOWN, d.normalized())
-	var to_self := Quaternion.from_euler(Vector3(-0.55, 0.0, -0.45))
-	arm.quaternion = to_self.slerp(want, k)
-	(p["fore_r"] as Node3D).rotation = Vector3(lerpf(-2.3, -0.05, k), 0.0, 0.0)
+	reach -= reach.normalized() * 0.2
+	var inv := parent.global_transform.basis.orthonormalized().inverse()
+	var sc := parent.global_transform.basis.get_scale().x
+	var dl := inv * reach / sc
+	const L1 := 0.29
+	const L2 := 0.31
+	var dist := clampf(dl.length(), 0.15, (L1 + L2) * 0.9)          # never quite straight
+	var d := dl.normalized()
+	var alpha := acos(clampf((L1 * L1 + dist * dist - L2 * L2) / (2.0 * L1 * dist), -1.0, 1.0))
+	var beta := acos(clampf((L1 * L1 + L2 * L2 - dist * dist) / (2.0 * L1 * L2), -1.0, 1.0))
+	var pole := (Vector3(0.6, -1.0, -0.2)).normalized()               # the elbow drops down and out
+	var n := (pole - d * pole.dot(d)).normalized()
+	var u := (d * cos(alpha) + n * sin(alpha)).normalized()            # the upper arm
+	var z := (d - u * d.dot(u)).normalized()                         # the way the forearm bends
+	var y := -u
+	var ik := Basis(y.cross(z), y, z).orthonormalized()
+	var to_self := Basis.from_euler(Vector3(-0.55, 0.0, -0.45))
+	arm.basis = Basis(to_self.get_rotation_quaternion().slerp(ik.get_rotation_quaternion(), k))
+	(p["fore_r"] as Node3D).rotation = Vector3(lerpf(-2.3, -(PI - beta), k), 0.0, 0.0)
+	# and her wrist turns so the mic points at his mouth
+	var hand: Node3D = p["hand_r"]
+	var fore: Node3D = p["fore_r"]
+	var aim := fore.global_transform.basis.orthonormalized().inverse() * (target - hand.global_position)
+	if aim.length() > 0.01:
+		hand.quaternion = Quaternion.IDENTITY.slerp(Quaternion(Vector3.DOWN, aim.normalized()), k)
 
 
 # a standing man, built like a Dreamcast-era character: real proportions (about 7.5 heads tall), a chest that
@@ -845,7 +863,7 @@ func _animate_iv(delta: float) -> void:
 	(rp["mouth"] as Node3D).scale.y = 0.004 + 0.012 * asking * maxf(0.0, sin(_T * 15.0) * sin(_T * 4.7 + 0.5))
 	(rp["head"] as Node3D).rotation = Vector3(0.05 * sin(_T * 1.2), 0.25 + 0.1 * sin(_T * 0.5), 0.0)
 	var root: Node3D = st["root"]
-	_reach(rp, root.to_global(st["mouth"] + Vector3(0.0, -0.07, 0.06)), smoothstep(0.0, 1.0, _mic_k))
+	_reach(rp, root.to_global(st["mouth"] + Vector3(0.0, -0.035, 0.06)), smoothstep(0.0, 1.0, _mic_k))
 	(rp["arm_l"] as Node3D).rotation = Vector3(-0.15, 0.0, -0.12)
 	(rp["fore_l"] as Node3D).rotation = Vector3(-0.5, 0.0, 0.0)
 	if p.is_empty():
