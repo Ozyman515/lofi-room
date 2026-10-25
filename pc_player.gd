@@ -787,7 +787,7 @@ func _build_debug_window() -> void:
 	crow.add_theme_constant_override("separation", 8)
 	v.add_child(crow)
 	var kb := Button.new()
-	kb.text = "Kaiju: walk past the window now"
+	kb.text = "Banira: walk past the window now"
 	kb.custom_minimum_size = Vector2(0, 42)
 	kb.pressed.connect(func() -> void:
 		if _main.kaiju != null:
@@ -801,7 +801,7 @@ func _build_debug_window() -> void:
 			_main.gaboon.request_walk())
 	v.add_child(gb)
 	var fb := Button.new()
-	fb.text = "Kaiju vs King Gaboon: fight now"
+	fb.text = "Banira vs King Gaboon: fight now"
 	fb.custom_minimum_size = Vector2(0, 42)
 	fb.pressed.connect(func() -> void:
 		if _main.fight != null:

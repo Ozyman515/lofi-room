@@ -153,7 +153,7 @@ func _build_figure() -> void:
 	hit.position = FIG_POS + Vector3(0, 0.073, 0)
 	main.study_kit.add_child(hit)
 	main.interactables.append({"node": hit, "half": Vector3(0.045, 0.075, 0.045), "guest_ok": true,
-		"label": func() -> String: return "A LITTLE ALIEN" if not active else "A LITTLE ALIEN  (it's waving)", "cb": tap_figure})
+		"label": func() -> String: return "THE VISITOR" if not active else "THE VISITOR  (it's waving)", "cb": tap_figure})
 
 
 # a smooth surface turned around the y axis from a profile of [height, radius] points (depth scales z)

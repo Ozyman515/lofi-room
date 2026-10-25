@@ -138,9 +138,43 @@ func build(m: Node3D) -> void:
 	_build_noir_office()
 	_build_theater()
 	_build_exterior()
+	_place_toys()
 	main.bank.lp_finished.connect(_lp_next)
 	# (deferred: the kits' speakers have to be in their rooms first)
 	main.bank.assign_rooms.call_deferred(func(pos: Vector3) -> String: return room_at(pos.x, pos.z))
+
+
+# the monster figures, spread round the apartment: Banira on the living room's TV console, King Gaboon on a little
+# shelf in the game room by the door (play with both within 10 seconds and they fight), and Jogari, just for show,
+# on top of the study's bookshelf where the other two used to stand
+func _place_toys() -> void:
+	if main.kaiju != null:
+		main.kaiju.place_toy(living, Vector3(MID_X + 0.27, 0.5, LIV_TV.z - 0.75), 0.25)
+	if main.gaboon != null:
+		var wood := _mat(Color(0.30, 0.15, 0.18), 0.6)
+		var gz := HALL_S + 0.1
+		_box(Vector3(-0.6, 1.3, gz + 0.13), Vector3(0.42, 0.03, 0.26), wood, game)            # a little wall shelf
+		for bx in [-0.75, -0.45]:
+			_box(Vector3(bx, 1.22, gz + 0.06), Vector3(0.02, 0.14, 0.1), wood, game)            # its brackets
+		main.gaboon.place_toy(game, Vector3(-0.6, 1.315, gz + 0.11), -PI / 2.0 + 0.3)
+	# Jogari
+	var jt: Node3D = load("res://black_kaiju_model.gd").build()
+	var jpos := Vector3(2.32, 2.215, 0.55)
+	jt.scale = Vector3.ONE * 0.2
+	jt.position = jpos + Vector3(0, 0.01, 0)
+	jt.rotation.y = PI + 0.3
+	main.study_kit.add_child(jt)
+	main._cyl(jpos + Vector3(0, 0.005, 0), 0.06, 0.01, _mat(Color(0.08, 0.07, 0.1), 0.4), main.study_kit)
+	load("res://toy_card.gd").place(main.study_kit, jpos, PI + 0.3, "JOGARI", 0.08)
+	var jh := Node3D.new()
+	jh.position = jpos + Vector3(0, 0.08, 0)
+	main.study_kit.add_child(jh)
+	main.interactables.append({"node": jh, "half": Vector3(0.08, 0.09, 0.08), "guest_ok": true,
+		"label": func() -> String: return "JOGARI", "cb": func() -> void:
+			var tw := jt.create_tween()                  # a little wobble
+			tw.tween_property(jt, "rotation:z", 0.2, 0.1)
+			tw.tween_property(jt, "rotation:z", -0.2, 0.15)
+			tw.tween_property(jt, "rotation:z", 0.0, 0.1)})
 
 
 func _root(n: String) -> Node3D:

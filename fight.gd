@@ -26,7 +26,7 @@ const Z := -64.0                     # just behind the last row of towers
 const CX := -3.0                     # where they meet, across from the window
 const FACE := 0.75                   # how far apart (in S) they square up
 const CONTACT := 0.42                # how close (in S) their middles get when they grapple
-const PAIR_WINDOW := 20.0            # seconds between playing with the two figures
+const PAIR_WINDOW := 10.0            # seconds between playing with the two figures (they're in different rooms)
 const HELIS := 5
 
 signal moment(kind: String)          # "start", each beat's name as it begins, "end" (news.gd reports on these)

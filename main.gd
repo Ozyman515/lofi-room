@@ -4022,7 +4022,7 @@ func set_share_poster(on: bool) -> void:
 	settings_changed.emit()
 
 
-# the cabinet's own speaker: a black perforated grill in the underside of a hood along the marquee, facing down. Only the arcade's games
+# the cabinet's own speaker: a black slotted grill in the underside of a hood along the marquee, facing down. Only the arcade's games
 # play out of it (their sound comes from right here, not from the room's speakers).
 var arcade_feed: Node
 
@@ -4038,43 +4038,15 @@ func _arcade_grill(root: Node3D, body: Material) -> void:
 	var plate := _mat(Color(0.11, 0.11, 0.12), 0.45, 0.5)
 	var holes := _mat(Color(0.0, 0.0, 0.0), 1.0)
 	_box(Vector3((x0 + x1) / 2.0 + 0.002, yb - 0.001, 0), Vector3(x1 - x0 - 0.016, 0.002, gw - 0.05), plate, root)
-	var hole := CylinderMesh.new()                   # rows of little round holes, as one multimesh
-	hole.top_radius = 0.0028
-	hole.bottom_radius = 0.0028
-	hole.height = 0.001
-	hole.radial_segments = 8
-	hole.rings = 1
-	var spots: Array[Vector3] = []
-	var step := 0.0105
+	# two speaker patches, left and right, each a few long straight slots (no round holes: trypophobia)
 	var xc := (x0 + x1) / 2.0 + 0.002
 	var hx := (x1 - x0 - 0.03) / 2.0
 	var hz := gw * 0.19
-	for side in [-1.0, 1.0]:                         # two round-ish speaker patches, left and right
+	for side in [-1.0, 1.0]:
 		var zc: float = side * gw * 0.25
-		var r := 0
-		var x := xc - hx
-		while x <= xc + hx:
-			var off := 0.5 * step if r % 2 == 1 else 0.0
-			var c := -int(hz / step) - 1
-			while c <= int(hz / step) + 1:
-				var z := zc + c * step + off
-				var dz := (z - zc) / hz
-				var dx := (x - xc) / hx
-				if dz * dz + dx * dx * 0.5 <= 1.0:
-					spots.append(Vector3(x, yb - 0.0025, z))
-				c += 1
-			x += step * 0.87
-			r += 1
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = hole
-	mm.instance_count = spots.size()
-	for i in spots.size():
-		mm.set_instance_transform(i, Transform3D(Basis(), spots[i]))
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = holes
-	root.add_child(mmi)
+		for k in 5:
+			var x := xc - hx + (k + 0.5) * (2.0 * hx / 5.0)
+			_box(Vector3(x, yb - 0.0025, zc), Vector3(0.0035, 0.001, hz * 2.0), holes, root)
 	var BusFeed := preload("res://bus_feed.gd")
 	var p: AudioStreamPlayer3D = BusFeed.make_player(3.0)
 	p.position = Vector3(0.76, 1.5, 0)

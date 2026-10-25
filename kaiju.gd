@@ -222,15 +222,21 @@ func _flicker(delta: float) -> void:
 var _toy: Node3D
 var _toy_plays := 0
 var _toy_busy := false
+const ToyCard := preload("res://toy_card.gd")
 const TOY_PLAYS := 10                # stomps it takes to call the real one
+
+
+var _toy_parent: Node3D
+var _toy_pos := TOY_POS
+var _stand: MeshInstance3D
+var _hit: Node3D
+var _card: Node3D
 
 
 func _build_toy() -> void:
 	_toy = Model.build(true)                     # the lighter toy version
 	_toy.scale = Vector3.ONE * TOY_SCALE
-	_toy.position = TOY_POS
-	_toy.rotation.y = PI + 0.3                   # facing out into the room, turned a little toward King Gaboon
-	main.study_kit.add_child(_toy)
+	_toy.rotation.y = PI + 0.3                   # facing out into the room
 	var stand := MeshInstance3D.new()            # a little round display base
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.055
@@ -241,14 +247,30 @@ func _build_toy() -> void:
 	sm.albedo_color = Color(0.08, 0.07, 0.1)
 	sm.roughness = 0.4
 	stand.material_override = sm
-	stand.position = TOY_POS + Vector3(0, 0.005, 0)
-	main.study_kit.add_child(stand)
-	_toy.position.y += 0.01
-	var hit := Node3D.new()
-	hit.position = TOY_POS + Vector3(0, 0.06, 0)
-	main.study_kit.add_child(hit)
-	main.interactables.append({"node": hit, "half": Vector3(0.07, 0.07, 0.07), "guest_ok": true,
-		"label": func() -> String: return "A TOY KAIJU" if not active else "A TOY KAIJU  (uh oh)", "cb": play_with_toy})
+	_stand = stand
+	_hit = Node3D.new()
+	for n in [_toy, _stand, _hit]:
+		main.study_kit.add_child(n)
+	_toy_parent = main.study_kit
+	place_toy(main.study_kit, TOY_POS, PI + 0.3)
+	main.interactables.append({"node": _hit, "half": Vector3(0.07, 0.07, 0.07), "guest_ok": true,
+		"label": func() -> String: return "BANIRA" if not active else "BANIRA  (uh oh)", "cb": play_with_toy})
+
+
+# put the figure (on its base, with its name card) somewhere: pos is the top of what it stands on
+func place_toy(parent: Node3D, pos: Vector3, yaw: float) -> void:
+	for n in [_toy, _stand, _hit]:
+		if n.get_parent() != parent:
+			n.reparent(parent, false)
+	_toy_parent = parent
+	_toy_pos = pos
+	_toy.position = pos + Vector3(0, 0.01, 0)
+	_toy.rotation.y = yaw
+	_stand.position = pos + Vector3(0, 0.005, 0)
+	_hit.position = pos + Vector3(0, 0.06, 0)
+	if _card != null:
+		_card.queue_free()
+	_card = ToyCard.place(parent, pos, yaw, "BANIRA", 0.075)
 
 
 func play_with_toy() -> void:
@@ -261,9 +283,9 @@ func play_with_toy() -> void:
 	var tw := create_tween()
 	for i in 2:
 		tw.tween_property(_toy, "rotation:z", 0.25, 0.12)
-		tw.tween_property(_toy, "position:y", TOY_POS.y + 0.04, 0.12)
+		tw.tween_property(_toy, "position:y", _toy_pos.y + 0.04, 0.12)
 		tw.tween_property(_toy, "rotation:z", -0.25, 0.12)
-		tw.tween_property(_toy, "position:y", TOY_POS.y + 0.01, 0.1)
+		tw.tween_property(_toy, "position:y", _toy_pos.y + 0.01, 0.1)
 	tw.tween_property(_toy, "rotation:z", 0.0, 0.15)
 	await tw.finished
 	_toy_busy = false

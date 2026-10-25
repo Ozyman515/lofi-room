@@ -216,12 +216,18 @@ const TOY_HOLD := 4.2                # how long he stays in your hand
 const TOY_HOME_YAW := PI + 0.35      # facing out into the room
 
 
+const ToyCard := preload("res://toy_card.gd")
+var _toy_parent: Node3D
+var _toy_pos := TOY_POS
+var _toy_yaw := TOY_HOME_YAW
+var _stand: MeshInstance3D
+var _hit: Node3D
+var _card: Node3D
+
+
 func _build_toy() -> void:
 	_toy = Model.build()
 	_toy.scale = Vector3.ONE * TOY_SCALE
-	_toy.position = TOY_POS + Vector3(0, 0.012, 0)
-	_toy.rotation.y = TOY_HOME_YAW
-	main.study_kit.add_child(_toy)
 	_tp = _parts(_toy)
 	_walk_pose(_tp, 0.0)
 	var stand := MeshInstance3D.new()            # a little round display base with a gold rim
@@ -236,13 +242,30 @@ func _build_toy() -> void:
 	sm.rim_enabled = true
 	sm.rim = 0.5
 	stand.material_override = sm
-	stand.position = TOY_POS + Vector3(0, 0.006, 0)
-	main.study_kit.add_child(stand)
-	var hit := Node3D.new()
-	hit.position = TOY_POS + Vector3(0, 0.1, 0)
-	main.study_kit.add_child(hit)
-	main.interactables.append({"node": hit, "half": Vector3(0.12, 0.11, 0.12), "guest_ok": true,
+	_stand = stand
+	_hit = Node3D.new()
+	for n in [_toy, _stand, _hit]:
+		main.study_kit.add_child(n)
+	place_toy(main.study_kit, TOY_POS, TOY_HOME_YAW)
+	main.interactables.append({"node": _hit, "half": Vector3(0.12, 0.11, 0.12), "guest_ok": true,
 		"label": func() -> String: return "KING GABOON" if not active else "KING GABOON  (he's here)", "cb": pick_up_toy})
+
+
+# put the figure (on its base, with its name card) somewhere: pos is the top of what it stands on
+func place_toy(parent: Node3D, pos: Vector3, yaw: float) -> void:
+	for n in [_toy, _stand, _hit]:
+		if n.get_parent() != parent:
+			n.reparent(parent, false)
+	_toy_parent = parent
+	_toy_pos = pos
+	_toy_yaw = yaw
+	_toy.position = pos + Vector3(0, 0.012, 0)
+	_toy.rotation = Vector3(0, yaw, 0)
+	_stand.position = pos + Vector3(0, 0.006, 0)
+	_hit.position = pos + Vector3(0, 0.1, 0)
+	if _card != null:
+		_card.queue_free()
+	_card = ToyCard.place(parent, pos, yaw, "KING GABOON", 0.095)
 
 
 func pick_up_toy() -> void:
@@ -276,7 +299,7 @@ func _toy_process(delta: float) -> void:
 		if was < 0.4 + 3.4 / 1.9 and _toy_t >= 0.4 + 3.4 / 1.9:
 			_squeak.play()
 	else:
-		var home := Transform3D(Basis(Vector3.UP, TOY_HOME_YAW).scaled(Vector3.ONE * TOY_SCALE), main.study_kit.global_transform * (TOY_POS + Vector3(0, 0.012, 0)))
+		var home := Transform3D(Basis(Vector3.UP, _toy_parent.global_rotation.y + _toy_yaw).scaled(Vector3.ONE * TOY_SCALE), _toy_parent.global_transform * (_toy_pos + Vector3(0, 0.012, 0)))
 		_glide(_toy, home, k)
 		_walk_pose(_tp, 0.0)
 		if _toy.global_position.distance_to(home.origin) < 0.004:
