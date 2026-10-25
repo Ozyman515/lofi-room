@@ -446,7 +446,7 @@ func _animate(delta: float) -> void:
 		_animate_iv(delta)
 	var talk := 1.0 if _speak > 0.0 and _iv == "" else 0.0
 	var m: MeshInstance3D = _rp["mouth"]
-	m.scale.y = 0.008 + 0.012 * talk * maxf(0.0, sin(_T * 15.0) * sin(_T * 4.1 + 1.0))
+	m.scale.y = 0.004 + 0.012 * talk * maxf(0.0, sin(_T * 15.0) * sin(_T * 4.1 + 1.0))
 	_duck = move_toward(_duck, 0.0, delta * 0.7)
 	var look_target := 1.0 if (_shot == "rep" and fmod(_T, 9.0) > 6.5) else 0.0
 	_look = move_toward(_look, look_target, delta * 1.5)
@@ -576,16 +576,44 @@ func _set_root(at: Vector3, wall: Color, lamp: Color) -> Node3D:
 	return r
 
 
-# a chrome microphone poking in from the side of the frame, held out to whoever is talking
-func _set_mic(r: Node3D, mouth: Vector3) -> void:
+# the station's woman on the ground: a red blazer, a pencil skirt, a dark bob, a hand microphone she holds out to
+# whoever is talking (and back to herself for her questions). Stands at pos turned by yaw, to one side of them.
+func _field_rep(r: Node3D, pos: Vector3, yaw: float) -> Dictionary:
+	var holder := Node3D.new()
+	holder.position = pos
+	holder.rotation.y = yaw
+	r.add_child(holder)
+	var p := _person(holder, {"skin": Color(0.87, 0.71, 0.6), "jacket": Color(0.62, 0.1, 0.14), "shirt": Color(0.95, 0.94, 0.92),
+		"legs": Color(0.15, 0.15, 0.18), "skirt": Color(0.15, 0.15, 0.18), "hose": Color(0.72, 0.58, 0.5), "shoes": Color(0.08, 0.06, 0.07),
+		"hair": Color(0.16, 0.1, 0.08), "bob": true, "slim": true, "lips": Color(0.7, 0.18, 0.22),
+		"brows": Color(0.18, 0.11, 0.09), "eyes": Color(0.3, 0.2, 0.12)})
+	holder.scale = Vector3.ONE * 0.95
 	var chrome := _mat(Color(0.75, 0.77, 0.8), 0.35)
 	chrome.metallic = 0.5
-	var mic := Node3D.new()
-	mic.position = mouth + Vector3(0.12, -0.08, 0.16)
-	mic.rotation = Vector3(0.0, 0.6, 0.0)
-	r.add_child(mic)
-	_cap(mic, Vector3(0.06, -0.04, 0.02), 0.012, 0.13, chrome).rotation = Vector3(0.0, 0.0, 1.0)
-	_ell(mic, Vector3.ZERO, Vector3(0.026, 0.032, 0.026), chrome)
+	var mic := Node3D.new()                     # in her right hand, pointing out of her fist
+	mic.position = Vector3(0.0, -0.06, 0.03)
+	(p["hand_r"] as Node3D).add_child(mic)
+	_cap(mic, Vector3(0, -0.05, 0), 0.014, 0.15, chrome)
+	_ell(mic, Vector3(0, -0.14, 0.0), Vector3(0.03, 0.038, 0.03), chrome)
+	_box(mic, Vector3(0, -0.07, 0.0), Vector3(0.038, 0.03, 0.038), _mat(Color(0.1, 0.2, 0.6), 0.5))   # the station's flag on it
+	p["holder"] = holder
+	p["mic"] = mic
+	return p
+
+
+# her arm: the upper arm points from the shoulder toward where the mic has to be, the forearm carries on
+func _reach(p: Dictionary, target: Vector3, k: float) -> void:
+	var arm: Node3D = p["arm_r"]
+	var parent := arm.get_parent() as Node3D
+	var reach := target - arm.global_position
+	reach -= reach.normalized() * 0.2                      # her hand stops short: the mic's head ends up just under his mouth
+	var d := parent.global_transform.basis.inverse() * reach
+	if d.length() < 0.01:
+		return
+	var want := Quaternion(Vector3.DOWN, d.normalized())
+	var to_self := Quaternion.from_euler(Vector3(-0.55, 0.0, -0.45))
+	arm.quaternion = to_self.slerp(want, k)
+	(p["fore_r"] as Node3D).rotation = Vector3(lerpf(-2.3, -0.05, k), 0.0, 0.0)
 
 
 # a standing man, built like a Dreamcast-era character: real proportions (about 7.5 heads tall), a chest that
@@ -599,18 +627,26 @@ func _person(parent: Node3D, c: Dictionary) -> Dictionary:
 	var shoes := _mat(c["shoes"], 0.4)
 	var jacket := _mat(c["jacket"], 0.8)
 	var shirt := _mat(c["shirt"], 0.7)
-	# legs: thigh and shin, a little apart; shoes with a rounded toe
+	var slim: float = 0.88 if c.has("slim") else 1.0
+	# legs: thigh and shin, a little apart; shoes with a rounded toe (or a skirt to the knee, and heels)
 	for sx in [-1.0, 1.0]:
-		_cap(body, Vector3(sx * 0.095, 0.7, 0.0), 0.075, 0.48, legs)
-		_cap(body, Vector3(sx * 0.095, 0.29, 0.0), 0.06, 0.5, legs)
-		_box(body, Vector3(sx * 0.095, 0.035, 0.03), Vector3(0.1, 0.07, 0.22), shoes)
-		_ell(body, Vector3(sx * 0.095, 0.04, 0.13), Vector3(0.05, 0.035, 0.06), shoes)
-	var pelvis := _put(body, _taper(0.165, 0.16, 0.16), Vector3(0, 0.92, 0), legs)
+		if c.has("skirt"):
+			_cap(body, Vector3(sx * 0.08, 0.29, 0.0), 0.05, 0.5, _mat(c["hose"], 0.5))
+			_box(body, Vector3(sx * 0.08, 0.05, 0.02), Vector3(0.075, 0.05, 0.19), shoes).rotation.x = -0.25
+			_put(body, _taper(0.008, 0.008, 0.07), Vector3(sx * 0.08, 0.035, -0.06), shoes)
+		else:
+			_cap(body, Vector3(sx * 0.095, 0.7, 0.0), 0.075, 0.48, legs)
+			_cap(body, Vector3(sx * 0.095, 0.29, 0.0), 0.06, 0.5, legs)
+			_box(body, Vector3(sx * 0.095, 0.035, 0.03), Vector3(0.1, 0.07, 0.22), shoes)
+			_ell(body, Vector3(sx * 0.095, 0.04, 0.13), Vector3(0.05, 0.035, 0.06), shoes)
+	if c.has("skirt"):
+		_put(body, _taper(0.16, 0.15, 0.46), Vector3(0, 0.72, 0), _mat(c["skirt"], 0.8)).scale = Vector3(1.0, 1.0, 0.7)
+	var pelvis := _put(body, _taper(0.165 * slim, 0.16 * slim, 0.16), Vector3(0, 0.92, 0), _mat(c["skirt"], 0.8) if c.has("skirt") else legs)
 	pelvis.scale = Vector3(1.0, 1.0, 0.66)
 	var torso := Node3D.new()
 	torso.position = Vector3(0, 0.95, 0)
 	body.add_child(torso)
-	var chest := _put(torso, _taper(0.19, 0.15, 0.52), Vector3(0, 0.28, 0), jacket)       # broad at the shoulders, in at the waist
+	var chest := _put(torso, _taper(0.19 * slim, 0.15 * slim * slim, 0.52), Vector3(0, 0.28, 0), jacket)   # broad at the shoulders, in at the waist
 	chest.scale = Vector3(1.0, 1.0, 0.62)
 	var vee := PrismMesh.new()                                                            # the shirt in the V of the jacket
 	vee.size = Vector3(0.13, 0.24, 0.02)
@@ -619,7 +655,7 @@ func _person(parent: Node3D, c: Dictionary) -> Dictionary:
 	if c.has("tie"):
 		_box(torso, Vector3(0, 0.39, 0.112), Vector3(0.032, 0.2, 0.01), _mat(c["tie"], 0.6))
 	for sx in [-1.0, 1.0]:
-		_ell(torso, Vector3(sx * 0.2, 0.48, 0.0), Vector3(0.075, 0.06, 0.08), jacket)      # shoulders
+		_ell(torso, Vector3(sx * 0.2 * slim, 0.48, 0.0), Vector3(0.075 * slim, 0.06, 0.08), jacket)      # shoulders
 		var lap := _box(torso, Vector3(sx * 0.06, 0.4, 0.108), Vector3(0.05, 0.22, 0.012), jacket)   # lapels
 		lap.rotation.z = sx * 0.3
 	_put(torso, _taper(0.05, 0.052, 0.1), Vector3(0, 0.57, 0), skin)                     # neck
@@ -632,9 +668,9 @@ func _person(parent: Node3D, c: Dictionary) -> Dictionary:
 	# arms: upper arm, a bend at the elbow, forearm, a shirt cuff, a hand with a thumb
 	for side in [-1.0, 1.0]:
 		var arm := Node3D.new()
-		arm.position = Vector3(side * 0.22, 0.47, 0)
+		arm.position = Vector3(side * 0.22 * slim, 0.47, 0)
 		torso.add_child(arm)
-		_cap(arm, Vector3(0, -0.145, 0), 0.05, 0.31, jacket)
+		_cap(arm, Vector3(0, -0.145, 0), 0.05 * slim, 0.31, jacket)
 		var fore := Node3D.new()
 		fore.position = Vector3(0, -0.29, 0)
 		arm.add_child(fore)
@@ -671,7 +707,7 @@ func _face(head: Node3D, c: Dictionary, skin: Material) -> MeshInstance3D:
 		_ell(head, Vector3(sx * 0.032, 0.158, 0.082), Vector3(0.019, 0.006, 0.01), skin)     # upper lid
 		var b := _box(head, Vector3(sx * 0.035, 0.172, 0.088), Vector3(0.042, 0.01, 0.014), brow)
 		b.rotation.z = sx * -0.12
-	var lips := _mat(Color(c["skin"]).darkened(0.25), 0.5)
+	var lips := _mat(c.get("lips", Color(c["skin"]).darkened(0.25)), 0.4)
 	_ell(head, Vector3(0, 0.064, 0.08), Vector3(0.024, 0.007, 0.01), lips)                # lower lip
 	var mouth := _ell(head, Vector3(0, 0.072, 0.083), Vector3(0.022, 0.004, 0.006), _mat(Color(0.12, 0.04, 0.04), 0.6))
 	if c.has("hair"):
@@ -679,8 +715,14 @@ func _face(head: Node3D, c: Dictionary, skin: Material) -> MeshInstance3D:
 		var cap := _ell(head, Vector3(0, 0.19, -0.015), Vector3(0.094, 0.08, 0.1), hair)      # swept back off the forehead
 		cap.rotation.x = -0.25
 		_ell(head, Vector3(0, 0.14, -0.045), Vector3(0.09, 0.09, 0.075), hair)                 # the back
-		for sx in [-1.0, 1.0]:
-			_box(head, Vector3(sx * 0.086, 0.125, 0.02), Vector3(0.01, 0.04, 0.03), _mat(c.get("temples", c["hair"]), 0.6))   # sideburns
+		if c.has("bob"):                       # a jaw-length bob with a side parting
+			_ell(head, Vector3(0, 0.12, -0.035), Vector3(0.1, 0.12, 0.085), hair)
+			for sx in [-1.0, 1.0]:
+				_ell(head, Vector3(sx * 0.082, 0.1, 0.02), Vector3(0.028, 0.08, 0.06), hair)
+			_ell(head, Vector3(0.035, 0.205, 0.05), Vector3(0.07, 0.03, 0.05), hair).rotation.z = -0.3
+		else:
+			for sx in [-1.0, 1.0]:
+				_box(head, Vector3(sx * 0.086, 0.125, 0.02), Vector3(0.01, 0.04, 0.03), _mat(c.get("temples", c["hair"]), 0.6))   # sideburns
 	return mouth
 
 
@@ -735,8 +777,8 @@ func _build_vendor(at: Vector3) -> Dictionary:
 		var aw: MeshInstance3D = _box(r, Vector3(-2.0 + k * 0.3, 2.2, -1.0), Vector3(0.3, 0.05, 0.7),
 			_mat(Color(0.85, 0.2, 0.25) if k % 2 == 0 else Color(0.95, 0.93, 0.9), 0.7))
 		aw.rotation.x = 0.35
-	_set_mic(r, Vector3(0, 1.63, 0.1))
-	return {"root": r, "p": p, "cam": [Vector3(0.55, 1.62, 2.3), Vector3(0.35, 1.4, 0.0)], "style": "wave"}
+	return {"root": r, "p": p, "rep": _field_rep(r, Vector3(-0.62, 0.0, 0.32), 1.25), "mouth": Vector3(0, 1.62, 0.1),
+		"cam": [Vector3(0.15, 1.55, 2.8), Vector3(0.05, 1.35, 0.0)], "style": "wave"}
 
 
 # the big-game hunter on the docks: pith helmet, khaki, a great moustache, binoculars round his neck
@@ -764,8 +806,8 @@ func _build_hunter(at: Vector3) -> Dictionary:
 	_box(r, Vector3(-1.1, 1.0, -0.65), Vector3(0.6, 0.6, 0.6), crate)
 	_box(r, Vector3(1.4, 0.3, -0.5), Vector3(0.8, 0.6, 0.7), crate)
 	_put(r, _cyl_mesh(0.14, 0.5), Vector3(0.95, 0.25, 0.6), _mat(Color(0.15, 0.15, 0.17), 0.5))
-	_set_mic(r, Vector3(0, 1.63, 0.1))
-	return {"root": r, "p": p, "cam": [Vector3(0.5, 1.65, 2.2), Vector3(0.1, 1.45, 0.0)], "style": "point"}
+	return {"root": r, "p": p, "rep": _field_rep(r, Vector3(0.62, 0.0, 0.32), -1.25), "mouth": Vector3(0, 1.62, 0.1),
+		"cam": [Vector3(0.1, 1.55, 2.7), Vector3(0.2, 1.35, 0.0)], "style": "point"}
 
 
 # the grey visitor on a bench under a street lamp, coat collar up, cigarette going, a glass in his hand
@@ -785,18 +827,31 @@ func _build_visitor_set(at: Vector3) -> Dictionary:
 	var v: Node3D = load("res://stressed_alien.gd").new()
 	r.add_child(v)
 	v.build(0.5)
-	_set_mic(r, Vector3(0.12, 1.16, -0.02))
-	return {"root": r, "p": {}, "cam": [Vector3(0.45, 1.2, 1.55), Vector3(0.08, 1.0, -0.1)], "style": "sit"}
+	return {"root": r, "p": {}, "rep": _field_rep(r, Vector3(0.68, 0.0, 0.3), -1.2), "mouth": Vector3(0.0, 1.12, -0.04),
+		"cam": [Vector3(0.0, 1.35, 2.4), Vector3(0.3, 1.1, 0.0)], "style": "sit"}
 
 
 # what the interviewee does: talks when it's his line, and the vendor waves his scoop, the hunter points
-func _animate_iv(_delta: float) -> void:
+var _mic_k := 0.0                    # where her microphone is: 0 at her own mouth, 1 held out to them
+
+
+func _animate_iv(delta: float) -> void:
 	var st: Dictionary = _sets[_iv]
 	var p: Dictionary = st["p"]
+	# the woman on the ground: she asks, then holds the mic out while they answer
+	var rp: Dictionary = st["rep"]
+	var asking := 0.0 if _iv_talk else (1.0 if _iv_t < _iv_dur - 0.6 else 0.0)
+	_mic_k = move_toward(_mic_k, 0.0 if not _iv_talk else 1.0, delta * 2.5)
+	(rp["mouth"] as Node3D).scale.y = 0.004 + 0.012 * asking * maxf(0.0, sin(_T * 15.0) * sin(_T * 4.7 + 0.5))
+	(rp["head"] as Node3D).rotation = Vector3(0.05 * sin(_T * 1.2), 0.25 + 0.1 * sin(_T * 0.5), 0.0)
+	var root: Node3D = st["root"]
+	_reach(rp, root.to_global(st["mouth"] + Vector3(0.0, -0.07, 0.06)), smoothstep(0.0, 1.0, _mic_k))
+	(rp["arm_l"] as Node3D).rotation = Vector3(-0.15, 0.0, -0.12)
+	(rp["fore_l"] as Node3D).rotation = Vector3(-0.5, 0.0, 0.0)
 	if p.is_empty():
 		return
 	var talk := 1.0 if _iv_talk and _iv_t < _iv_dur - 0.6 else 0.0
-	(p["mouth"] as Node3D).scale.y = 0.008 + 0.014 * talk * maxf(0.0, sin(_T * 14.0) * sin(_T * 4.3 + 1.0))
+	(p["mouth"] as Node3D).scale.y = 0.004 + 0.012 * talk * maxf(0.0, sin(_T * 14.0) * sin(_T * 4.3 + 1.0))
 	(p["head"] as Node3D).rotation = Vector3(0.06 * sin(_T * 1.4) * talk, 0.15 * sin(_T * 0.6), 0.05 * sin(_T * 0.9))
 	match str(st["style"]):
 		"wave":                        # the scoop up, waving it like he's calling out to the whole street
