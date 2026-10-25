@@ -4054,8 +4054,7 @@ func _arcade_grill(root: Node3D, body: Material) -> void:
 	arcade_feed = BusFeed.new()
 	arcade_feed.name = "ArcadeFeed"
 	add_child(arcade_feed)
-	arcade_feed.setup("Arcade")
-	arcade_feed.set_targets([p] as Array[AudioStreamPlayer3D])
+	arcade_feed.setup("Arcade")              # (its sound plays straight from the bus: the re-played copy went silent on Windows)
 
 
 func set_arcade_volume(v: int) -> void:

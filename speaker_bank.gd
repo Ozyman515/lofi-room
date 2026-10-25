@@ -16,16 +16,13 @@ const MODES := ["pc", "tv", "lp", "off"]
 const TV_OF := {"game": "TV", "living": "TV_living", "theater": "TV_theater"}       # room -> its TV's bus
 const TV_NAME := {"game": "CRT TV", "living": "Big TV", "theater": "Theater Screen"}
 const LP_ROOMS := ["living", "hallway", "balcony"]                                 # the record player reaches these
-const BUS_ROOM := {"TV": "game", "Console": "game", "TV_living": "living", "TV_theater": "theater"}
+const BUS_ROOM := {"TV": "game", "Console": "game", "Arcade": "game", "TV_living": "living", "TV_theater": "theater"}
 const AWAY := 0.15                       # a TV heard from outside its room
 const FADE := 1.5                        # seconds to fade between the two
 
 signal lp_finished
 
 var speakers: Array = []         # [{"name", "player", "enabled", "mode", "tv", "con", "lp", "led", "room", "gain"}]  (enabled = mode is "pc")
-var _tv_feed: BusFeed            # the game room TV's tapes
-var _tv_feeds := {}              # bus -> BusFeed: the game room TV ("TV") and each room's own TV
-var _con_feed: BusFeed           # the console games shown on the TV
 var master := 0.7
 var duck := 0.0                     # 0..1: the music fades down (in the noir office, which has its own)
 var listener_room := ""             # the room you're in (the apartment sets it)
@@ -284,40 +281,26 @@ func _switch(i: int, m: String) -> void:
 
 
 func _ensure_feeds() -> void:
-	if _tv_feed != null:
-		return
-	_tv_feed = BusFeed.new()
-	add_child(_tv_feed)
-	_tv_feed.setup("TV")
-	_tv_feeds["TV"] = _tv_feed
-	_con_feed = BusFeed.new()
-	add_child(_con_feed)
-	_con_feed.setup("Console")
+	BusFeed.ensure_bus(BusFeed.SINK, true)
 
 
-# the speakers set to TV take the TV's sound (and the TV's own placeless sound goes quiet while any do)
+# A TV is heard while at least one speaker in its room is set to it, and goes quiet when none are. Its sound plays
+# straight out of its own bus (flat, not from the speakers' spots: re-playing it from each speaker went silent on
+# Windows, just a garbled half second when you switched). Out of its room it drops to 15% (in _process).
+const TV_BUSES := {"TV": "TV", "Console": "TV", "TV_living": "TV_living", "TV_theater": "TV_theater"}   # bus -> the TV it belongs to
+
 func _refresh_feeds() -> void:
 	_ensure_feeds()
-	var tvs := {}
-	for b in _tv_feeds:
-		tvs[b] = [] as Array[AudioStreamPlayer3D]
-	var cons: Array[AudioStreamPlayer3D] = []
+	var on := {}
 	for s in speakers:
 		if s["mode"] == "tv":
-			var b: String = s["tv_bus"]
-			if not tvs.has(b):
-				tvs[b] = [] as Array[AudioStreamPlayer3D]
-			(tvs[b] as Array[AudioStreamPlayer3D]).append(s["tv"])
-			if b == "TV":
-				cons.append(s["con"])           # (console games are on the game room TV)
-	for b in tvs:
-		if not _tv_feeds.has(b):
-			var f := BusFeed.new()
-			add_child(f)
-			f.setup(b)
-			_tv_feeds[b] = f
-		(_tv_feeds[b] as BusFeed).set_targets(tvs[b])
-	_con_feed.set_targets(cons)
+			on[s["tv_bus"]] = true
+		(s["tv"] as AudioStreamPlayer3D).stop()
+		(s["con"] as AudioStreamPlayer3D).stop()
+	for b in TV_BUSES:
+		var bi := AudioServer.get_bus_index(b)
+		if bi >= 0:
+			AudioServer.set_bus_send(bi, "Master" if on.has(TV_BUSES[b]) or not _rooms_set else BusFeed.SINK)
 
 
 func _apply() -> void:
@@ -388,8 +371,6 @@ func debug_tv(b: String) -> String:
 			var pb := (p.get_stream_playback() as AudioStreamGeneratorPlayback) if p.playing else null
 			out += " | %s mode=%s room=%s playing=%s vol=%.1f gain=%.2f buffered=%d" % [s["name"], s["mode"], s["room"], p.playing,
 				p.volume_db, float(s["gain"]), (int((p.stream as AudioStreamGenerator).buffer_length * (p.stream as AudioStreamGenerator).mix_rate) - pb.get_frames_available()) if pb != null else -1]
-	if _tv_feeds.has(b):
-		out += " | feed targets=%d" % (_tv_feeds[b] as BusFeed).targets.size()
 	return out
 
 
