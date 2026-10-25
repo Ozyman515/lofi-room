@@ -1,5 +1,5 @@
 {
- "version": 117,
+ "version": 118,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -482,8 +482,8 @@
    "size": 9088
   },
   "news.gd": {
-   "sha": "e310ecbd77c1e227ad72dc4511d906aa406bc6a99e5e856b70c30abefde0b4ca",
-   "size": 48551
+   "sha": "32297e80d4e2e8d136174acbf905ca6a097d8332bdc14314a3365d72a9bb3149",
+   "size": 49414
   },
   "noir.gd": {
    "sha": "fbc35592fe93ebe8b23f19b5f9cb446d9fc9419ad9c87c9864dc697f9d17e3fd",
@@ -658,7 +658,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "a737da4882749cf1706e40662641df964aeb7fb3311242782663c76ad8fb3593",
+   "sha": "f10f7170eeb4986f69d764a4cb97c3f8e9337963222188a647fc4c0ac289d0e4",
    "size": 4
   },
   "weather.gd": {
