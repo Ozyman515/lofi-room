@@ -21,6 +21,7 @@ var buttons: Array = []          # interactables: {"node", "half", "label", "cb"
 var state := State.IDLE
 var has_tape := false
 var tv_on := true
+var bus_name := "TV"               # the audio bus its sound goes to (each room's own TV has its own)
 var tv_volume := 7                # 0..10
 
 var _mat: ShaderMaterial
@@ -180,15 +181,15 @@ func _glow(mi: MeshInstance3D) -> Callable:
 # ---------------------------------------------------------------- video + UI
 
 func _build_player() -> void:
-	if AudioServer.get_bus_index("TV") < 0:
+	if AudioServer.get_bus_index(bus_name) < 0:
 		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.bus_count - 1, "TV")
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, bus_name)
 	_holder = SubViewport.new()
 	_holder.size = Vector2i(2, 2)
 	_holder.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_holder)
 	_player = VideoStreamPlayer.new()
-	_player.bus = "TV"
+	_player.bus = bus_name
 	_player.finished.connect(_on_finished)
 	_holder.add_child(_player)
 	_use_vlc = ClassDB.class_exists("VLCMediaPlayer") and Engine.has_singleton("VLCInstance")
@@ -203,7 +204,7 @@ func _new_vlc_player() -> void:
 	_vlc = ClassDB.instantiate("VLCMediaPlayer")
 	_vlc.size = Vector2(640, 360)
 	if "bus" in _vlc:
-		_vlc.set("bus", "TV")
+		_vlc.set("bus", bus_name)
 	_holder.add_child(_vlc)
 	_audio_tl = null
 	_sub_tl = null

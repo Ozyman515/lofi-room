@@ -36,6 +36,7 @@ var _st_resume_btn: Button
 var _st_cart_btn: Button
 var _st_reticle_btn: Button
 var _st_full_btn: Button
+var _st_below_btn: Button
 var _st_color_btns: Array[Button] = []
 var _ct_window: PanelContainer
 var _dbg_window: PanelContainer
@@ -477,10 +478,22 @@ func _build_settings_window() -> void:
 	_st_resume_btn.pressed.connect(func() -> void: _main.set_resume_games(not _main.emu.resume_games))
 	_st_resume_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pair2.add_child(_st_resume_btn)
+	var pair3 := HBoxContainer.new()
+	pair3.add_theme_constant_override("separation", 8)
+	v.add_child(pair3)
 	_st_cart_btn = Button.new()
 	_st_cart_btn.custom_minimum_size = Vector2(0, 42)
+	_st_cart_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_st_cart_btn.pressed.connect(func() -> void: _main.set_cart_style(not _main.cart_wash))
-	v.add_child(_st_cart_btn)
+	pair3.add_child(_st_cart_btn)
+	_st_below_btn = Button.new()
+	_st_below_btn.custom_minimum_size = Vector2(0, 42)
+	_st_below_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_st_below_btn.tooltip_text = "What you see looking down off the balcony"
+	_st_below_btn.pressed.connect(func() -> void:
+		var vs: Array = _main.BELOW_VIEWS
+		_main.set_below_view(vs[(vs.find(_main.below_view) + 1) % vs.size()]))
+	pair3.add_child(_st_below_btn)
 	var ct := Label.new()
 	ct.text = "Dot colour"
 	v.add_child(ct)
@@ -890,6 +903,8 @@ func _st_refresh() -> void:
 		_st_resume_btn.text = "Games keep your place:  " + ("ON" if _main.emu.resume_games else "OFF")
 	if _st_cart_btn != null:
 		_st_cart_btn.text = "Cartridge colours:  " + ("LOFI PINK" if _main.cart_wash else "ORIGINAL")
+	if _st_below_btn != null:
+		_st_below_btn.text = "Below the balcony:  " + {"fog": "FOG", "street": "STREET", "both": "STREET + MIST"}[_main.below_view]
 	if _st_weather_btn != null:
 		_st_weather_btn.text = "Weather at start:  " + ("THE LAST ONE" if _main.weather_start == "remember" else "RANDOM")
 	if _st_update_label != null:

@@ -10,7 +10,8 @@ const BusFeed := preload("res://bus_feed.gd")
 const MODES := ["pc", "tv", "off"]
 
 var speakers: Array = []         # [{"name", "player", "enabled", "mode", "tv", "con", "led"}]  (enabled = mode is "pc")
-var _tv_feed: BusFeed            # the TV's tapes
+var _tv_feed: BusFeed            # the game room TV's tapes
+var _tv_feeds := {}              # bus -> BusFeed: the game room TV ("TV") and each room's own TV
 var _con_feed: BusFeed           # the console games shown on the TV
 var master := 0.7
 var duck := 0.0                     # 0..1: the music fades down (in the noir office, which has its own)
@@ -75,7 +76,7 @@ func add_speaker(spk_name: String, pos: Vector3, led_material: StandardMaterial3
 	var conp := BusFeed.make_player()
 	conp.position = pos
 	add_child(conp)
-	speakers.append({"name": spk_name, "player": p, "enabled": true, "mode": "pc", "tv": tvp, "con": conp, "led": led_material})
+	speakers.append({"name": spk_name, "player": p, "enabled": true, "mode": "pc", "tv": tvp, "con": conp, "led": led_material, "tv_bus": "TV"})
 	if _ref.playing:
 		p.play(_ref.get_playback_position())
 		p.stream_paused = _paused
@@ -166,6 +167,15 @@ func cycle(i: int) -> void:
 	set_mode(i, MODES[(MODES.find(get_mode(i)) + 1) % MODES.size()])
 
 
+# which TV a speaker set to TV plays: "TV" (the game room's) or a room TV's own bus
+func set_tv_bus(i: int, b: String) -> void:
+	if i < 0 or i >= speakers.size() or str(speakers[i]["tv_bus"]) == b:
+		return
+	(speakers[i]["tv"] as AudioStreamPlayer3D).stop()
+	speakers[i]["tv_bus"] = b
+	_refresh_feeds()
+
+
 func set_mode(i: int, m: String) -> void:
 	if i < 0 or i >= speakers.size() or not MODES.has(m):
 		return
@@ -193,6 +203,7 @@ func _ensure_feeds() -> void:
 	_tv_feed = BusFeed.new()
 	add_child(_tv_feed)
 	_tv_feed.setup("TV")
+	_tv_feeds["TV"] = _tv_feed
 	_con_feed = BusFeed.new()
 	add_child(_con_feed)
 	_con_feed.setup("Console")
@@ -201,13 +212,25 @@ func _ensure_feeds() -> void:
 # the speakers set to TV take the TV's sound (and the TV's own placeless sound goes quiet while any do)
 func _refresh_feeds() -> void:
 	_ensure_feeds()
-	var tvs: Array[AudioStreamPlayer3D] = []
+	var tvs := {}
+	for b in _tv_feeds:
+		tvs[b] = [] as Array[AudioStreamPlayer3D]
 	var cons: Array[AudioStreamPlayer3D] = []
 	for s in speakers:
 		if s["mode"] == "tv":
-			tvs.append(s["tv"])
-			cons.append(s["con"])
-	_tv_feed.set_targets(tvs)
+			var b: String = s["tv_bus"]
+			if not tvs.has(b):
+				tvs[b] = [] as Array[AudioStreamPlayer3D]
+			(tvs[b] as Array[AudioStreamPlayer3D]).append(s["tv"])
+			if b == "TV":
+				cons.append(s["con"])           # (console games are on the game room TV)
+	for b in tvs:
+		if not _tv_feeds.has(b):
+			var f := BusFeed.new()
+			add_child(f)
+			f.setup(b)
+			_tv_feeds[b] = f
+		(_tv_feeds[b] as BusFeed).set_targets(tvs[b])
 	_con_feed.set_targets(cons)
 
 

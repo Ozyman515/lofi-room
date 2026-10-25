@@ -261,6 +261,7 @@ func _ready() -> void:
 	ComicBook.renderer = pr
 	_build_multiplayer()
 	_load_prefs()
+	_apply_below_view()
 	pc.play_random_default()
 
 
@@ -4295,6 +4296,24 @@ func set_resume_games(on: bool) -> void:
 	settings_changed.emit()
 
 
+# what you see looking down off the balcony: a sea of fog, the street far below, or the street under thinner fog
+const BELOW_VIEWS := ["fog", "street", "both"]
+var below_view := "fog"
+
+func set_below_view(v: String) -> void:
+	below_view = v if v in BELOW_VIEWS else "fog"
+	_apply_below_view()
+	_save_settings()
+	settings_changed.emit()
+
+
+func _apply_below_view() -> void:
+	if weather != null:
+		weather.below_fog = {"fog": 1.0, "street": 0.0, "both": 0.45}[below_view]
+	if apartment != null and apartment.street != null:
+		apartment.street.visible = below_view != "fog"
+
+
 func set_weather_start(s: String) -> void:
 	weather_start = "remember" if s == "remember" else "random"
 	_save_settings()
@@ -4372,6 +4391,7 @@ func _load_prefs() -> void:
 			weather.snap()
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
+		below_view = str(cfg.get_value("settings", "below_view", "fog"))
 		slap_minutes = int(cfg.get_value("settings", "slap_minutes", 30))
 		for gk in guest_allow:
 			guest_allow[gk] = bool(cfg.get_value("guests", gk, false))
@@ -4471,6 +4491,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "weather_start", weather_start)
 	cfg.set_value("settings", "resume_games", emu.resume_games if emu != null else true)
 	cfg.set_value("settings", "cart_wash", cart_wash)
+	cfg.set_value("settings", "below_view", below_view)
 	cfg.set_value("settings", "phone_hidden", phone_hidden)
 	cfg.set_value("settings", "slap_minutes", slap_minutes)
 	cfg.set_value("settings", "arcade_on", arcade_on)
@@ -5287,9 +5308,11 @@ func _pick_focus_screen() -> ScreenUI:
 	var best: ScreenUI = null
 	var best_dot := 0.5
 	for sc in screens:
+		if apartment != null and not apartment.can_reach(sc):
+			continue                                   # (behind a wall)
 		var to: Vector3 = sc.global_position - p
 		var dist := to.length()
-		if dist > 6.0 or dist < 0.05:
+		if dist > 9.0 or dist < 0.05:
 			continue
 		var dir := to / dist
 		if sc.global_transform.basis.z.dot(-dir) <= 0.0:
@@ -5299,6 +5322,28 @@ func _pick_focus_screen() -> ScreenUI:
 			best_dot = d
 			best = sc
 	return best
+
+
+# zoomed in on a screen: would this point (a friend's head, say) be in the way of it?
+func blocks_focus(pt: Vector3) -> bool:
+	if focus_level == 0 or focus_screen == null or head == null:
+		return false
+	var cam := head.global_position
+	var sc := focus_screen.global_transform
+	var to_scr := sc.origin - cam
+	var to_pt := pt - cam
+	if to_pt.dot(to_scr.normalized()) <= 0.0 or to_pt.length() > to_scr.length():
+		return false                                   # behind me, or behind the screen
+	# where the line from my eye through the point lands on the screen's plane
+	var n := sc.basis.z.normalized()
+	var den := to_pt.normalized().dot(n)
+	if absf(den) < 0.0001:
+		return false
+	var t := (sc.origin - cam).dot(n) / den
+	var hit := cam + to_pt.normalized() * t
+	var l := sc.affine_inverse() * hit
+	var half: Vector2 = focus_screen.screen_size * 0.5 + Vector2(0.4, 0.4)
+	return absf(l.x) <= half.x and absf(l.y) <= half.y
 
 
 # How far in front of the screen to stand so it fills about 55% (zoom) or 95% (full) of the view.

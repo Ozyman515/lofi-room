@@ -31,6 +31,7 @@ var _bolt_halo_m: StandardMaterial3D
 
 var _rain: GPUParticles3D
 var _snow: GPUParticles3D
+var below_fog := 1.0                # 0..1: the fog layer down below the building (main.gd sets it)
 var _rain_e: GPUParticles3D        # the same again past the balcony's east side (it's a corner flat)
 var _snow_e: GPUParticles3D
 var _rain_pl: AudioStreamPlayer
@@ -691,8 +692,11 @@ func _process(delta: float) -> void:
 	if city_mat != null:
 		city_mat.set_shader_parameter("flash", maxf(flash * 0.6, room_flash * 0.9))
 	if env != null:
-		env.fog_enabled = _fog > 0.0015
+		env.fog_enabled = _fog > 0.0015 or below_fog > 0.0
 		env.fog_density = _fog
+		# a thick layer of fog down below the balconies: the street stays hidden, you stay up high
+		env.fog_height = -1.5
+		env.fog_height_density = 1.2 * below_fog
 		env.fog_light_color = Color(0.42, 0.22, 0.52).lerp(Color(0.80, 0.70, 0.86), _snowy).lerp(Color(0.07, 0.03, 0.13), overcast * 0.8 * (1.0 - _snowy))
 		env.fog_sky_affect = _sky_fog
 	if flash_light != null:

@@ -82,7 +82,6 @@ var game: Node3D
 var study: Node3D
 var noir_room: Node3D
 var theater: Node3D
-var th_screen_mat: ShaderMaterial
 var secret_until := 0                       # ms: the bookcase stays open until then (after the red book is pulled)
 var _secret: Dictionary = {}
 var exterior: Node3D
@@ -425,10 +424,10 @@ func _build_living() -> void:
 # shelf, plants and lamps
 const LIV_TV := Vector3(2.68, 1.6, 0.7)      # the screen's centre (on the west wall, facing east)
 const LIV_TV_SIZE := Vector2(2.86, 1.61)     # a big one: about 130 inches across
-var liv_tv_mat: ShaderMaterial               # (a copy of the bedroom TV's picture, without the old-TV look)
-var liv_tv_on := true
+const RoomTV := preload("res://room_tv.gd")
+var liv_tv: Node3D                           # room_tv.gd: its own player, or the game room TV's picture
+var th_tv: Node3D
 var _liv_glow: OmniLight3D
-var _liv_screen: MeshInstance3D
 var _liv_led: StandardMaterial3D
 
 func _furnish_living(p: Node3D) -> void:
@@ -449,14 +448,10 @@ func _furnish_living(p: Node3D) -> void:
 	tv.rotation.y = PI / 2.0                   # local +z faces east, into the room
 	p.add_child(tv)
 	_box(Vector3(0, 0, -0.02), Vector3(LIV_TV_SIZE.x + 0.03, LIV_TV_SIZE.y + 0.03, 0.04), dark, tv)   # thin bezel
-	var q := QuadMesh.new()
-	q.size = LIV_TV_SIZE
-	liv_tv_mat = (main.tv_mat as ShaderMaterial).duplicate()
-	_liv_screen = MeshInstance3D.new()
-	_liv_screen.mesh = q
-	_liv_screen.material_override = liv_tv_mat
-	_liv_screen.position = Vector3(0, 0, 0.001)
-	tv.add_child(_liv_screen)
+	# the screen and its own player (a VCR on the console, below it)
+	liv_tv = RoomTV.new()
+	liv_tv.build(main, p, "TV_living", Transform3D(Basis(Vector3.UP, PI / 2.0), LIV_TV), LIV_TV_SIZE,
+		Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(stand_x, 0.5, LIV_TV.z - 0.2)))
 	# a soft pink light strip behind it (bias lighting)
 	var strip := _mat(main.PINK, 0.5, 2.2)
 	_box(Vector3(0, LIV_TV_SIZE.y / 2.0 - 0.05, -0.05), Vector3(LIV_TV_SIZE.x - 0.1, 0.012, 0.012), strip, tv)
@@ -467,15 +462,15 @@ func _furnish_living(p: Node3D) -> void:
 	var pw_m := _mat(Color(0.25, 0.22, 0.30), 0.5)
 	var pw := _box(Vector3(stand_x + 0.17, 0.505, LIV_TV.z + 0.8), Vector3(0.07, 0.015, 0.05), pw_m, p)
 	main.interactables.append({"node": pw, "half": Vector3(0.05, 0.03, 0.04), "guest_ok": true,
-		"label": func() -> String: return "BIG TV  [%s]" % ("ON" if liv_tv_on else "OFF"),
-		"cb": func() -> void: set_liv_tv(not liv_tv_on),
+		"label": func() -> String: return "BIG TV  [%s]" % ("ON" if liv_tv.is_on() else "OFF"),
+		"cb": func() -> void: set_liv_tv(not liv_tv.is_on()),
 		"hover": main._glow_hover(pw_m)})
 	_label("TV", Vector3(stand_x + 0.178, 0.514, LIV_TV.z + 0.8), PI / 2.0, 24, Color(0.85, 0.8, 0.9), p).rotation.x = -PI / 2.0
 	_liv_glow = _light(Vector3(LIV_TV.x + 0.8, LIV_TV.y - 0.2, LIV_TV.z), Color(0.45, 0.6, 1.0), 1.1, 5.0, p)
-	# things on the console: a game console under the TV, a little plant, a speaker each side
-	_box(Vector3(stand_x, 0.53, LIV_TV.z - 0.35), Vector3(0.28, 0.06, 0.32), _mat(Color(0.9, 0.9, 0.93), 0.4), p)
-	main._cyl(Vector3(stand_x, 0.58, LIV_TV.z + 0.45), 0.06, 0.12, _mat(Color(0.85, 0.45, 0.55), 0.7), p)
-	main._sphere(Vector3(stand_x, 0.69, LIV_TV.z + 0.45), 0.08, _mat(Color(0.18, 0.45, 0.30), 0.8), Vector3(1, 1.2, 1), p, 10)
+	liv_tv.add_glow(_liv_glow)
+	# a little plant on the console beside the player
+	main._cyl(Vector3(stand_x, 0.58, LIV_TV.z + 0.5), 0.06, 0.12, _mat(Color(0.85, 0.45, 0.55), 0.7), p)
+	main._sphere(Vector3(stand_x, 0.69, LIV_TV.z + 0.5), 0.08, _mat(Color(0.18, 0.45, 0.30), 0.8), Vector3(1, 1.2, 1), p, 10)
 	# ---- the couch: three cushions, facing the TV (west)
 	var fabric := _mat(Color(0.42, 0.24, 0.55), 0.95)
 	var fabric_dk := _mat(Color(0.32, 0.17, 0.43), 0.95)
@@ -602,41 +597,17 @@ func _furnish_living(p: Node3D) -> void:
 	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.45, LIV_TV.z + LIV_TV_SIZE.x / 2.0 + 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
 	main.bank.set_mode(main.bank.speakers.size() - 2, "tv")
 	main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
+	liv_tv.speakers = [main.bank.speakers.size() - 2, main.bank.speakers.size() - 1] as Array[int]
+	liv_tv._route()
 	if main.pc != null:
 		main.pc.refresh_speakers()
 
 
 func set_liv_tv(on: bool) -> void:
-	liv_tv_on = on
+	liv_tv.set_power(on)
 	_liv_led.albedo_color = Color(0.2, 1.0, 0.4) if on else Color(0.3, 0.05, 0.05)
 	_liv_led.emission = Color(0.2, 1.0, 0.4) if on else Color(0.6, 0.05, 0.05)
 	_liv_led.emission_energy_multiplier = 3.0 if on else 0.5
-
-
-# the big TV shows what the bedroom TV shows (a tape, a game, the news), as a clean flat picture
-var _liv_params: Array = []
-func _mirror_tv() -> void:
-	if liv_tv_mat == null or main.tv_mat == null:
-		return
-	if _liv_params.is_empty():
-		for u in (main.tv_mat.shader as Shader).get_shader_uniform_list():
-			var n := str(u["name"])
-			if n != "crt_mode" and n != "screen_aspect" and n != "tv_power":
-				_liv_params.append(n)
-	var src: ShaderMaterial = main.tv_mat
-	for n in _liv_params:
-		liv_tv_mat.set_shader_parameter(n, src.get_shader_parameter(n))
-	liv_tv_mat.set_shader_parameter("crt_mode", 0)
-	liv_tv_mat.set_shader_parameter("screen_aspect", LIV_TV_SIZE.x / LIV_TV_SIZE.y)
-	var pw = src.get_shader_parameter("tv_power")
-	liv_tv_mat.set_shader_parameter("tv_power", float(pw if pw != null else 1.0) if liv_tv_on else 0.0)
-	_liv_glow.visible = liv_tv_on and float(pw if pw != null else 1.0) > 0.5
-	if th_screen_mat != null and theater.visible:
-		for n in _liv_params:
-			th_screen_mat.set_shader_parameter(n, src.get_shader_parameter(n))
-		th_screen_mat.set_shader_parameter("crt_mode", 0)
-		th_screen_mat.set_shader_parameter("screen_aspect", TH_SCREEN.x / TH_SCREEN.y)
-		th_screen_mat.set_shader_parameter("tv_power", float(pw if pw != null else 1.0))
 
 
 # ---------------------------------------------------------------- the balcony: round the corner, under the balcony above
@@ -1083,14 +1054,12 @@ func _build_theater() -> void:
 	scr.rotation.y = PI                          # faces north, toward the seats
 	p.add_child(scr)
 	_box(Vector3(0, 0, -0.012), Vector3(TH_SCREEN.x + 0.16, TH_SCREEN.y + 0.16, 0.02), _mat(Color(0.02, 0.02, 0.03), 0.9), scr)   # (local -z is toward the wall)
-	var q := QuadMesh.new()
-	q.size = TH_SCREEN
-	th_screen_mat = (main.tv_mat as ShaderMaterial).duplicate()
-	var sm := MeshInstance3D.new()
-	sm.mesh = q
-	sm.material_override = th_screen_mat
-	sm.position = Vector3(0, 0, 0.002)
-	scr.add_child(sm)
+	# its own player: a VCR on a little stand at the back, by the door
+	_box(Vector3(9.2, 0.36, 6.05), Vector3(0.5, 0.72, 0.95), wood, p)
+	_blockers["theater"].append(Rect2(8.9, 5.55, 0.65, 1.0))
+	th_tv = RoomTV.new()
+	th_tv.build(main, p, "TV_theater", Transform3D(Basis(Vector3.UP, PI), Vector3(cx, sy, z1 - 0.02)), TH_SCREEN,
+		Transform3D(Basis(Vector3.UP, -PI / 2.0), Vector3(9.2, 0.72, 6.05)))
 	for side in [-1.0, 1.0]:
 		for k in 5:
 			var cxk: float = side * (TH_SCREEN.x / 2.0 + 0.12 + k * 0.07)
@@ -1102,7 +1071,9 @@ func _build_theater() -> void:
 		main._make_speaker("Theater speaker " + ("L" if side < 0 else "R"), Vector3(cx + side * (TH_SCREEN.x / 2.0 + 0.6), TH_LOW + 0.55, z1 - 0.35),
 			PI, 0.0, Vector3(0.4, 1.1, 0.4), 0.13, p)
 		main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
+		th_tv.speakers.append(main.bank.speakers.size() - 1)
 		_blockers["theater"].append(Rect2(cx + side * (TH_SCREEN.x / 2.0 + 0.6) - 0.3, z1 - 0.65, 0.6, 0.6))
+	th_tv._route()
 	if main.pc != null:
 		main.pc.refresh_speakers()
 	# the seats: three rows of four, each row shifted half a seat from the one in front so nobody's head is in the way
@@ -1137,7 +1108,7 @@ func _build_theater() -> void:
 		for side in [x0 + 0.08, x1 - 0.08]:
 			_box(Vector3(side, 2.0, lz), Vector3(0.05, 0.22, 0.14), sconce, p)
 	_light(Vector3(cx, 1.6, 7.2), main.WARM, 0.45, 5.0, p)
-	_light(Vector3(cx, sy, z1 - 1.4), Color(0.6, 0.65, 1.0), 0.6, 5.5, p)
+	th_tv.add_glow(_light(Vector3(cx, sy, z1 - 1.4), Color(0.6, 0.65, 1.0), 0.6, 5.5, p))
 	if not Plat.low_power():
 		_light(Vector3(cx, 2.3, 10.4), Color(0.8, 0.4, 0.6), 0.35, 4.5, p)
 
@@ -1169,20 +1140,105 @@ func _build_exterior() -> void:
 	_box(Vector3((x0 + x1) / 2.0, (-40.0 - 0.7) / 2.0, (z0 + z1) / 2.0), Vector3(x1 - x0, 40.0 - 0.7, z1 - z0), m, p)          # below (the theater dips into it)
 	var slab := _mat(Color(0.28, 0.20, 0.30), 0.85)
 	var rail_m := _mat(Color(0.10, 0.08, 0.13), 0.4)
-	for fy in [-9.0, -6.0, -3.0]:                             # the neighbours' balconies below
+	for k in 9:                                               # the neighbours' balconies, all the way down
+		var fy := -3.0 - k * 3.0
 		_box(Vector3((x0 + BAL_E) / 2.0, fy, (BAL_N + NORTH_Z) / 2.0), Vector3(BAL_E - x0, 0.16, NORTH_Z - BAL_N + 0.1), slab, p)
 		_box(Vector3((EAST_X + BAL_E) / 2.0, fy, (NORTH_Z + FRONT_Z) / 2.0), Vector3(BAL_E - EAST_X, 0.16, FRONT_Z - NORTH_Z), slab, p)
 		_box(Vector3((x0 + BAL_E) / 2.0, fy + 1.05, BAL_N), Vector3(BAL_E - x0, 0.05, 0.05), rail_m, p)
 		_box(Vector3(BAL_E, fy + 1.05, (BAL_N + FRONT_Z) / 2.0), Vector3(0.05, 0.05, FRONT_Z - BAL_N), rail_m, p)
 	_box(Vector3((x0 + BAL_E) / 2.0, -0.2 - 0.2, (BAL_N + NORTH_Z) / 2.0), Vector3(BAL_E - x0, 0.2, NORTH_Z - BAL_N), slab, p)   # under ours
-	# the street, far below
-	var street := _mat(Color(0.06, 0.04, 0.08), 0.9)
-	_box(Vector3(2.0, -30.0, -20.0), Vector3(160.0, 0.2, 160.0), street, p)
-	var lamp := _mat(Color(1.0, 0.7, 0.4), 0.4, 3.0)
-	for i in 12:
-		main._sphere(Vector3(-22.0 + i * 4.5, -26.5, -9.0), 0.25, lamp, Vector3.ONE, p, 8)
-	for i in 8:
-		main._sphere(Vector3(16.0, -26.5, -6.0 + i * 4.5), 0.25, lamp, Vector3.ONE, p, 8)
+	_build_street()
+
+
+# ---------------------------------------------------------------- the street, far below: roads, lamps, traffic, the low buildings across it
+const GROUND := -30.0
+var street: Node3D
+var _cars: Array = []                # [node, axis ("x" or "z"), lane coordinate, speed, from, to]
+
+func _build_street() -> void:
+	street = Node3D.new()
+	street.name = "Street"
+	exterior.add_child(street)
+	var p := street
+	var asphalt := _mat(Color(0.10, 0.08, 0.12), 0.9)
+	var walk := _mat(Color(0.22, 0.18, 0.24), 0.9)
+	var line := _mat(Color(0.9, 0.8, 0.5), 0.6, 0.6)
+	var g := GROUND
+	_box(Vector3(2.0, g - 0.1, -20.0), Vector3(200.0, 0.2, 200.0), _mat(Color(0.07, 0.05, 0.09), 0.9), p)
+	# the avenue along the north side, and the street down the east side
+	_box(Vector3(0.0, g + 0.01, -8.5), Vector3(140.0, 0.02, 6.0), asphalt, p)
+	_box(Vector3(17.0, g + 0.012, -10.0), Vector3(6.0, 0.02, 110.0), asphalt, p)
+	_box(Vector3(0.0, g + 0.08, -5.0), Vector3(140.0, 0.16, 1.4), walk, p)
+	_box(Vector3(0.0, g + 0.08, -12.0), Vector3(140.0, 0.16, 1.4), walk, p)
+	_box(Vector3(13.6, g + 0.08, -10.0), Vector3(1.4, 0.16, 110.0), walk, p)
+	_box(Vector3(20.4, g + 0.08, -10.0), Vector3(1.4, 0.16, 110.0), walk, p)
+	for i in 28:
+		_box(Vector3(-68.0 + i * 5.0, g + 0.025, -8.5), Vector3(2.4, 0.01, 0.12), line, p)
+	for i in 22:
+		_box(Vector3(17.0, g + 0.027, -62.0 + i * 5.0), Vector3(0.12, 0.01, 2.4), line, p)
+	# streetlamps: a pole, an arm and a warm head, every 9 m
+	var pole := _mat(Color(0.12, 0.10, 0.14), 0.5)
+	var head := _mat(Color(1.0, 0.75, 0.45), 0.4, 3.5)
+	var lamps: Array = []
+	for i in 14:
+		lamps.append([Vector3(-50.0 + i * 9.0, g, -5.6), 0.0])
+	for i in 10:
+		lamps.append([Vector3(13.9, g, -50.0 + i * 9.0), 1.0])
+	for lp in lamps:
+		var at: Vector3 = lp[0]
+		_box(at + Vector3(0, 2.5, 0), Vector3(0.14, 5.0, 0.14), pole, p)
+		var arm := Vector3(0, 0, -0.6) if float(lp[1]) == 0.0 else Vector3(0.6, 0, 0)
+		_box(at + Vector3(0, 4.95, 0) + arm * 0.5, Vector3(0.1 + absf(arm.x), 0.08, 0.1 + absf(arm.z)), pole, p)
+		_box(at + Vector3(0, 4.85, 0) + arm, Vector3(0.4, 0.12, 0.4), head, p)
+	# low buildings across the east street, so looking down you see rooftops, not a hole
+	var cm: Material = main.city_mat
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 404
+	var roof_m := _mat(Color(0.16, 0.12, 0.20), 0.9)
+	var unit := _mat(Color(0.35, 0.33, 0.38), 0.6)
+	for b in [[27.0, -26.0, 10.0, 12.0], [27.0, -10.0, 10.0, 14.0], [27.0, 6.0, 10.0, 12.0], [38.5, -18.0, 9.0, 14.0], [38.5, 0.0, 9.0, 16.0],
+			[27.0, 20.0, 10.0, 12.0]]:
+		var top := g + rng.randf_range(12.0, 24.0)
+		var c := Vector3(b[0], (g + top) / 2.0, b[1])
+		_box(c, Vector3(b[2], top - g, b[3]), cm, p)
+		_box(Vector3(c.x, top + 0.05, c.z), Vector3(b[2] - 0.3, 0.1, b[3] - 0.3), roof_m, p)
+		for k in 3:                                      # rooftop air-con units and a water tank
+			_box(Vector3(c.x + rng.randf_range(-b[2] * 0.3, b[2] * 0.3), top + 0.5, c.z + rng.randf_range(-b[3] * 0.3, b[3] * 0.3)), Vector3(1.4, 0.9, 1.0), unit, p)
+		main._cyl(Vector3(c.x + b[2] * 0.25, top + 1.4, c.z - b[3] * 0.25), 1.0, 2.6, _mat(Color(0.28, 0.20, 0.18), 0.8), p)
+	# traffic: a few cars with their lights on
+	var body_cols := [Color(0.25, 0.25, 0.32), Color(0.55, 0.12, 0.16), Color(0.85, 0.85, 0.88), Color(0.12, 0.25, 0.45), Color(0.9, 0.75, 0.2)]
+	var white := _mat(Color(1.0, 0.95, 0.85), 0.4, 4.0)
+	var red := _mat(Color(1.0, 0.15, 0.1), 0.4, 3.0)
+	for i in 10:
+		var car := Node3D.new()
+		p.add_child(car)
+		_box(Vector3(0, 0.55, 0), Vector3(1.8, 0.7, 4.2), _mat(body_cols[i % body_cols.size()], 0.4), car)
+		_box(Vector3(0, 1.05, 0.2), Vector3(1.6, 0.5, 2.2), _mat(Color(0.08, 0.08, 0.1), 0.2), car)
+		for sx in [-0.6, 0.6]:
+			_box(Vector3(sx, 0.6, -2.11), Vector3(0.35, 0.15, 0.03), white, car)      # headlights (front is -z)
+			_box(Vector3(sx, 0.6, 2.11), Vector3(0.35, 0.15, 0.03), red, car)
+		var on_avenue := i < 6
+		var dir := 1.0 if i % 2 == 0 else -1.0
+		var lane := (-8.5 + dir * 1.5) if on_avenue else (17.0 - dir * 1.5)
+		var speed := rng.randf_range(8.0, 13.0) * dir
+		var start := rng.randf_range(-60.0, 60.0)
+		car.position = Vector3(start, g, lane) if on_avenue else Vector3(lane, g, start - 10.0)
+		car.rotation.y = (-PI / 2.0 if dir > 0 else PI / 2.0) if on_avenue else (PI if dir > 0 else 0.0)
+		_cars.append([car, "x" if on_avenue else "z", speed])
+
+
+func _traffic(delta: float) -> void:
+	for c in _cars:
+		var n: Node3D = c[0]
+		var v: float = c[2]
+		if c[1] == "x":
+			n.position.x += v * delta
+			if n.position.x > 70.0: n.position.x = -70.0
+			elif n.position.x < -70.0: n.position.x = 70.0
+		else:
+			n.position.z += v * delta
+			if n.position.z > 40.0: n.position.z = -60.0
+			elif n.position.z < -60.0: n.position.z = 40.0
 
 
 # ---------------------------------------------------------------- where am I, what can I walk on
@@ -1305,6 +1361,8 @@ func _process(delta: float) -> void:
 		d["open"] = o
 		(d["pivot"] as Node3D).rotation.y = float(d["sign"]) * 1.65 * smoothstep(0.0, 1.0, o)
 	# the bookcase: open after the red book is pulled, and while anybody is in the office or the way through
+	if street != null and street.visible and (current == "balcony" or current == "living" or current == "bedroom"):
+		_traffic(delta)
 	if not _secret.is_empty():
 		var want := Time.get_ticks_msec() < secret_until
 		for pp in people:
@@ -1328,8 +1386,6 @@ func _process(delta: float) -> void:
 	if not _secret.is_empty() and float(_secret["open"]) > 0.02 and current in ["study", "noir"]:
 		seen["study"] = true
 		seen["noir"] = true
-	if living.visible or theater.visible:
-		_mirror_tv()
 	if seen != _seen:
 		_seen = seen
 		for rid in rooms:
@@ -1341,7 +1397,7 @@ func _process(delta: float) -> void:
 				continue
 			var hp2: Vector3 = a.head.global_position
 			var ar := room_at(hp2.x, hp2.z)
-			var show := ar == "" or seen.has(ar)
+			var show: bool = (ar == "" or seen.has(ar)) and not main.blocks_focus(hp2)     # (never in the way of a zoomed-in screen)
 			for part in [a.head, a.lh, a.rh, a.tag]:
 				if part != null:
 					part.visible = show
