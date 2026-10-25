@@ -52,7 +52,7 @@ the first 1,000 GB a month, then $0.05/GB. Put its details in the config:
     turn_pass="..."
 
 ## Settings (environment variables)
-`PORT` (8787), `MAX_PLAYERS` (4), `GRACE_MS` (90000: how long a host can come back to the same code),
+`PORT` (8787), `MAX_PLAYERS` (8), `GRACE_MS` (90000: how long a host can come back to the same code),
 `JOIN_PER_MIN` (12 join tries per IP per minute), `HOST_PER_MIN` (6 rooms opened per IP per minute),
 `ROOMS_PER_IP` (3 rooms open at once per IP), `MAX_ROOMS` (2000), `MAX_CONNS` (400), `MAX_CONNS_PER_IP` (8),
 `MAX_PENDING` (96 MB of half-received messages across everyone; past that, the sender is dropped),
