@@ -11,6 +11,7 @@ var _ember: StandardMaterial3D
 var _tip := Vector3.ZERO
 var _t := 0.0
 var _head: Node3D
+var _glass: Node3D
 
 
 func build(seat_y := 0.6) -> void:
@@ -58,24 +59,23 @@ func build(seat_y := 0.6) -> void:
 			[0.06, 0.055, 0.048, 0.042, 0.036, 0.032] as Array[float], slacks))
 		add_child(U._tube([Vector3(sx * 0.105, 0.09, 0.32), Vector3(sx * 0.105, 0.04, 0.34), Vector3(sx * 0.11, 0.025, 0.43)] as Array[Vector3],
 			[0.03, 0.028, 0.022] as Array[float], skin))
-	# the right arm lies along the armrest, the hand hanging loose over its end
+	# the right arm lies along the armrest, the hand round a glass of whiskey standing at its end
 	add_child(U._tube([Vector3(0.13, sy + 0.4, -0.19), Vector3(0.24, sy + 0.3, -0.16), Vector3(0.31, sy + 0.235, -0.08),
-		Vector3(0.33, sy + 0.235, 0.08), Vector3(0.34, sy + 0.235, 0.2)] as Array[Vector3],
+		Vector3(0.33, sy + 0.235, 0.08), Vector3(0.34, sy + 0.24, 0.19)] as Array[Vector3],
 		[0.042, 0.036, 0.034, 0.03, 0.026] as Array[float], coat))
-	for f in 3:
-		add_child(U._tube([Vector3(0.34, sy + 0.235, 0.21), Vector3(0.325 + f * 0.012, sy + 0.235, 0.28),
-			Vector3(0.322 + f * 0.016, sy + 0.18, 0.31)] as Array[Vector3], [0.013, 0.01, 0.007] as Array[float], skin))
-	# the left elbow propped on the other armrest, the forearm up, the cigarette held by the face
-	var hand := Vector3(-0.1, sy + 0.5, -0.03)
-	add_child(U._tube([Vector3(-0.07, sy + 0.4, -0.19), Vector3(-0.2, sy + 0.32, -0.15), Vector3(-0.29, sy + 0.24, -0.05),
-		Vector3(-0.24, sy + 0.34, -0.02), Vector3(-0.15, sy + 0.45, -0.025)] as Array[Vector3],
-		[0.042, 0.036, 0.034, 0.03, 0.026] as Array[float], coat))
-	add_child(U._tube([Vector3(-0.15, sy + 0.45, -0.025), hand] as Array[Vector3], [0.02, 0.018] as Array[float], skin))
-	for f in 2:                                                     # two long fingers out flat, the cigarette between
-		add_child(U._tube([hand, hand + Vector3(0.025, 0.025 + f * 0.012, 0.012 - f * 0.012),
-			hand + Vector3(0.05, 0.035 + f * 0.016, 0.02 - f * 0.02)] as Array[Vector3], [0.012, 0.009, 0.006] as Array[float], skin))
-	add_child(U._tube([hand, hand + Vector3(0.0, -0.01, 0.035), hand + Vector3(0.02, 0.005, 0.055)] as Array[Vector3],
-		[0.011, 0.009, 0.006] as Array[float], skin))            # the thumb, curled under
+	var gc := Vector3(0.335, sy + 0.215, 0.265)                    # the glass, on the end of the armrest
+	_glass = load("res://noir_props.gd")._tumbler(gc)
+	add_child(_glass)
+	var palm := Vector3(0.345, sy + 0.27, 0.205)
+	add_child(U._tube([Vector3(0.34, sy + 0.24, 0.19), palm] as Array[Vector3], [0.02, 0.018] as Array[float], skin))
+	for f in 3:                                                    # long fingers wrapped round the far side of it
+		var fy: float = sy + 0.285 - f * 0.018
+		var pts: Array[Vector3] = [palm + Vector3(0.0, fy - palm.y, 0.0)]
+		for ang in [0.55, 1.2, 1.85 - f * 0.12]:
+			pts.append(gc + Vector3(sin(ang) * 0.052, fy - gc.y, -cos(ang) * 0.052))
+		add_child(U._tube(pts, [0.012, 0.011, 0.009, 0.007] as Array[float], skin))
+	add_child(U._tube([palm, gc + Vector3(-0.045, 0.07, -0.03), gc + Vector3(-0.052, 0.06, 0.01)] as Array[Vector3],
+		[0.011, 0.009, 0.007] as Array[float], skin))             # the thumb, on the near side
 	# the head, upright on a thin neck, chin down a touch, eyes slid off to one side
 	add_child(U._tube([Vector3(0.03, sy + 0.4, -0.19), Vector3(0.025, sy + 0.5, -0.17)] as Array[Vector3],
 		[0.03, 0.026] as Array[float], skin))
@@ -116,22 +116,49 @@ func build(seat_y := 0.6) -> void:
 			hm.albedo_color = hm.albedo_color.lightened(0.18)
 			mi.material_override = hm
 	_head.add_child(hat)
-	# the cigarette between the fingers, tip up, and its smoke
+	# the cigarette at his lips, held level between two fingers, the lit end out to the side, away from his face
+	var mouth: Vector3 = _head.transform * Vector3(0.0, 0.045, 0.034)
+	var cdir := Vector3(-0.62, -0.1, 0.78).normalized()
+	var cmid := mouth + cdir * 0.042
 	var cig := Node3D.new()
-	cig.position = hand + Vector3(0.035, 0.035, 0.005)
-	cig.rotation = Vector3(0.0, 0.0, -0.5)               # leaning out away from the face
+	cig.position = cmid
+	cig.basis = Basis(Quaternion(Vector3.UP, cdir))
 	add_child(cig)
 	var paper := StandardMaterial3D.new()
 	paper.albedo_color = Color(0.95, 0.94, 0.9)
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.0045
 	cm.bottom_radius = 0.0045
-	cm.height = 0.075
+	cm.height = 0.062
 	var c := MeshInstance3D.new()
 	c.mesh = cm
 	c.material_override = paper
-	c.position = Vector3(0, 0.025, 0.0)
+	c.position = Vector3(0, 0.009, 0.0)
 	cig.add_child(c)
+	var filt := StandardMaterial3D.new()
+	filt.albedo_color = Color(0.8, 0.62, 0.38)
+	var fm := CylinderMesh.new()
+	fm.top_radius = 0.0046
+	fm.bottom_radius = 0.0046
+	fm.height = 0.02
+	var fl := MeshInstance3D.new()
+	fl.mesh = fm
+	fl.material_override = filt
+	fl.position = Vector3(0, -0.032, 0.0)
+	cig.add_child(fl)
+	# the left elbow propped on the other armrest, the forearm up, two fingers round the cigarette
+	var hand := cmid + Vector3(-0.045, -0.035, -0.012)
+	var wrist := hand + Vector3(-0.05, -0.055, 0.0)
+	add_child(U._tube([Vector3(-0.07, sy + 0.4, -0.19), Vector3(-0.2, sy + 0.32, -0.15), Vector3(-0.29, sy + 0.24, -0.05),
+		(Vector3(-0.29, sy + 0.24, -0.05) + wrist) / 2.0 + Vector3(0.0, 0.02, 0.0), wrist] as Array[Vector3],
+		[0.042, 0.036, 0.034, 0.03, 0.026] as Array[float], coat))
+	add_child(U._tube([wrist, hand] as Array[Vector3], [0.02, 0.018] as Array[float], skin))
+	for f in 2:                                                     # one finger over the cigarette, one under it
+		var side := Vector3(0.0, 0.006 if f == 0 else -0.006, 0.0)
+		add_child(U._tube([hand, hand + Vector3(0.025, 0.02, 0.006) + side, cmid + side * 1.4 + Vector3(0.004, 0.0, 0.004)] as Array[Vector3],
+			[0.012, 0.009, 0.006] as Array[float], skin))
+	add_child(U._tube([hand, hand + Vector3(0.0, -0.01, 0.03), hand + Vector3(0.02, 0.0, 0.045)] as Array[Vector3],
+		[0.011, 0.009, 0.006] as Array[float], skin))            # the thumb, curled under
 	_ember = StandardMaterial3D.new()
 	_ember.albedo_color = Color(1.0, 0.35, 0.05)
 	_ember.emission_enabled = true
@@ -144,7 +171,7 @@ func build(seat_y := 0.6) -> void:
 	var tip := MeshInstance3D.new()
 	tip.mesh = em2
 	tip.material_override = _ember
-	tip.position = Vector3(0, 0.065, 0)
+	tip.position = Vector3(0, 0.043, 0)
 	cig.add_child(tip)
 	var glow := OmniLight3D.new()
 	glow.light_color = Color(1.0, 0.45, 0.15)
@@ -175,10 +202,14 @@ func _process(delta: float) -> void:
 	_ember.emission_energy_multiplier = 3.0 + 4.0 * pow(puff, 4.0)
 	_head.rotation.z = 0.04 * sin(_t * 0.35)                 # a slow, weary sway
 	var tip := to_local(_tip_node.global_position)
+	var away := Vector3(tip.x - _head.position.x, 0.0, tip.z - _head.position.z)
+	away = away.normalized() if away.length() > 0.001 else Vector3(-1, 0, 0)
 	for i in _smoke.size():
 		var u := fposmod(_t * 0.07 + float(i) / _smoke.size(), 1.0)
 		var s := _smoke[i]
-		s.position = tip + Vector3(sin(u * 8.0 + i) * 0.02 * (0.3 + u), u * 0.7, cos(u * 6.0) * 0.015 * u)
+		# it drifts off sideways first, out from under the brim, then rises (it never goes through his head or hat)
+		s.position = tip + away * (0.26 * smoothstep(0.0, 0.32, u) + 0.06 * u) \
+			+ Vector3(sin(u * 8.0 + i) * 0.02 * (0.3 + u), u * 0.7 * smoothstep(0.0, 0.12, u) + 0.02 * u, cos(u * 6.0) * 0.015 * u)
 		s.pixel_size = (0.012 + 0.09 * u) / 64.0
 		s.modulate.a = 0.22 * smoothstep(0.0, 0.08, u) * (1.0 - smoothstep(0.45, 1.0, u))
 

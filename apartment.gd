@@ -55,7 +55,7 @@ const STUDY_WALK := Rect2(0.72, 5.68, 3.56, 4.37)
 # front-left: the desk against the study's south wall, the bookshelf against its west wall
 const SECRET := Vector2(3.4, 4.3)            # x span of the bookcase door in the study's south wall
 const NOIR_WALK := Rect2(0.75, 10.65, 3.5, 2.7)
-const NOIR_Z1 := 13.6
+const NOIR_Z1 := 14.2
 const STUDY_KIT_XF := Transform3D(Basis(Vector3.UP, PI), Vector3(2.95, 0.0, 8.3))
 const GAME_DOOR := -1.6                     # x of the game room door (hallway south wall)
 const GAME_S := 10.35                       # game room south wall line
@@ -1014,7 +1014,7 @@ func _build_noir_office() -> void:
 		_blockers["noir"].append(Rect2(1.55, 12.15, 1.7, 0.95))     # desk
 		_blockers["noir"].append(Rect2(0.5, 10.5, 0.65, 0.75))      # filing cabinet
 		_blockers["noir"].append(Rect2(2.1, 11.1, 0.9, 0.95))       # the visitor's chair
-		_blockers["noir"].append(Rect2(3.95, 13.0, 0.5, 0.6))       # coat rack
+		_blockers["noir"].append(Rect2(3.95, 13.6, 0.5, 0.6))       # coat rack
 	# the bookcase door, on the study side
 	var wood := _mat(Color(0.30, 0.12, 0.20), 0.7)
 	var hinge := Vector3(SECRET.x, 0.0, GAME_S - 0.05)

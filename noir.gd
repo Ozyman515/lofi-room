@@ -23,7 +23,7 @@ const DESK_Y := 0.785
 const X0 := 0.5
 const X1 := 4.55
 const Z0 := 10.45
-const Z1 := 13.6
+const Z1 := 14.2
 const DESK_SHIFT := Vector3(0.95, 0.0, 14.15)   # the desk props were laid out for the old bedroom desk: moved here
 
 var main: Node3D
@@ -67,6 +67,9 @@ var _tiebacks: Array[MeshInstance3D] = []
 var _cur_cx := 0.0
 var _cur_closed := false
 var _cur := 0.0                         # 0 open .. 1 drawn
+var _win: Array = []                    # the windows across the street: {m, on, x (the walker), v, stop}
+var _win_t := 2.0
+var _lamp_t := 12.0
 var _fan: Node3D
 var _haze: Array[MeshInstance3D] = []
 var _rain_m: ShaderMaterial
@@ -234,6 +237,7 @@ func _office_tick(delta: float) -> void:
 	_neon_sign.outline_modulate.a = lit
 	_neon_halo.outline_modulate.a = 0.35 * lit
 	_neon_sign_light.light_energy = 2.0 * lit
+	_windows_tick(delta)
 	# the curtains, drawn or open
 	var was_cur := _cur
 	_cur = move_toward(_cur, 1.0 if _cur_closed else 0.0, delta / 1.2)
@@ -247,6 +251,72 @@ func _office_tick(delta: float) -> void:
 		h.position.x = 2.5 + sin(Time.get_ticks_msec() / 1000.0 * 0.05 + i * 2.0) * 0.6
 	for b in _blinds:
 		(b.material_override as StandardMaterial3D).albedo_color.a = (0.10 + 0.14 * maxf(amount, 0.4)) * (1.0 - 0.85 * _cur)
+
+
+# the windows across the street: now and then someone walks past behind a lit one (sometimes stopping a moment),
+# and now and then a light goes on or off
+func _windows_tick(delta: float) -> void:
+	if _win.is_empty():
+		return
+	_win_t -= delta
+	if _win_t <= 0.0:
+		_win_t = _rng.randf_range(2.0, 6.0)
+		var w: Dictionary = _win[_rng.randi() % _win.size()]
+		if w["on"] and w["v"] == 0.0:
+			var dir := 1.0 if _rng.randf() < 0.5 else -1.0
+			w["x"] = -0.55 if dir > 0.0 else 0.55
+			w["v"] = dir * _rng.randf_range(0.12, 0.3)
+			w["stop"] = _rng.randf_range(1.0, 4.0) if _rng.randf() < 0.35 else 0.0
+			(w["m"] as ShaderMaterial).set_shader_parameter("tall", _rng.randf_range(0.9, 1.12))
+	_lamp_t -= delta
+	if _lamp_t <= 0.0:
+		_lamp_t = _rng.randf_range(8.0, 22.0)
+		var w: Dictionary = _win[_rng.randi() % _win.size()]
+		if w["v"] == 0.0:
+			w["on"] = not w["on"]
+			(w["m"] as ShaderMaterial).set_shader_parameter("lit", 1.0 if w["on"] else 0.0)
+	for w in _win:
+		if w["v"] == 0.0:
+			continue
+		var x: float = w["x"]
+		if w["stop"] > 0.0 and absf(x) < 0.06:
+			w["stop"] = maxf(0.0, w["stop"] - delta)
+		else:
+			x += w["v"] * delta
+			w["x"] = x
+		if absf(x) > 0.6:
+			w["v"] = 0.0
+		(w["m"] as ShaderMaterial).set_shader_parameter("sil", Vector3(x, 1.0 if w["v"] != 0.0 else 0.0, 1.0))
+
+
+func _window_shader() -> Shader:
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded;
+uniform float lit = 1.0;
+uniform float tint = 1.0;
+uniform float tall = 1.0;
+uniform vec3 sil = vec3(-1.0, 0.0, 1.0);    // the walker: x across the window (m, 0 = middle), shown, -
+float box(vec2 p, vec2 b, float r) { return length(max(abs(p) - b, 0.0)) - r; }
+void fragment() {
+	vec2 m = vec2((UV.x - 0.5) * 0.6, (1.0 - UV.y) * 0.75);     // metres: x from the middle, y up from the sill
+	vec3 room = vec3(1.0, 0.86, 0.62) * tint * (0.7 + 0.45 * m.y / 0.75);
+	vec3 dark = vec3(0.07, 0.075, 0.09) + vec3(0.07) * smoothstep(0.1, 0.9, UV.x * 0.6 + (1.0 - UV.y) * 0.5);   // dark glass, a sheen
+	// someone passing: a head and shoulders
+	vec2 q = (m - vec2(sil.x, 0.0)) / tall;
+	float body = 1.0 - smoothstep(-0.005, 0.005, box(q - vec2(0.0, 0.12), vec2(0.12, 0.2), 0.06));
+	float neck = 1.0 - smoothstep(-0.005, 0.005, box(q - vec2(0.0, 0.4), vec2(0.025, 0.05), 0.0));
+	float head = 1.0 - smoothstep(0.065, 0.075, length((q - vec2(0.0, 0.5)) * vec2(1.0, 0.85)));
+	float s = max(max(body, neck), head) * sil.y;
+	vec3 col = mix(dark, mix(room, room * 0.1, s), lit);
+	// the frame and the glazing bars
+	float fr = step(abs(m.x), 0.27) * step(0.03, m.y) * step(m.y, 0.72);
+	fr *= step(0.012, abs(m.x)) * step(0.01, abs(m.y - 0.64));
+	ALBEDO = mix(vec3(0.05, 0.045, 0.05), col, fr);
+}
+"""
+	return sh
 
 
 # t: 0 open (bunched at the sides, tied back) .. 1 drawn across the window
@@ -345,7 +415,7 @@ func _build_office() -> void:
 	var radio := Vector3(0.85, 1.3, 10.85)
 	main._box(radio + Vector3(0, 0.13, 0), Vector3(0.3, 0.26, 0.4), wood, o)                # an old radio up top
 	main._cyl(radio + Vector3(0.152, 0.15, 0), 0.08, 0.01, _m(Color(0.75, 0.65, 0.45), 0.6), o).rotation.z = PI / 2.0
-	var rack := Vector3(4.2, 0.0, 13.25)
+	var rack := Vector3(4.2, 0.0, Z1 - 0.35)
 	main._cyl(rack + Vector3(0, 0.9, 0), 0.02, 1.8, wood_dk, o)
 	main._cyl(rack + Vector3(0, 0.02, 0), 0.22, 0.04, wood_dk, o)
 	var coat := _m(Color(0.55, 0.47, 0.35), 0.9)
@@ -375,11 +445,11 @@ func _build_office() -> void:
 	glass.rotation.y = PI                    # faces into the office (-z)
 	o.add_child(glass)
 	var slat := _m(Color(0.75, 0.70, 0.60), 0.6)
-	for k in 6:                              # the blind is half raised: slats over the top, the street below
+	for k in 3:                              # the blind is pulled most of the way up: a few slats at the top, the street below
 		var sy := wy1 - 0.04 - k * 0.075
 		var sl: MeshInstance3D = main._box(Vector3((wx0 + wx1) / 2.0, sy, wz - 0.08), Vector3(wx1 - wx0 - 0.04, 0.05, 0.01), slat, o)
 		sl.rotation.x = 0.9                  # tilted open: the light comes through in stripes
-	main._box(Vector3((wx0 + wx1) / 2.0, wy1 - 0.47, wz - 0.08), Vector3(wx1 - wx0 - 0.02, 0.025, 0.04), slat, o)   # bottom rail
+	main._box(Vector3((wx0 + wx1) / 2.0, wy1 - 0.25, wz - 0.08), Vector3(wx1 - wx0 - 0.02, 0.025, 0.04), slat, o)   # bottom rail
 	# heavy curtains either side of the window, on a rod, with a pelmet over the top
 	var drape := _m(Color(0.30, 0.10, 0.10), 0.95)
 	var drape_dk := _m(Color(0.20, 0.06, 0.06), 0.95)
@@ -402,49 +472,88 @@ func _build_office() -> void:
 	main.interactables.append({"node": cur_hit, "half": Vector3((wx1 - wx0) / 2.0 + 0.25, (wy1 - wy0) / 2.0 + 0.1, 0.06), "guest_ok": true,
 		"label": func() -> String: return "OPEN THE CURTAINS" if _cur_closed else "CLOSE THE CURTAINS",
 		"cb": func() -> void: _cur_closed = not _cur_closed})
-	# across the street: a dark building, a few lit windows, and the neon sign
+	# across the street: a building a floor lower than ours, rows of windows (some lit, people passing behind them
+	# now and then), the HOTEL sign up on its roof, and taller blocks behind it against the sky
 	var street := Node3D.new()
-	street.position = Vector3(2.4, 0.0, Z1 + 5.0)
+	street.position = Vector3(2.4, 0.0, Z1 + 4.5)
 	o.add_child(street)
-	main._box(Vector3(0, 0.0, 0), Vector3(14.0, 12.0, 0.5), _m(Color(0.08, 0.07, 0.09), 0.9), street)
-	var lit := _m(Color(1.0, 0.85, 0.55), 0.6, 1.4)
-	for wk in [[-2.2, 2.6], [1.4, 3.3], [3.0, 1.2], [-3.4, 0.4]]:
-		main._box(Vector3(wk[0], wk[1], -0.26), Vector3(0.6, 0.8, 0.02), lit, street)
-	# the sign: a big HOTEL in red neon on a dark board with a tube border, right across from the window
+	var roof_y := 1.5
+	var brick := _m(Color(0.08, 0.07, 0.09), 0.9)
+	main._box(Vector3(0, (roof_y - 14.0) / 2.0, 0), Vector3(16.0, roof_y + 14.0, 0.5), brick, street)
+	main._box(Vector3(0, roof_y + 0.05, -0.05), Vector3(16.3, 0.12, 0.66), _m(Color(0.13, 0.12, 0.13), 0.8), street)   # cornice
+	main._box(Vector3(0, roof_y + 0.25, -0.24), Vector3(16.0, 0.3, 0.08), brick, street)                              # parapet
+	var sill := _m(Color(0.16, 0.15, 0.16), 0.8)
+	var ws := _window_shader()
+	_win = []
+	for ry in [-3.5, -2.2, -0.9, 0.55]:
+		for k in 14:
+			var wxp := -7.15 + k * 1.1
+			var wm := ShaderMaterial.new()
+			wm.shader = ws
+			var on := _rng.randf() < 0.42
+			wm.set_shader_parameter("lit", 1.0 if on else 0.0)
+			wm.set_shader_parameter("tint", _rng.randf_range(0.75, 1.1))
+			wm.set_shader_parameter("sil", Vector3(-1.0, 0.0, 1.0))
+			var wq := QuadMesh.new()
+			wq.size = Vector2(0.6, 0.75)
+			var wmi := MeshInstance3D.new()
+			wmi.mesh = wq
+			wmi.material_override = wm
+			wmi.position = Vector3(wxp, ry, -0.26)
+			wmi.rotation.y = PI
+			street.add_child(wmi)
+			main._box(Vector3(wxp, ry - 0.4, -0.29), Vector3(0.72, 0.05, 0.1), sill, street)
+			_win.append({"m": wm, "on": on, "x": -1.0, "v": 0.0, "stop": 0.0})
+	# the blocks behind, darker, with the odd lit window high up
+	var far := _m(Color(0.05, 0.05, 0.06), 0.95)
+	var far_lit := _m(Color(0.8, 0.75, 0.6), 0.8, 0.9)
+	for bk in [[-6.5, 7.0, 3.0], [-2.6, 5.0, 4.5], [1.8, 8.5, 3.6], [5.6, 6.0, 3.2], [9.5, 9.5, 4.0], [-10.0, 4.5, 4.0]]:
+		var bx: float = bk[0]
+		var bh: float = bk[1]
+		var bw: float = bk[2]
+		main._box(Vector3(bx, (bh - 6.0) / 2.0, 7.0 + absf(bx) * 0.2), Vector3(bw, bh + 6.0, 3.0), far, street)
+		for n in 5:
+			var fx := bx + _rng.randf_range(-bw * 0.4, bw * 0.4)
+			var fy := _rng.randf_range(roof_y + 1.0, bh - 0.3)
+			main._box(Vector3(fx, fy, 7.0 + absf(bx) * 0.2 - 1.52), Vector3(0.3, 0.4, 0.02), far_lit, street)
+	# the sign: a big HOTEL in neon on a dark board, standing on the roof on a steel frame
 	_neon_m = _m(Color(1.0, 0.25, 0.3), 0.4, 3.2)
 	_neon_m.disable_fog = true
-	var sy0 := 1.7
-	main._box(Vector3(0, sy0, -0.32), Vector3(5.2, 2.0, 0.12), _m(Color(0.04, 0.035, 0.04), 0.7), street)   # the board
-	for b in [[Vector3(0, sy0 + 0.92, -0.4), Vector3(5.0, 0.04, 0.04)], [Vector3(0, sy0 - 0.92, -0.4), Vector3(5.0, 0.04, 0.04)],
-			[Vector3(2.5, sy0, -0.4), Vector3(0.04, 1.88, 0.04)], [Vector3(-2.5, sy0, -0.4), Vector3(0.04, 1.88, 0.04)]]:
+	var steel := _m(Color(0.12, 0.12, 0.13), 0.5)
+	var sy0 := roof_y + 0.95
+	main._box(Vector3(0, sy0, -0.12), Vector3(5.2, 1.3, 0.1), _m(Color(0.04, 0.035, 0.04), 0.7), street)   # the board
+	for b in [[Vector3(0, sy0 + 0.6, -0.19), Vector3(5.0, 0.04, 0.04)], [Vector3(0, sy0 - 0.6, -0.19), Vector3(5.0, 0.04, 0.04)],
+			[Vector3(2.5, sy0, -0.19), Vector3(0.04, 1.24, 0.04)], [Vector3(-2.5, sy0, -0.19), Vector3(0.04, 1.24, 0.04)]]:
 		main._box(b[0], b[1], _neon_m, street)
-	for bx in [-1.6, 1.6]:                         # brackets holding it off the wall
-		main._box(Vector3(bx, sy0 + 1.1, -0.3), Vector3(0.06, 0.25, 0.06), _m(Color(0.1, 0.1, 0.1), 0.5), street)
+	for lx in [-2.2, -0.75, 0.75, 2.2]:            # the frame it stands on: legs, braces back to the roof
+		main._box(Vector3(lx, (roof_y + sy0 - 0.65) / 2.0 + 0.1, -0.08), Vector3(0.06, sy0 - 0.65 - roof_y + 0.2, 0.06), steel, street)
+		var br: MeshInstance3D = main._box(Vector3(lx, sy0 - 0.2, 0.35), Vector3(0.04, 1.4, 0.04), steel, street)
+		br.rotation.x = 0.55
+	main._box(Vector3(0, sy0 - 0.62, -0.06), Vector3(5.1, 0.05, 0.05), steel, street)
 	_neon_halo = Label3D.new()                     # a soft glow behind the letters
 	_neon_halo.text = "HOTEL"
 	_neon_halo.font_size = 160
-	_neon_halo.pixel_size = 0.0095
+	_neon_halo.pixel_size = 0.0085
 	_neon_halo.outline_size = 48
 	_neon_halo.modulate = Color(1.0, 0.25, 0.3, 0.0)
 	_neon_halo.outline_modulate = Color(1.0, 0.2, 0.25, 0.35)
-	_neon_halo.position = Vector3(0, sy0, -0.41)
+	_neon_halo.position = Vector3(0, sy0, -0.19)
 	_neon_halo.rotation.y = PI
 	_neon_halo.shaded = false
-	_neon_halo.fixed_size = false
 	street.add_child(_neon_halo)
 	_neon_sign = Label3D.new()
 	_neon_sign.text = "HOTEL"
 	_neon_sign.font_size = 160
-	_neon_sign.pixel_size = 0.0095
+	_neon_sign.pixel_size = 0.0085
 	_neon_sign.outline_size = 14
 	_neon_sign.modulate = Color(1.0, 0.75, 0.75)
 	_neon_sign.outline_modulate = Color(1.0, 0.2, 0.28)
-	_neon_sign.position = Vector3(0, sy0, -0.43)
+	_neon_sign.position = Vector3(0, sy0, -0.21)
 	_neon_sign.rotation.y = PI
 	_neon_sign.shaded = false
 	street.add_child(_neon_sign)
-	_neon_sign_light = OmniLight3D.new()            # the sign lights its own wall
-	_neon_sign_light.position = Vector3(0, sy0, -1.2)
+	_neon_sign_light = OmniLight3D.new()            # the sign lights the roof and the top of the wall
+	_neon_sign_light.position = Vector3(0, sy0 - 0.3, -1.0)
 	_neon_sign_light.light_color = Color(1.0, 0.3, 0.35)
 	_neon_sign_light.light_energy = 2.0
 	_neon_sign_light.omni_range = 4.0

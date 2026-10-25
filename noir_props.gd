@@ -246,23 +246,92 @@ static func _puff_texture() -> ImageTexture:
 # ---- the detective's things
 
 static func fedora() -> Node3D:
+	# a proper fedora: an oval, slightly tapered crown with a teardrop crease down the top and the two pinches
+	# at the front, a grosgrain band with a little bow, and a brim snapped down at the front and up at the back.
+	# Front is +z. The brim sits at y = 0, the crown rises about 11 cm.
 	var f := Node3D.new()
 	var felt := _m(Color(0.16, 0.14, 0.12), 0.85)
+	felt.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var band := _m(Color(0.05, 0.04, 0.04), 0.6)
-	var brim := _cyl(0.17, 0.17, 0.006, 40)
-	var b := _part(brim, felt, Vector3(0, 0.003, 0), Vector3.ZERO, f)
-	b.scale = Vector3(1.0, 1.0, 0.88)
-	var crown := _cyl(0.072, 0.088, 0.11, 32)
-	var c := _part(crown, felt, Vector3(0, 0.06, 0), Vector3.ZERO, f)
-	c.scale = Vector3(1.0, 1.0, 0.82)
-	var dent := SphereMesh.new()                 # the pinch along the top
-	dent.radius = 0.06
-	dent.height = 0.03
-	var d := _part(dent, _m(Color(0.10, 0.09, 0.08), 0.9), Vector3(0, 0.113, 0), Vector3.ZERO, f)
-	d.scale = Vector3(0.5, 0.35, 1.0)
-	var bd := _part(_cyl(0.089, 0.089, 0.022, 32), band, Vector3(0, 0.017, 0), Vector3.ZERO, f)
-	bd.scale = Vector3(1.0, 1.0, 0.82)
+	band.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var na := 48
+	var rows: Array = []
+	# the crown wall, bottom (t = 0) to the rim of the top (t = 1)
+	for j in 9:
+		var t := j / 8.0
+		var row: Array = []
+		for i in na + 1:
+			row.append(_crown_pt(TAU * i / na, t, 1.0))
+		rows.append(row)
+	# the top, from that rim in to the crease
+	for j in range(1, 9):
+		var sv := 1.0 - j / 8.0
+		var row: Array = []
+		for i in na + 1:
+			var a := TAU * i / na
+			var rim := _crown_pt(a, 1.0, 1.0)
+			var zn: float = clampf(rim.z / 0.095, -1.0, 1.0)
+			var crease_y: float = rim.y - 0.034 * (1.0 - 0.55 * zn * zn) - (0.006 if zn > 0.0 else 0.0)
+			var p := Vector3(rim.x * sv, 0.0, rim.z * lerpf(0.72, 1.0, sv))
+			p.y = crease_y + (rim.y - crease_y) * (1.0 - (1.0 - sv) * (1.0 - sv)) + 0.007 * sin(PI * sv)
+			row.append(p)
+		rows.append(row)
+	_part(_grid_mesh(rows), felt, Vector3.ZERO, Vector3.ZERO, f).name = "Crown"
+	# the brim, from the crown out to the snapped edge
+	var brows: Array = []
+	for j in 7:
+		var sv := j / 6.0
+		var row: Array = []
+		for i in na + 1:
+			var a := TAU * i / na
+			var inner := _crown_pt(a, 0.0, 1.0)
+			var outer := Vector3(sin(a) * 0.165, 0.0, cos(a) * 0.185)
+			var p := inner.lerp(outer, sv)
+			var fr := maxf(cos(a), 0.0)
+			var bk := maxf(-cos(a), 0.0)
+			p.y = -0.034 * pow(sv, 1.6) * fr * fr + 0.03 * sv * sv * pow(bk, 1.5) + 0.012 * sv * sv * sin(a) * sin(a)
+			row.append(p)
+		brows.append(row)
+	_part(_grid_mesh(brows), felt, Vector3.ZERO, Vector3.ZERO, f).name = "Brim"
+	# the band round the bottom of the crown, and its bow on the left side
+	var bands: Array = []
+	for j in 2:
+		var row: Array = []
+		for i in na + 1:
+			var p := _crown_pt(TAU * i / na, 0.0, 1.03)
+			p.y = 0.003 + j * 0.026
+			row.append(p)
+		bands.append(row)
+	_part(_grid_mesh(bands), band, Vector3.ZERO, Vector3.ZERO, f).name = "Band"
+	_part(_box(Vector3(0.006, 0.022, 0.03)), band, Vector3(-0.085, 0.016, -0.02), Vector3(0.0, 0.25, 0.0), f).name = "Bow"
 	return f
+
+
+# a point on the crown: t = 0 at the bottom, 1 at the rim of the top; it tapers a little, the rim slopes down to
+# the front, and the two front pinches pull in towards the top
+static func _crown_pt(a: float, t: float, grow: float) -> Vector3:
+	var rx := 0.08 * grow
+	var rz := 0.095 * grow
+	var taper := lerpf(1.0, 0.82, t * t * 0.4 + t * 0.6)
+	var d := minf(absf(wrapf(a - 0.8, -PI, PI)), absf(wrapf(a + 0.8, -PI, PI)))
+	var pinch := 1.0 - 0.4 * smoothstep(0.25, 1.0, t) * exp(-d * d / 0.08)
+	var h := 0.108 - 0.016 * cos(a)
+	return Vector3(sin(a) * rx * taper * pinch, t * h, cos(a) * rz * taper * pinch)
+
+
+# a mesh through rows of points (each row the same length), with smooth normals
+static func _grid_mesh(rows: Array) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in rows.size() - 1:
+		var r0: Array = rows[j]
+		var r1: Array = rows[j + 1]
+		for i in r0.size() - 1:
+			for v in [r0[i], r1[i], r1[i + 1], r0[i], r1[i + 1], r0[i + 1]]:
+				st.add_vertex(v)
+	st.index()
+	st.generate_normals()
+	return st.commit()
 
 
 static func case_file() -> Node3D:
