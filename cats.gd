@@ -6,6 +6,9 @@ extends Node3D
 ##    foot of the bed, in a beanbag, or on top of the console. On the console it's in the way: pick it up and
 ##    put it on the bed. In a beanbag, it hops off to the bed when you sit there.
 ## Both can be petted (the diary keeps count). When both are on the bed they curl up together.
+## They wander: every few minutes a cat gets up and naps somewhere else in the apartment (the couch, the armchair,
+## the window seat, the study's reading chair, the front row of the theater, a balcony chair...), but only when
+## you can't see it go. Sit where one's sleeping and it pads off to the bed. The treats always bring the tux home.
 ## In a shared room the host's cats are the ones everybody sees; a guest's pets, treats and moves go to the host.
 
 const CozyCat := preload("res://cozy_cat.gd")
@@ -16,7 +19,18 @@ const Diary := preload("res://diary.gd")
 
 const CALICO_CHANCE := 0.10
 const CALICO_CHANCE_NIGHT := 0.25         # between 11 pm and 5 am
-const CAL_SPOTS := ["rug", "beanbag", "console"]
+const CAL_SPOTS := ["rug", "beanbag", "console", "couch", "armchair", "window_seat", "study_chair", "theater", "balcony"]
+# nap spots round the apartment (beyond the bed, the rug, the beanbag and the console): [position, yaw]
+const SPOTS := {
+	"couch": [Vector3(6.32, 0.5, 0.95), -0.6],              # living room couch, the middle cushion
+	"armchair": [Vector3(8.38, 0.49, -0.88), 2.4],           # living room armchair by the east window
+	"window_seat": [Vector3(1.75, 0.51, -1.65), 1.2],        # the bedroom's window seat
+	"study_chair": [Vector3(3.86, 0.49, 7.0), 0.8],          # the study's reading chair
+	"theater": [Vector3(6.45, -0.42, 10.22), 2.9],           # front row of the theater
+	"balcony": [Vector3(11.15, 0.52, -2.97), -0.4],          # a balcony chair
+}
+const WANDER_MIN := 180.0                 # seconds between a cat's naps in different places
+const WANDER_MAX := 420.0
 const BED_SOLO := Vector2(-1.40, -0.02)  # x, z on the bed near the foot
 const BED_TUX := Vector2(-1.50, -0.12)   # together: the tux on the left...
 const BED_CAL := Vector2(-1.25, -0.06)   # ...the calico snuggled against its tail, both faces toward the room
@@ -27,6 +41,8 @@ var main: Node3D
 var tux: Node3D
 var calico: Node3D
 var tux_here := false
+var tux_spot := "bed"                    # where the tux is napping (the treats always bring it back to the bed)
+var _wander_t := {"tux": 0.0, "calico": 0.0}
 var cal_spot := ""                        # "", "rug", "beanbag", "console", "bed"
 var carrying := false                     # holding the calico (to take it off the console)
 var _tux_coming := false
@@ -89,6 +105,8 @@ func setup(m: Node3D) -> void:
 		for part in forced.split(","):
 			if part.begins_with("tux"):
 				tux_here = true
+				if part.contains(":"):
+					tux_spot = part.get_slice(":", 1)
 			elif part.begins_with("calico"):
 				cal_spot = part.get_slice(":", 1) if part.contains(":") else "rug"
 	else:
@@ -96,6 +114,7 @@ func setup(m: Node3D) -> void:
 		var chance := CALICO_CHANCE_NIGHT if (h >= 23 or h < 5) else CALICO_CHANCE
 		if randf() < chance:
 			cal_spot = CAL_SPOTS[randi() % CAL_SPOTS.size()]
+	_wander_t["calico"] = randf_range(WANDER_MIN, WANDER_MAX)
 	frames = CatFrames.new()
 	frames.name = "CatFrames"
 	add_child(frames)
@@ -159,7 +178,7 @@ func showing_hosts_cats() -> bool:
 func layout() -> void:
 	tux.visible = tux_here
 	calico.visible = cal_spot != "" or carrying
-	var together := tux_here and cal_spot == "bed"
+	var together := tux_here and cal_spot == "bed" and tux_spot == "bed"
 	if tux_here:
 		_meet("tux")
 	if cal_spot != "" or carrying:
@@ -167,8 +186,14 @@ func layout() -> void:
 	if together:
 		_meet("both")
 	if tux_here:
-		_put(tux, _bed_point(BED_TUX if together else BED_SOLO), FACE_ROOM)
+		if tux_spot == "bed":
+			_put(tux, _bed_point(BED_TUX if together else BED_SOLO), FACE_ROOM)
+		else:
+			_put_spot(tux, tux_spot, 0.0)
 	if carrying:
+		return
+	if SPOTS.has(cal_spot):
+		_put_spot(calico, cal_spot, 0.28 if (tux_here and tux_spot == cal_spot) else 0.0)     # (side by side if they share it)
 		return
 	match cal_spot:
 		"bed":
@@ -186,6 +211,62 @@ func layout() -> void:
 			var bb: Node3D = main.beanbags[0]
 			_put(calico, bb.to_global(Vector3(0.0, 0.385, 0.10)), 0.0)
 			calico.global_basis = bb.global_basis * Basis(Vector3.RIGHT, -0.45) * Basis(Vector3.UP, PI * 0.8)
+
+
+func _put_spot(cat: Node3D, spot: String, shift: float) -> void:
+	var sp: Array = SPOTS[spot]
+	var yaw: float = sp[1]
+	_put(cat, (sp[0] as Vector3) + Vector3(cos(yaw), 0.0, -sin(yaw)) * shift, yaw)
+
+
+# the room a spot is in (so a cat only moves while nobody's looking)
+func _spot_room(spot: String) -> String:
+	if main.apartment == null:
+		return "bedroom"
+	var p := Vector3.ZERO
+	match spot:
+		"bed", "rug": return "bedroom"
+		"beanbag", "console": return "game"
+		_: p = (SPOTS[spot][0] as Vector3) if SPOTS.has(spot) else Vector3.ZERO
+	return main.apartment.room_at(p.x, p.z)
+
+
+func _seen(spot: String) -> bool:
+	if main.apartment == null:
+		return true
+	var r: Node3D = main.apartment.rooms.get(_spot_room(spot))
+	return r != null and r.visible
+
+
+# every few minutes a cat gets up and finds somewhere else to sleep (only when you can't see it go)
+func _wander(delta: float) -> void:
+	if _remote or carrying:
+		return
+	for who in ["tux", "calico"]:
+		var here: bool = tux_here if who == "tux" else cal_spot != ""
+		if not here:
+			continue
+		_wander_t[who] = float(_wander_t[who]) - delta
+		if float(_wander_t[who]) > 0.0:
+			continue
+		_wander_t[who] = randf_range(WANDER_MIN, WANDER_MAX)
+		var from: String = tux_spot if who == "tux" else cal_spot
+		if from == "console" or _seen(from):
+			_wander_t[who] = 25.0                    # try again in a bit (and never off the console: it's waiting to be picked up)
+			continue
+		var options: Array = ["bed", "rug"] + SPOTS.keys()
+		if who == "calico":
+			options += ["beanbag"]
+		options.erase(from)
+		options.shuffle()
+		for to in options:
+			if not _seen(to):
+				if who == "tux":
+					tux_spot = to
+				else:
+					cal_spot = to
+				layout()
+				break
 
 
 func _put(cat: Node3D, pos: Vector3, yaw: float) -> void:
@@ -209,13 +290,21 @@ func blocks_console() -> bool:
 	return cal_spot == "console" and not carrying
 
 
-func _process(_delta: float) -> void:
-	# sitting down in the beanbag the calico is sleeping in: it hops off to the bed
-	if cal_spot == "beanbag" and main.seated and main.cur_seat >= 0 and main.cur_seat < main.seat_nodes.size() \
-			and main.seat_nodes[main.cur_seat] == main.beanbags[0] and not _remote:
-		cal_spot = "bed"
-		layout()
-		main.updater.show_toast("%s hops off to the bed." % name_of("calico"), 3.0)
+func _process(delta: float) -> void:
+	# sitting down where a cat is sleeping: it hops off and goes to the bed
+	if main.seated and main.cur_seat >= 0 and main.cur_seat < main.seat_nodes.size() and not _remote:
+		var sp: Vector3 = main.seat_nodes[main.cur_seat].global_position
+		for who in ["tux", "calico"]:
+			var cat: Node3D = tux if who == "tux" else calico
+			var spot: String = tux_spot if who == "tux" else cal_spot
+			if cat.visible and spot != "bed" and spot != "console" and spot != "" and Vector2(cat.global_position.x - sp.x, cat.global_position.z - sp.z).length() < 0.45:
+				if who == "tux":
+					tux_spot = "bed"
+				else:
+					cal_spot = "bed"
+				layout()
+				main.updater.show_toast("%s hops off and pads away." % name_of(who), 3.0)
+	_wander(delta)
 	if carrying:
 		_hold_pose()
 
@@ -345,7 +434,11 @@ func shake_treats() -> void:
 # the tux heard the bag: the door creaks, then it's on the bed
 func call_tux() -> void:
 	if tux_here:
-		tux.pet()                       # already here: an ear twitch and a purr
+		if tux_spot != "bed":
+			tux_spot = "bed"            # the bag brings it running back to the bed
+			_door_sfx.play()
+			layout()
+		tux.pet()                       # an ear twitch and a purr
 		return
 	if _tux_coming:
 		return
@@ -355,6 +448,8 @@ func call_tux() -> void:
 	await get_tree().create_timer(3.0).timeout
 	_tux_coming = false
 	tux_here = true
+	tux_spot = "bed"
+	_wander_t["tux"] = randf_range(WANDER_MIN, WANDER_MAX)
 	if cal_spot == "rug" or cal_spot == "beanbag":
 		cal_spot = "bed"                # the calico joins it
 	layout()
@@ -377,23 +472,29 @@ func debug_set(what: String) -> void:
 		_:
 			if carrying:
 				put_on_bed()
-			cal_spot = what
+			if what.begins_with("tux:"):
+				tux_here = true
+				tux_spot = what.substr(4)
+			else:
+				cal_spot = what
 			layout()
 
 
 # ---- shared rooms: the host's cats
 
 func state() -> Dictionary:
-	return {"t": tux_here, "c": cal_spot, "carry": carrying, "n": {"tux": _names.get("tux", ""), "calico": _names.get("calico", "")}}
+	return {"t": tux_here, "ts": tux_spot, "c": cal_spot, "carry": carrying, "n": {"tux": _names.get("tux", ""), "calico": _names.get("calico", "")}}
 
 
 func apply_remote(d: Dictionary) -> void:
 	if not _remote:
-		_own = {"t": tux_here, "c": cal_spot}
+		_own = {"t": tux_here, "ts": tux_spot, "c": cal_spot}
 		if carrying:
 			put_on_bed()
 		_remote = true
 	tux_here = bool(d.get("t", false))
+	var ts := str(d.get("ts", "bed"))
+	tux_spot = ts if (ts == "bed" or ts == "rug" or SPOTS.has(ts)) else "bed"
 	var hn = d.get("n", {})
 	_host_names = {}
 	if hn is Dictionary:
@@ -402,7 +503,7 @@ func apply_remote(d: Dictionary) -> void:
 			if nm != "":
 				_host_names[k] = nm
 	var c := str(d.get("c", ""))
-	cal_spot = c if c in ["", "rug", "beanbag", "console", "bed"] else ""
+	cal_spot = c if (c in ["", "rug", "beanbag", "console", "bed"] or SPOTS.has(c)) else ""
 	if bool(d.get("carry", false)) and cal_spot == "console":
 		cal_spot = "console"                # the host is carrying it: still shows where it was until it lands
 	layout()
@@ -414,6 +515,7 @@ func end_remote() -> void:
 	_remote = false
 	_host_names = {}
 	tux_here = bool(_own.get("t", false))
+	tux_spot = str(_own.get("ts", "bed"))
 	cal_spot = str(_own.get("c", ""))
 	layout()
 
