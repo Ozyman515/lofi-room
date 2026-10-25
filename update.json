@@ -1,5 +1,5 @@
 {
- "version": 111,
+ "version": 112,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "f1287a502ab7c3cce283d6e278a0dea745f46b2cfbd87d05b62effe2dcb649b2",
-   "size": 69631
+   "sha": "81c9566f86c880498426a6cf537eae63d3638e53abaed71775467f4aca4a3b47",
+   "size": 78339
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -242,8 +242,8 @@
    "size": 22629
   },
   "fight.gd": {
-   "sha": "fd79b6004162a42c4166c277676869fd2897899ab194909ed5bb68707028efea",
-   "size": 56358
+   "sha": "63dfcdbacfb75befc24ab832806b99258c4d11c01eaa8c6321d0e7a01266d91d",
+   "size": 56523
   },
   "file_browser.gd": {
    "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
@@ -410,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "7c308804e91a3480b3358d9339c8e3ae2235112203e2e17d41fc75861602d1f7",
-   "size": 217980
+   "sha": "a645c9f42780626f63b92e07079194af2be71db0bc3eea909f8e208686286544",
+   "size": 219992
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -466,8 +466,8 @@
    "size": 2098
   },
   "net_game.gd": {
-   "sha": "923f1f9a32a736749e80602e7e7318985d6820b7ec4d7000d9f37758e48a0cc7",
-   "size": 23653
+   "sha": "15ff4a94552b6a924ae6202a29465d789e71fe3342aa1337cf80302a4100edd5",
+   "size": 24229
   },
   "net_phone.gd": {
    "sha": "a133313051d50eeb3406f541403d3be11ef11a26281b20e9b4e59b6bb9d6d007",
@@ -486,8 +486,8 @@
    "size": 22908
   },
   "noir.gd": {
-   "sha": "7ab41d08bbb5ec113e70f03c3384f93336c2fcab80be6569d5e65835e14fd165",
-   "size": 32432
+   "sha": "ea02571e8e121a1de24f87d955ad76d3de1289c6f6bce09baf9b1768ced8c3a9",
+   "size": 32669
   },
   "noir/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -500,6 +500,10 @@
   "noir/yulius2tudio-lofi-jazz-noir-late-night.ogg": {
    "sha": "d533ebfbdedab9ed825fb4777ac31fba0c6ed0400d6779fb8389ce1cf39bc4cf",
    "size": 2246945
+  },
+  "noir_cases.gd": {
+   "sha": "afbb157904fb803c226483eeaa4628371e709bc5e2feba9945323c2d24d1bbac",
+   "size": 20915
   },
   "noir_props.gd": {
    "sha": "32816c49bf70c8c43983bf00b535615cdbecc769ca745dab6feb7cf56b4cb25c",
@@ -518,8 +522,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "2e55b6ef094b3f8768c067b726687a9e8f396224d382064c1aef0454659d458e",
-   "size": 50408
+   "sha": "446e3a8bb1401e4c39974910dadc4449d26427941543e97927d29dd60f3b779f",
+   "size": 52238
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -577,6 +581,10 @@
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
    "size": 952
   },
+  "room_tv.gd": {
+   "sha": "499b149231dba945313afec528833ed89884382f730558f92f738115158c07b2",
+   "size": 4032
+  },
   "safe_image.gd": {
    "sha": "426f22db0b2cfcf43730cc465542ec332356e80ad13e8cf11d36acd3226e8356",
    "size": 1815
@@ -614,8 +622,8 @@
    "size": 3020
   },
   "speaker_bank.gd": {
-   "sha": "667fb7b052c86a1a95cd05072defd72e1e7dfbb8203e8b0c7a7b4cc58ba0b7c9",
-   "size": 7779
+   "sha": "1d5e0bf7e64807bcc6605058e80a47b9eb2ebfae7b82247422b49e5183bb1677",
+   "size": 8617
   },
   "stressed_alien.gd": {
    "sha": "97bc4434a10e58acee9851af4ace937fcd5816c12a61a1d462b0b59724b1b3de",
@@ -642,16 +650,16 @@
    "size": 11286
   },
   "vcr.gd": {
-   "sha": "fe6f0176f10752e398babf5f17befb9c7eea241211a822bd2a2d2aea6d41a31c",
-   "size": 42070
+   "sha": "bc44b22b4993f6514992fb0ed506471d82445bd8fa5a8564feeb4f903fedb901",
+   "size": 42188
   },
   "version.txt": {
-   "sha": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+   "sha": "f7dbab4769334b25f2b4c0606fef276da29bc7477cc15f51f0967a6e477e7c94",
    "size": 4
   },
   "weather.gd": {
-   "sha": "df25ca1f70bfa733b7e00fcf249190ce36470a9da5bd51a165f0de08715e05e2",
-   "size": 30624
+   "sha": "49af100ab727500471294a0302b80b518ef51908ea30cbad49e3334cdfac6085",
+   "size": 30903
   }
  },
  "remove": [
