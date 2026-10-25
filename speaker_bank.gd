@@ -1,20 +1,37 @@
 extends Node3D
-## All the room's speakers (2 on the desk, several on the walls). Each one is set to PC, TV or OFF:
-## on PC it plays the PC's music (all of them in sync, from their own positions), on TV it plays the TV's
-## sound (tapes and the console games on it), and OFF is silent. Click a speaker to go PC -> TV -> OFF.
+## All the apartment's speakers. Each one plays one of the sources in its own room, or nothing:
+##   PC            the PC's music (all of them in sync, from their own positions)
+##   TV            the TV in the same room: the CRT TV (game room, with the console games), the Big TV (living
+##                 room) or the Theater Screen; rooms without a TV don't offer it
+##   Record player its own music, separate from the PC (living room, hallway and balcony speakers)
+##   OFF           silent
+## Click a speaker to step through what its room offers. TV sound drops to 15% (gradually) once you're out of
+## that TV's room, so one TV turned right up doesn't drown out another.
 
 signal finished
 signal changed
 
 const BusFeed := preload("res://bus_feed.gd")
-const MODES := ["pc", "tv", "off"]
+const MODES := ["pc", "tv", "lp", "off"]
+const TV_OF := {"game": "TV", "living": "TV_living", "theater": "TV_theater"}       # room -> its TV's bus
+const TV_NAME := {"game": "CRT TV", "living": "Big TV", "theater": "Theater Screen"}
+const LP_ROOMS := ["living", "hallway", "balcony"]                                 # the record player reaches these
+const BUS_ROOM := {"TV": "game", "Console": "game", "TV_living": "living", "TV_theater": "theater"}
+const AWAY := 0.15                       # a TV heard from outside its room
+const FADE := 1.5                        # seconds to fade between the two
 
-var speakers: Array = []         # [{"name", "player", "enabled", "mode", "tv", "con", "led"}]  (enabled = mode is "pc")
+signal lp_finished
+
+var speakers: Array = []         # [{"name", "player", "enabled", "mode", "tv", "con", "lp", "led", "room", "gain"}]  (enabled = mode is "pc")
 var _tv_feed: BusFeed            # the game room TV's tapes
 var _tv_feeds := {}              # bus -> BusFeed: the game room TV ("TV") and each room's own TV
 var _con_feed: BusFeed           # the console games shown on the TV
 var master := 0.7
 var duck := 0.0                     # 0..1: the music fades down (in the noir office, which has its own)
+var listener_room := ""             # the room you're in (the apartment sets it)
+var _rooms_set := false
+var _bus_gain := {}                 # TV bus -> 0.15..1 (its flat sound, when no speakers play it)
+var _lp_ref: AudioStreamPlayer      # the record player's clock, like _ref is the PC's
 
 # A silent "clock" player runs the song all the time (on a muted bus) so a speaker that was switched
 # off, and so fully stopped, can jump back in at the right point when it is switched on again.
@@ -76,7 +93,13 @@ func add_speaker(spk_name: String, pos: Vector3, led_material: StandardMaterial3
 	var conp := BusFeed.make_player()
 	conp.position = pos
 	add_child(conp)
-	speakers.append({"name": spk_name, "player": p, "enabled": true, "mode": "pc", "tv": tvp, "con": conp, "led": led_material, "tv_bus": "TV"})
+	var lpp := AudioStreamPlayer3D.new()
+	lpp.unit_size = 6.0
+	lpp.max_distance = 60.0
+	lpp.position = pos
+	add_child(lpp)
+	speakers.append({"name": spk_name, "player": p, "enabled": true, "mode": "pc", "tv": tvp, "con": conp, "lp": lpp,
+		"led": led_material, "tv_bus": "TV", "room": "", "gain": 1.0})
 	if _ref.playing:
 		p.play(_ref.get_playback_position())
 		p.stream_paused = _paused
@@ -162,9 +185,60 @@ func get_mode(i: int) -> String:
 	return str(speakers[i]["mode"]) if i >= 0 and i < speakers.size() else "off"
 
 
-# PC -> TV -> OFF -> PC
+# what a speaker can play: the PC, its room's TV and the record player where they reach, or nothing
+func sources(i: int) -> Array:
+	if i < 0 or i >= speakers.size():
+		return []
+	var room: String = speakers[i]["room"]
+	if not _rooms_set:
+		return MODES
+	var out := ["pc"]
+	if TV_OF.has(room):
+		out.append("tv")
+	if LP_ROOMS.has(room):
+		out.append("lp")
+	out.append("off")
+	return out
+
+
+# a source's name, as a speaker in this room calls it
+func source_name(i: int, m: String) -> String:
+	match m:
+		"pc":
+			return "PC"
+		"tv":
+			var room: String = speakers[i]["room"] if i >= 0 and i < speakers.size() else ""
+			return TV_NAME.get(room, "TV")
+		"lp":
+			return "Record player"
+	return "Off"
+
+
+func room_of(i: int) -> String:
+	return str(speakers[i]["room"]) if i >= 0 and i < speakers.size() else ""
+
+
+# once the apartment is built: which room each speaker hangs in (so which TV it plays), and any mode its room
+# doesn't offer goes back to the PC
+func assign_rooms(room_at: Callable) -> void:
+	for s in speakers:
+		var pos: Vector3 = (s["player"] as Node3D).global_position
+		s["room"] = str(room_at.call(pos))
+		s["tv_bus"] = TV_OF.get(s["room"], "TV")
+		(s["tv"] as AudioStreamPlayer3D).stop()
+	_rooms_set = true
+	for i in speakers.size():
+		if not sources(i).has(get_mode(i)):
+			_switch(i, "pc")
+	_refresh_feeds()
+	_apply()
+	changed.emit()
+
+
+# PC -> (TV) -> (Record player) -> OFF -> PC, through what this speaker's room offers
 func cycle(i: int) -> void:
-	set_mode(i, MODES[(MODES.find(get_mode(i)) + 1) % MODES.size()])
+	var src := sources(i)
+	set_mode(i, src[(src.find(get_mode(i)) + 1) % src.size()])
 
 
 # which TV a speaker set to TV plays: "TV" (the game room's) or a room TV's own bus
@@ -177,24 +251,36 @@ func set_tv_bus(i: int, b: String) -> void:
 
 
 func set_mode(i: int, m: String) -> void:
-	if i < 0 or i >= speakers.size() or not MODES.has(m):
+	if i < 0 or i >= speakers.size() or not sources(i).has(m):
 		return
-	speakers[i]["mode"] = m
-	_set_one(i, m == "pc")
+	_switch(i, m)
 	_refresh_feeds()
 	_apply()
 	changed.emit()
 
 
+# every speaker that can play it (the TV: each its own room's)
 func set_all_mode(m: String) -> void:
 	if not MODES.has(m):
 		return
 	for i in speakers.size():
-		speakers[i]["mode"] = m
-		_set_one(i, m == "pc")
+		if sources(i).has(m):
+			_switch(i, m)
 	_refresh_feeds()
 	_apply()
 	changed.emit()
+
+
+func _switch(i: int, m: String) -> void:
+	speakers[i]["mode"] = m
+	_set_one(i, m == "pc")
+	var lpp: AudioStreamPlayer3D = speakers[i]["lp"]
+	if m == "lp":
+		if _lp_ref != null and _lp_ref.playing and not lpp.playing:
+			lpp.stream = _lp_ref.stream
+			lpp.play(_lp_ref.get_playback_position())
+	else:
+		lpp.stop()
 
 
 func _ensure_feeds() -> void:
@@ -236,28 +322,103 @@ func _refresh_feeds() -> void:
 
 func _apply() -> void:
 	var n := 0
-	var ntv := 0
+	var nlp := 0
+	var ntv := {}
 	for s in speakers:
 		if s["enabled"]:
 			n += 1
+		if s["mode"] == "lp":
+			nlp += 1
 		if s["mode"] == "tv":
-			ntv += 1
-	var tv_share := -3.0 * log(float(maxi(ntv, 1))) / log(2.0)
+			ntv[s["tv_bus"]] = int(ntv.get(s["tv_bus"], 0)) + 1
+	var lp_db := linear_to_db(maxf(master * (1.0 - 0.85 * duck), 0.0001)) - 3.0 * log(float(maxi(nlp, 1))) / log(2.0)
 	# more speakers on = each one a bit quieter so the total level stays about the same
 	var share_db := -3.0 * log(float(maxi(n, 1))) / log(2.0)
 	for s in speakers:
 		var p: AudioStreamPlayer3D = s["player"]
 		p.volume_db = (linear_to_db(maxf(master * (1.0 - 0.85 * duck), 0.0001)) + share_db) if s["enabled"] else -80.0
+		var tv_share := -3.0 * log(float(maxi(int(ntv.get(s["tv_bus"], 1)), 1))) / log(2.0)
 		for k in ["tv", "con"]:
-			(s[k] as AudioStreamPlayer3D).volume_db = tv_share if s["mode"] == "tv" else -80.0
+			(s[k] as AudioStreamPlayer3D).volume_db = (tv_share + linear_to_db(float(s["gain"]))) if s["mode"] == "tv" else -80.0
+		(s["lp"] as AudioStreamPlayer3D).volume_db = lp_db if s["mode"] == "lp" else -80.0
 		var led: StandardMaterial3D = s["led"]
 		if led != null:
-			var c: Color = {"pc": Color(0.2, 1.0, 0.4), "tv": Color(0.25, 0.6, 1.0)}.get(s["mode"], Color(0.6, 0.05, 0.05))
+			var c: Color = {"pc": Color(0.2, 1.0, 0.4), "tv": Color(0.25, 0.6, 1.0), "lp": Color(1.0, 0.6, 0.15)}.get(s["mode"], Color(0.6, 0.05, 0.05))
 			var lit: bool = s["mode"] != "off"
 			led.albedo_color = c if lit else Color(0.35, 0.05, 0.05)
 			led.emission_enabled = true
 			led.emission = c
 			led.emission_energy_multiplier = 3.0 if lit else 0.6
+
+
+# ---- the room drop: a TV's sound fades to 15% once you're out of its room (its speakers, and its own flat sound
+# when no speakers play it), and back up when you come in
+
+func _process(delta: float) -> void:
+	if not _rooms_set:
+		return
+	var step := delta * (1.0 - AWAY) / FADE
+	var moved := false
+	for s in speakers:
+		var want := 1.0 if listener_room == "" or s["room"] == listener_room else AWAY
+		var g: float = s["gain"]
+		if g != want:
+			s["gain"] = move_toward(g, want, step)
+			moved = moved or s["mode"] == "tv"
+	if moved:
+		_apply()
+	for b in BUS_ROOM:
+		var bi := AudioServer.get_bus_index(b)
+		if bi < 0:
+			continue
+		var want := 1.0 if listener_room == "" or BUS_ROOM[b] == listener_room else AWAY
+		var g: float = _bus_gain.get(b, 1.0)
+		if g != want or not _bus_gain.has(b):
+			g = move_toward(g, want, step)
+			_bus_gain[b] = g
+			AudioServer.set_bus_volume_db(bi, linear_to_db(g))
+
+
+# ---- the record player: its own music, out of the speakers set to it (its clock runs on the muted bus too)
+
+func _ensure_lp() -> void:
+	if _lp_ref != null:
+		return
+	_ensure_ref()
+	_lp_ref = AudioStreamPlayer.new()
+	_lp_ref.bus = "SpeakerClock"
+	_lp_ref.finished.connect(func() -> void:
+		for s in speakers:
+			(s["lp"] as AudioStreamPlayer3D).stop()
+		lp_finished.emit())
+	add_child(_lp_ref)
+
+
+func lp_play(st: AudioStream) -> void:
+	_ensure_lp()
+	_lp_ref.stream = st
+	_lp_ref.play()
+	for s in speakers:
+		var lpp: AudioStreamPlayer3D = s["lp"]
+		lpp.stop()
+		lpp.stream = st
+		if s["mode"] == "lp":
+			lpp.play()
+	_apply()
+	changed.emit()
+
+
+func lp_stop() -> void:
+	if _lp_ref == null:
+		return
+	_lp_ref.stop()
+	for s in speakers:
+		(s["lp"] as AudioStreamPlayer3D).stop()
+	changed.emit()
+
+
+func lp_playing() -> bool:
+	return _lp_ref != null and _lp_ref.playing
 
 
 # ---- live feed (music streamed from the host): every enabled speaker gets its own generator and the

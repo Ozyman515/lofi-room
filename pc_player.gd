@@ -242,10 +242,10 @@ func _build_ui() -> void:
 
 func _build_speakers_window(root: Control) -> void:
 	_spk_window = PanelContainer.new()
-	_spk_window.offset_left = 150.0
-	_spk_window.offset_top = 40.0
-	_spk_window.offset_right = 874.0
-	_spk_window.offset_bottom = 500.0
+	_spk_window.offset_left = 20.0
+	_spk_window.offset_top = 14.0
+	_spk_window.offset_right = 1004.0
+	_spk_window.offset_bottom = 512.0
 	_spk_window.visible = false
 	root.add_child(_spk_window)
 	var v := VBoxContainer.new()
@@ -276,7 +276,7 @@ func _build_speakers_window(root: Control) -> void:
 	_spk_vol.value_changed.connect(_set_volume)
 	vrow.add_child(_spk_vol)
 	var hint := Label.new()
-	hint.text = "Switch each speaker on or off here (you can also click the speakers in the room)."
+	hint.text = "What each speaker plays: the PC, the TV in its own room, the record player, or off. (You can click the speakers in the room too.)"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
 	var scroll := ScrollContainer.new()
@@ -289,6 +289,12 @@ func _build_speakers_window(root: Control) -> void:
 
 
 # Call after the speakers have been added (and again whenever one is switched).
+const SPK_ROOMS := [["study", "STUDY"], ["bedroom", "BEDROOM"], ["game", "GAME ROOM"], ["living", "LIVING ROOM"],
+	["theater", "THEATER"], ["hallway", "HALLWAY"], ["balcony", "BALCONY"]]
+
+
+# each speaker, under its room, with a button for each thing it can play (only its own room's TV, and the
+# record player where it reaches); the lit one is what it plays now
 func refresh_speakers() -> void:
 	if _spk_rows == null:
 		return
@@ -297,28 +303,51 @@ func refresh_speakers() -> void:
 		c.queue_free()
 	var all_row := HBoxContainer.new()
 	var all_lab := Label.new()
-	all_lab.text = "ALL SPEAKERS"
+	all_lab.text = "ALL"
 	all_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	all_row.add_child(all_lab)
-	for m in ["pc", "tv", "off"]:
+	for m in [["pc", "PC"], ["tv", "TV"], ["lp", "RECORD"], ["off", "OFF"]]:
 		var ab := Button.new()
-		ab.text = "  ALL %s  " % m.to_upper()
-		ab.pressed.connect(audio.set_all_mode.bind(m))
+		ab.text = "  %s  " % m[1]
+		ab.tooltip_text = {"pc": "Every speaker on the PC", "tv": "Every speaker on its own room's TV", "lp": "Every speaker the record player reaches", "off": "Every speaker off"}[m[0]]
+		ab.pressed.connect(audio.set_all_mode.bind(m[0]))
 		all_row.add_child(ab)
 	_spk_rows.add_child(all_row)
-	_spk_rows.add_child(HSeparator.new())
-	for i in audio.speakers.size():
-		var r := HBoxContainer.new()
-		var l := Label.new()
-		l.text = str(audio.speakers[i]["name"])
-		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r.add_child(l)
-		var b := Button.new()
-		b.text = "  %s  " % audio.get_mode(i).to_upper()           # click: PC -> TV -> OFF
-		b.tooltip_text = "PC: plays the music.  TV: plays the TV's sound.  OFF: silent."
-		b.pressed.connect(audio.cycle.bind(i))
-		r.add_child(b)
-		_spk_rows.add_child(r)
+	var order: Array = SPK_ROOMS.duplicate()
+	var known := {}
+	for r in SPK_ROOMS:
+		known[r[0]] = true
+	for i in audio.speakers.size():                 # (anything not in a listed room goes at the end)
+		var rr: String = audio.room_of(i)
+		if not known.has(rr):
+			known[rr] = true
+			order.append([rr, rr.to_upper() if rr != "" else "OTHER"])
+	for r in order:
+		var idxs: Array[int] = []
+		for i in audio.speakers.size():
+			if audio.room_of(i) == r[0]:
+				idxs.append(i)
+		if idxs.is_empty():
+			continue
+		_spk_rows.add_child(HSeparator.new())
+		var head := Label.new()
+		head.text = r[1]
+		head.add_theme_color_override("font_color", Color(0.85, 0.7, 1.0))
+		_spk_rows.add_child(head)
+		for i in idxs:
+			var row := HBoxContainer.new()
+			var l := Label.new()
+			l.text = "   " + str(audio.speakers[i]["name"])
+			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(l)
+			for m in audio.sources(i):
+				var b := Button.new()
+				b.text = "  %s  " % audio.source_name(i, m).to_upper()
+				b.toggle_mode = true
+				b.button_pressed = audio.get_mode(i) == m
+				b.pressed.connect(audio.set_mode.bind(i, m))
+				row.add_child(b)
+			_spk_rows.add_child(row)
 
 
 func _process(delta: float) -> void:

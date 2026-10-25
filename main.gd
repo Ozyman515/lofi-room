@@ -903,7 +903,10 @@ func _make_speaker(spk_name: String, pos: Vector3, yaw: float, tilt: float, size
 
 
 func _speaker_label(idx: int, spk_name: String) -> String:
-	return "%s  [%s]" % [spk_name, bank.get_mode(idx).to_upper()]
+	var names: Array[String] = []
+	for m in bank.sources(idx):
+		names.append(bank.source_name(idx, m).to_upper())
+	return "%s  [%s]\nclick: %s" % [spk_name, bank.source_name(idx, bank.get_mode(idx)).to_upper(), "  >  ".join(names)]
 
 
 # [name, position, yaw] of the two speakers beside the TV (it stands across the front-left corner)
@@ -914,10 +917,10 @@ func _tv_speaker_spots() -> Array:
 func _tv_label(kind: String) -> String:
 	match kind:
 		"power":
-			return "TV POWER  [%s]" % ("ON" if vcr.tv_on else "OFF")
+			return "CRT TV POWER  [%s]" % ("ON" if vcr.tv_on else "OFF")
 		"vol_down":
-			return "TV VOLUME DOWN  [%d/10]" % vcr.tv_volume
-	return "TV VOLUME UP  [%d/10]" % vcr.tv_volume
+			return "CRT TV VOLUME DOWN  [%d/10]" % vcr.tv_volume
+	return "CRT TV VOLUME UP  [%d/10]" % vcr.tv_volume
 
 
 func _on_tv_power(on: bool, led_m: StandardMaterial3D) -> void:
@@ -4348,6 +4351,7 @@ func _prefs_now() -> Dictionary:
 	d["levels"] = [snappedf(weather.real_level(1), 0.01), snappedf(weather.real_level(2), 0.01), snappedf(weather.real_level(3), 0.01)]
 	for i in bank.speakers.size():
 		d["spk_" + String(bank.speakers[i]["name"])] = bank.get_mode(i)
+	d["spk_ver"] = 2
 	for g in light_groups:
 		d["light_" + String(g["name"])] = bool(g["on"])
 	return d
@@ -4418,7 +4422,11 @@ func _load_prefs() -> void:
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
 			weather.snap()
 		for i in bank.speakers.size():
-			var sv: Variant = g.call("spk_" + String(bank.speakers[i]["name"]), "tv" if String(bank.speakers[i]["name"]).begins_with("Living") or String(bank.speakers[i]["name"]).begins_with("Theater") else "pc")
+			var sn := String(bank.speakers[i]["name"])
+			var def := "tv" if sn.begins_with("Living") or sn.begins_with("Theater") else ("lp" if sn.begins_with("Record") else "pc")
+			var sv: Variant = g.call("spk_" + sn, def)
+			if int(g.call("spk_ver", 1)) < 2 and def != "pc":
+				sv = def                    # (the TVs and the record player became separate: their speakers start on them once)
 			bank.set_mode(i, ("pc" if sv else "off") if sv is bool else str(sv))     # (older copies saved on/off)
 		for gi in light_groups.size():
 			set_light(gi, bool(g.call("light_" + String(light_groups[gi]["name"]), true)))

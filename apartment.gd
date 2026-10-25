@@ -138,6 +138,9 @@ func build(m: Node3D) -> void:
 	_build_noir_office()
 	_build_theater()
 	_build_exterior()
+	main.bank.lp_finished.connect(_lp_next)
+	# (deferred: the kits' speakers have to be in their rooms first)
+	main.bank.assign_rooms.call_deferred(func(pos: Vector3) -> String: return room_at(pos.x, pos.z))
 
 
 func _root(n: String) -> Node3D:
@@ -277,6 +280,8 @@ func _build_hallway() -> void:
 	# a runner down the middle
 	_box(Vector3(2.6, 0.006, zc), Vector3(11.5, 0.012, 0.9), _mat(Color(0.55, 0.18, 0.36), 0.95), p)
 	_box(Vector3(2.6, 0.007, zc), Vector3(11.2, 0.012, 0.7), _mat(Color(0.40, 0.12, 0.30), 0.95), p)
+	# a speaker up on the wall between the study and theater doors, for music down the hallway
+	main._make_speaker("Hallway speaker", Vector3(4.7, 2.2, HALL_S - 0.09), PI, 0.25, Vector3(0.18, 0.28, 0.16), 0.055, p)
 
 	# the bedroom door: on a hinge, swings out into the hallway
 	_door_frame(p, Vector3((BED_DOOR.x + BED_DOOR.y) / 2.0, 0.0, FRONT_Z + 0.08), 0.0, BED_DOOR.y - BED_DOOR.x, DOOR_TOP, trim)
@@ -565,8 +570,8 @@ func _furnish_living(p: Node3D) -> void:
 		var col := Color.from_hsv(rng.randf(), 0.5, 0.75)
 		var sl := _box(Vector3(sx4, 0.32, rz - 0.06), Vector3(0.012, 0.3, 0.28), _mat(col, 0.8), p)
 		sl.rotation.z = rng.randf_range(-0.06, 0.06)
-	# the record player: point at it to put on the next record from the game's music folder (it plays through the
-	# room's speakers like the PC does, and its own little speaker beside it); the platter turns while music plays
+	# the record player: point at it to put on the next record from the music folder (its own music, separate from the
+	# PC, out of the speakers set to it); the platter turns while a record plays, STOP on the front stops it
 	var tt_m := _mat(Color(0.12, 0.08, 0.14), 0.4)
 	var tt := _box(Vector3(rx - 0.25, 0.94, rz), Vector3(0.45, 0.08, 0.36), tt_m, p)                    # turntable
 	_lp_platter = Node3D.new()
@@ -582,12 +587,26 @@ func _furnish_living(p: Node3D) -> void:
 	main.interactables.append({"node": tt, "half": Vector3(0.24, 0.07, 0.2), "guest_ok": true,
 		"label": func() -> String:
 			if _lp_spinning():
-				return "NEXT RECORD  (now: %s)" % main.pc.now_playing().left(30)
+				return "NEXT RECORD  (now: %s)" % _lp_title.left(30)
 			return "PUT ON A RECORD",
 		"cb": lp_press, "hover": main._glow_hover(tt_m)})
 	main.interactables.append({"node": _lp_arm, "half": Vector3(0.04, 0.04, 0.12), "guest_ok": true,
-		"when": _lp_spinning, "label": func() -> String: return "LIFT THE NEEDLE  (stop)", "cb": lp_lift})
+		"when": _lp_spinning, "label": func() -> String: return "LIFT THE NEEDLE  (stop the record)", "cb": lp_lift})
+	var stop_m := _mat(Color(0.75, 0.12, 0.12), 0.5)                                            # a STOP button on the front
+	var stop_b := _box(Vector3(rx - 0.03, 0.94, rz - 0.185), Vector3(0.06, 0.035, 0.015), stop_m, p)
+	var stop_l := Label3D.new()
+	stop_l.text = "STOP"
+	stop_l.font_size = 24
+	stop_l.pixel_size = 0.0006
+	stop_l.position = Vector3(rx - 0.03, 0.94, rz - 0.194)
+	stop_l.rotation.y = PI
+	stop_l.modulate = Color(1, 0.95, 0.9)
+	p.add_child(stop_l)
+	main.interactables.append({"node": stop_b, "half": Vector3(0.05, 0.035, 0.03), "guest_ok": true,
+		"label": func() -> String: return "STOP THE RECORD" if _lp_spinning() else "RECORD PLAYER  (stopped)",
+		"cb": lp_lift, "hover": main._glow_hover(stop_m)})
 	main._make_speaker("Record player speaker", Vector3(rx + 0.4, 1.02, rz), PI, 0.0, Vector3(0.22, 0.24, 0.2), 0.06, p)
+	main.bank.set_mode(main.bank.speakers.size() - 1, "lp")
 	_blockers["living"].append(Rect2(rx - 0.8, rz - 0.3, 1.6, 0.6))
 	# ---- plants and the floor lamp in the corners
 	var pot := _mat(Color(0.55, 0.25, 0.20), 0.8)
@@ -621,7 +640,6 @@ func _furnish_living(p: Node3D) -> void:
 	main.bank.set_mode(main.bank.speakers.size() - 2, "tv")
 	main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
 	liv_tv.speakers = [main.bank.speakers.size() - 2, main.bank.speakers.size() - 1] as Array[int]
-	liv_tv._route()
 	if main.pc != null:
 		main.pc.refresh_speakers()
 
@@ -630,31 +648,50 @@ var _lp_platter: Node3D
 var _lp_arm: Node3D
 
 func _lp_spinning() -> bool:
-	var b = main.bank
-	if b == null:
-		return false
-	if b.is_live():
-		return main.pc._remote_song != ""             # a guest: the host's music is playing
-	return b.playing and not b.stream_paused
+	return main.bank != null and main.bank.lp_playing()
 
 
-# a guest asks the host (whose music it is); the host or someone alone just plays it
+# the record player is its own music, separate from the PC: it goes through the songs in the music folder, one
+# after another, out of the speakers set to it. (Everyone's copy plays their own; it isn't shared with friends.)
+var _lp_files: Array[String] = []
+var _lp_i := -1
+var _lp_title := ""
+
+
 func lp_press() -> void:
-	if main._is_guest():
-		if not bool(main.guest_allow_seen.get("music", false)):
-			main._net_say("The host's record player: ask them to let guests use the music.")
-			return
-		main.net.send_var(1, 3, {"k": "lp", "a": "next"})
+	_lp_next()
+
+
+func _lp_next() -> void:
+	var dir: String = main.pc.default_music_dir()
+	var found: Array[String] = []
+	var da := DirAccess.open(dir)
+	if da != null:
+		da.list_dir_begin()
+		var f := da.get_next()
+		while f != "":
+			if not da.current_is_dir() and main.pc.AUDIO_EXTS.has(f.get_extension().to_lower()):
+				found.append(dir.path_join(f))
+			f = da.get_next()
+		da.list_dir_end()
+	if found.is_empty():
+		main.updater.show_toast("No records: put some songs in the music folder.", 4.0)
 		return
-	main.pc.lp_next()
+	found.sort_custom(func(a: String, b: String) -> bool: return a.naturalnocasecmp_to(b) < 0)
+	if found != _lp_files:
+		_lp_files = found
+		_lp_i = -1
+	for tries in _lp_files.size():
+		_lp_i = (_lp_i + 1) % _lp_files.size()
+		var st: AudioStream = main.pc._load_audio(_lp_files[_lp_i])
+		if st != null:
+			_lp_title = _lp_files[_lp_i].get_file().get_basename()
+			main.bank.lp_play(st)
+			return
 
 
 func lp_lift() -> void:
-	if main._is_guest():
-		if bool(main.guest_allow_seen.get("music", false)):
-			main.net.send_var(1, 3, {"k": "lp", "a": "stop"})
-		return
-	main.pc._toggle_play()                     # (pauses: the next press drops the needle back on)
+	main.bank.lp_stop()
 
 
 func _lp_tick(delta: float) -> void:
@@ -718,6 +755,13 @@ func _build_balcony() -> void:
 		holes.append([w.x, w.y, WIN_LO, WIN_HI])
 	_wall_x(w0, EAST_X + 0.07, wz - 0.01, wz + 0.005, holes, clad, p)
 	_wall_z(NORTH_Z - 0.07, FRONT_Z + 0.05, EAST_X + 0.055, EAST_X + 0.07, [[EAST_WIN.x, EAST_WIN.y, WIN_LO, WIN_HI]], clad, p)
+	# speakers up under the eaves, over the windows, tipped down at the balcony
+	var bs := Vector3(0.18, 0.2, 0.14)
+	var bk := 0
+	for bx in [-1.6, 3.85, 8.2]:
+		bk += 1
+		main._make_speaker("Balcony speaker %d" % bk, Vector3(bx, 2.66, wz - 0.09), PI, 0.35, bs, 0.045, p)
+	main._make_speaker("Balcony speaker 4", Vector3(EAST_X + 0.15, 2.66, 0.6), PI / 2.0, 0.35, bs, 0.045, p)
 	# string lights strung along poles on the railing (nothing overhead: it's the top floor, the sky stays open)
 	var bulb := _mat(Color(1.0, 0.78, 0.45), 0.4, 3.0)
 	var pole_y := 2.25
@@ -1141,7 +1185,6 @@ func _build_theater() -> void:
 		main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
 		th_tv.speakers.append(main.bank.speakers.size() - 1)
 		_blockers["theater"].append(Rect2(cx + side * (TH_SCREEN.x / 2.0 + 0.15) - 0.3, z1 - 0.65, 0.6, 0.6))
-	th_tv._route()
 	if main.pc != null:
 		main.pc.refresh_speakers()
 	# the seats: three rows of four, each row shifted half a seat from the one in front so nobody's head is in the way
@@ -1453,6 +1496,7 @@ func _process(delta: float) -> void:
 		current = here
 	elif here != "" and current == "":
 		current = here
+	main.bank.listener_room = current
 	# doors open for anybody walking up to them
 	var people: Array = [Vector2(me.x, me.z)]
 	if main.net_avatars != null:
