@@ -1,5 +1,5 @@
 {
- "version": 115,
+ "version": 116,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -522,8 +522,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "48391718861c1fb2dcc74a6d522d6ad55492ef2450220b3d6876e9187d172273",
-   "size": 53514
+   "sha": "563148aff0aa3ed1b74d12e69247eb007327a0db960addeb8969ddfcfb6282b9",
+   "size": 53952
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -622,8 +622,8 @@
    "size": 3020
   },
   "speaker_bank.gd": {
-   "sha": "7ff415ce2aa14c445c456426d871a111b1546fa7d738b4d38b7339d7ef49d809",
-   "size": 13968
+   "sha": "3693c3bc3b7d9cd381d7643610bfa5a2af4efc529a229c624e68e73c7939fe08",
+   "size": 14698
   },
   "stressed_alien.gd": {
    "sha": "bc25affb1750bf500f2eb2cd61698fa35de4af07bff591628335317e6e974951",
@@ -654,11 +654,11 @@
    "size": 11286
   },
   "vcr.gd": {
-   "sha": "6c481a3d78fe3496c55c4487e31ed531fdd6715e8ec69838bea5de5753ae3905",
-   "size": 43171
+   "sha": "06f7b20e6b1af8aa291e98b5583c530b439eb8e1289eef1982403dbe7f4eca15",
+   "size": 44163
   },
   "version.txt": {
-   "sha": "e623772cc677b6536e0545bc9870ad53a37b5cf0187fcc9851641b52344c7ee8",
+   "sha": "76b84d4652a721eefa07441c62707a4c198447f3d24dded57828f869f3c44546",
    "size": 4
   },
   "weather.gd": {
