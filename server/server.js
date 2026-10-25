@@ -8,7 +8,7 @@ const http = require("http");
 const crypto = require("crypto");
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
-const MAX_PLAYERS = parseInt(process.env.MAX_PLAYERS || "4", 10);     // including the host
+const MAX_PLAYERS = parseInt(process.env.MAX_PLAYERS || "8", 10);     // including the host
 const GRACE_MS = parseInt(process.env.GRACE_MS || "90000", 10);        // a host that dropped can take its code back this long
 const JOIN_PER_MIN = parseInt(process.env.JOIN_PER_MIN || "12", 10);   // join attempts per address per minute
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";                    // no 0/O or 1/I

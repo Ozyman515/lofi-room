@@ -250,23 +250,36 @@ func _render_knocks() -> void:
 
 
 func _render_players(can_kick: bool) -> void:
-	var box := VBoxContainer.new()
+	var many: bool = net.roster.size() > 4                  # up to 8 players: two to a row
+	var box: Container
+	if many:
+		var g := GridContainer.new()
+		g.columns = 2
+		g.add_theme_constant_override("h_separation", 6)
+		g.add_theme_constant_override("v_separation", 2)
+		box = g
+	else:
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 6)
+		box = v
 	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 6)
 	_content.add_child(box)
 	for id in net.roster:
 		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_child(row)
 		var n := Label.new()
-		n.text = ("%s%s" % [net.roster[id]["name"], "  (host)" if id == 1 else ""])
+		n.text = ("%s%s" % [net.roster[id]["name"], ("  (host)" if not many else " *") if id == 1 else ""])
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		n.add_theme_font_size_override("font_size", 22)
+		n.clip_text = true
+		n.add_theme_font_size_override("font_size", 16 if many else 22)
 		n.add_theme_color_override("font_color", net.roster[id].get("color", Color.WHITE))
 		row.add_child(n)
 		if can_kick and id != 1:
 			var k := Button.new()
-			k.text = "KICK"
-			k.add_theme_font_size_override("font_size", 18)
+			k.text = "X" if many else "KICK"
+			k.tooltip_text = "Kick"
+			k.add_theme_font_size_override("font_size", 13 if many else 18)
 			k.pressed.connect(func() -> void: net.kick(id))
 			row.add_child(k)
 

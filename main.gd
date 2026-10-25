@@ -268,7 +268,8 @@ func _ready() -> void:
 # ---------------------------------------------------------------- multiplayer
 
 const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(-2.7, 0.0, 4.6), Vector3(-2.1, 0.0, 4.1), Vector3(-1.5, 0.0, 4.7),
-	Vector3(-0.9, 0.0, 4.2)]           # the host's own spot, then just inside the front door
+	Vector3(-0.9, 0.0, 4.2), Vector3(-0.3, 0.0, 4.7), Vector3(0.3, 0.0, 4.2), Vector3(1.6, 0.0, 4.7),
+	Vector3(2.2, 0.0, 4.2)]           # the host's own spot, then just inside the front door (up to 8 players)
 
 
 func _build_multiplayer() -> void:

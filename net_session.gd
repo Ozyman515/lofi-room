@@ -50,7 +50,8 @@ var _want_code := ""
 var _ws_open := false
 var _closing := false
 
-const COLORS := [Color(1.0, 0.45, 0.75), Color(0.45, 0.85, 1.0), Color(1.0, 0.85, 0.4), Color(0.6, 1.0, 0.6)]
+const COLORS := [Color(1.0, 0.45, 0.75), Color(0.45, 0.85, 1.0), Color(1.0, 0.85, 0.4), Color(0.6, 1.0, 0.6),
+	Color(0.75, 0.55, 1.0), Color(1.0, 0.6, 0.35), Color(0.5, 1.0, 0.9), Color(1.0, 1.0, 1.0)]     # up to 8 players
 
 
 func is_host() -> bool:
@@ -323,14 +324,14 @@ func _on_server_msg(m: Dictionary) -> void:
 			_mp.create_client(my_id)
 			_mp.peer_disconnected.connect(_on_peer_gone)
 			_make_conn(1, false)
-			roster = {1: {"name": str(m.get("host_name", "Host")), "color": COLORS[0]}, my_id: {"name": my_name, "color": COLORS[(my_id - 1) % 4]}}
+			roster = {1: {"name": str(m.get("host_name", "Host")), "color": COLORS[0]}, my_id: {"name": my_name, "color": COLORS[(my_id - 1) % COLORS.size()]}}
 			_set_state(State.JOINING, "Connecting to %s..." % roster[1]["name"])
 			roster_changed.emit()
 		"peer_join":
 			if is_host():
 				var id := int(m.get("id", 0))
 				knocks.erase(id)
-				roster[id] = {"name": str(m.get("name", "Guest")).left(20), "color": COLORS[(id - 1) % 4]}
+				roster[id] = {"name": str(m.get("name", "Guest")).left(20), "color": COLORS[(id - 1) % COLORS.size()]}
 				_make_conn(id, true)
 		"peer_leave":
 			_drop_peer(int(m.get("id", 0)))

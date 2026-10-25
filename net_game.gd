@@ -219,7 +219,9 @@ func _tv_video_tick() -> void:
 	if tv_source != net.my_id or net.peer_ids().is_empty():
 		return
 	var now := Time.get_ticks_msec()
-	if now - _last_tv < int(1000.0 / TV_FPS):
+	# more friends in the room = more pictures to send: fewer frames a second each, so the host's line keeps up
+	var fps := TV_FPS if net.peer_ids().size() <= 3 else (9.0 if net.peer_ids().size() <= 5 else 7.0)
+	if now - _last_tv < int(1000.0 / fps):
 		return
 	var tex: Texture2D = main.vcr.current_frame_texture()
 	if tex == null:
