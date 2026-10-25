@@ -583,38 +583,31 @@ func _set_whisky() -> void:
 
 # ---- tonight's case, typed out a letter at a time
 
-const CASES := {
-	"title": ["THE VANISHING TREATS", "THE CARTRIDGE THAT KNEW TOO MUCH", "A HIGH SCORE IN THE RAIN",
-		"THE LAST SLICE", "THE MISSING CONTROLLER", "BLUE MOON OVER THE ARCADE", "THE SAVE FILE",
-		"THE STOLEN BEANBAG", "SMOKE AND SAXOPHONES", "THE NAP THAT WENT TOO LONG", "THE DIARY'S LAST PAGE",
-		"THE MAN WHO PRESSED START"],
-	"open": ["She walked in out of the rain like trouble wearing a raincoat.", "It was a Tuesday. It's always a Tuesday.",
-		"The rain hadn't let up in three days, and neither had my landlord.", "Somebody in this town was lying. I just had to figure out who.",
-		"The phone rang twice and stopped. I didn't like it.", "The city never sleeps. Neither does the cat.",
-		"I poured a drink and stared at the window. The window stared back."],
-	"what": ["the treat bag is empty", "the high score was erased", "a cartridge went missing from the console",
-		"the last slice of pizza vanished", "the TV was left on the static channel", "somebody moved the beanbag two inches to the left",
-		"the diary is missing a page", "the controller cable was tied in a knot", "the poster on the wall was hung crooked"],
-	"suspect": ["Kitty", "Lola", "the landlord", "the guy from 4B", "a dame named Marlowe", "the arcade machine",
-		"the incense", "the pizza delivery kid", "nobody. That's what bothers me"],
-	"alibi": ["asleep on the bed, or so she says", "claims to have been in the drawer all night", "won't talk without a lawyer",
-		"has a paw print on the evidence", "says the rain did it", "was seen near the treats at midnight",
-		"plays a mean saxophone and an even meaner hand of cards"],
-	"close": ["I lit another cigarette and let the rain do the talking.", "Case closed. Probably.", "Some cases you solve. This one solved me.",
-		"I'd sleep on it. The cat had the right idea.", "The rain kept falling. So did my standards.", "Tomorrow, I'd find the truth. Tonight, the sax."],
-}
+const Cases := preload("res://noir_cases.gd")
+var _deck: Array = []                 # the cases left to deal, shuffled; reshuffled when it runs out
 
 
 func new_case() -> void:
-	var c := CASES
-	var who := _pick(c["suspect"])
-	var t := "CASE #%04d\n%s\n\n%s Word is %s. The prime suspect: %s, who %s.\n\n%s" % [
-		_rng.randi_range(1, 9999), _pick(c["title"]), _pick(c["open"]), _pick(c["what"]), _name_swap(who), _pick(c["alibi"]), _pick(c["close"])]
+	if _deck.is_empty():
+		for k in Cases.CASES.size():
+			_deck.append(k)
+		_deck.shuffle()
+	var c: Array = Cases.CASES[_deck.pop_back()]
+	var body := _names(str(c[1]))
+	var t := "CASE #%04d\n%s\n\n%s\n\n%s" % [_rng.randi_range(1, 9999), str(c[0]), body, _names(str(c[2]))]
 	_case = t
 	_typed = 0.0
 	_text.text = ""
 	if _bubble_text != null:
 		_bubble_text.text = ""
+
+
+func _names(t: String) -> String:
+	if main.cats != null:
+		t = t.replace("{tux}", main.cats.name_of("tux")).replace("{calico}", main.cats.name_of("calico"))
+	else:
+		t = t.replace("{tux}", "Kitty").replace("{calico}", "Lola")
+	return t
 
 
 # the cats' names, as the player named them
