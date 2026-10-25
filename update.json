@@ -1,5 +1,5 @@
 {
- "version": 110,
+ "version": 111,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "3b6515c8ecbbc2a20bce7986bae879edf526a26ede9eebf037a8e9e067adcd35",
-   "size": 42612
+   "sha": "f1287a502ab7c3cce283d6e278a0dea745f46b2cfbd87d05b62effe2dcb649b2",
+   "size": 69631
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -174,8 +174,8 @@
    "size": 9311
   },
   "cats.gd": {
-   "sha": "ab36a140e26ae29fadf79c228a9c83b6ed5b221b838a527b250e16468b54c417",
-   "size": 15417
+   "sha": "63c6da51d41877bad6221d7480970dd03393f99e75e573ca0b2784b688909590",
+   "size": 15510
   },
   "comic_book.gd": {
    "sha": "3c56eaa52825af602b3d797a674894ee5eca8669d0401c2f339c97e227a06a29",
@@ -250,8 +250,8 @@
    "size": 4561
   },
   "gaboon.gd": {
-   "sha": "d91abbb5e9563adcf9d4a4b61b2375811693cac94e9c23a1359bf994a0c439e6",
-   "size": 13065
+   "sha": "42d08c06319f8ae02125a326039fdf10a0ce2ca952e21767c1687e1adf4e14dc",
+   "size": 13085
   },
   "gaboon_model.gd": {
    "sha": "d36234825b72f576c946b96c95025350bcbfccce422d49282ecb5a9c6cc16b8b",
@@ -278,8 +278,8 @@
    "size": 8732
   },
   "kaiju.gd": {
-   "sha": "06aecadb373d73e33dcebb56fcb420fbb9d3b0390785cf90a04d314a77cb684a",
-   "size": 12213
+   "sha": "3e071e4b11b6d409a165067a1a2d8c12489678722ae7a3858ff5f62ad3bab710",
+   "size": 12228
   },
   "kaiju/full/armL.res": {
    "sha": "a86ca459a8555bee5d50bf6dea6ac0d2719d55f8cd2a2cf6c8dbccfc6251ea49",
@@ -410,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "c9a20a27763e0391dccd3bb23c536e3869970436cfb4f23d00ca94d622c93b00",
-   "size": 213007
+   "sha": "7c308804e91a3480b3358d9339c8e3ae2235112203e2e17d41fc75861602d1f7",
+   "size": 217980
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -458,16 +458,16 @@
    "size": 7753
   },
   "net_books.gd": {
-   "sha": "7c3f81a995ddbf565f3ec9441cc385aeaf2498c203afd9967954fd2bb9de1093",
-   "size": 9157
+   "sha": "c255d66e41910bca301003ae41baab35325f00ccde5113f860fadcf17d863ef3",
+   "size": 9152
   },
   "net_config.gd": {
    "sha": "f07eaafb7880a08e9c9b7ca7ed6d16fee54368030ce95dd39c3930817764c960",
    "size": 2098
   },
   "net_game.gd": {
-   "sha": "49de8922a910877f5ce4a32e3306388e6191dd7c99148c4c98a08684278d5bcb",
-   "size": 23389
+   "sha": "923f1f9a32a736749e80602e7e7318985d6820b7ec4d7000d9f37758e48a0cc7",
+   "size": 23653
   },
   "net_phone.gd": {
    "sha": "a133313051d50eeb3406f541403d3be11ef11a26281b20e9b4e59b6bb9d6d007",
@@ -486,8 +486,8 @@
    "size": 22908
   },
   "noir.gd": {
-   "sha": "bc936a9dc0431cdbdb51c8b8db809a5ce31a6a4bade8c04b263384ef00a8f165",
-   "size": 23818
+   "sha": "7ab41d08bbb5ec113e70f03c3384f93336c2fcab80be6569d5e65835e14fd165",
+   "size": 32432
   },
   "noir/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -502,8 +502,8 @@
    "size": 2246945
   },
   "noir_props.gd": {
-   "sha": "3b990eaf9d2d8066dc46a50f0febbe68f42dfa733635b722de5ee1e9b9833941",
-   "size": 17125
+   "sha": "32816c49bf70c8c43983bf00b535615cdbecc769ca745dab6feb7cf56b4cb25c",
+   "size": 17261
   },
   "openxr_action_map.tres": {
    "sha": "dac721e8f66d522db8b456c1a6e1468ba695fecbba873d3f2eb0619ce265b21c",
@@ -518,8 +518,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "0b5c688034a205ce2036a3e55f6c366ab35eee8b40ea8f072462d01819d2f1da",
-   "size": 50278
+   "sha": "2e55b6ef094b3f8768c067b726687a9e8f396224d382064c1aef0454659d458e",
+   "size": 50408
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -614,8 +614,8 @@
    "size": 3020
   },
   "speaker_bank.gd": {
-   "sha": "15695821d29aec1c7358e3487b13b3298eca2f3b55a9bf30d5b65b7ecc4f96df",
-   "size": 7466
+   "sha": "667fb7b052c86a1a95cd05072defd72e1e7dfbb8203e8b0c7a7b4cc58ba0b7c9",
+   "size": 7779
   },
   "stressed_alien.gd": {
    "sha": "97bc4434a10e58acee9851af4ace937fcd5816c12a61a1d462b0b59724b1b3de",
@@ -630,8 +630,8 @@
    "size": 10601
   },
   "ufo.gd": {
-   "sha": "31fcbcc0624c7591088ab5e18da104881f3f6a6e9c1ed1debe7b31988b7d25d0",
-   "size": 13751
+   "sha": "782f999f69cd590c9cbb948024de5e36ffcf647dc5db85205640a3fcd42504a4",
+   "size": 13761
   },
   "ufo_model.gd": {
    "sha": "9c1781112de964c5449786ee8ac40f81126a5f1e0bb9e23441e8529a64d8e663",
@@ -646,7 +646,7 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "e00e6031fc5e7ef95c526573343419859e112cebd550f10e2089bf393f5ed2bd",
+   "sha": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
    "size": 4
   },
   "weather.gd": {
