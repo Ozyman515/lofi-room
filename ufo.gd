@@ -53,7 +53,7 @@ func setup(m: Node3D) -> void:
 
 # ---- the little alien figure on the desk: a bobblehead. Tap its head ten times and the real one visits.
 
-const FIG_POS := Vector3(0.62, 0.785, -1.42)
+const FIG_POS := Vector3(-0.64, 0.46, -1.57)       # on the bedroom nightstand, in front of the lamp
 const FIG_TAPS := 10
 var _fig_head: Node3D
 var _fig_taps := 0
@@ -63,8 +63,9 @@ var _fig_t := 0.0
 func _build_figure() -> void:
 	var fig := Node3D.new()
 	fig.position = FIG_POS
-	fig.rotation.y = 0.5                          # turned toward the chair
-	main.study_kit.add_child(fig)
+	fig.rotation.y = 0.35                         # looking out over the bed
+	main.room.add_child(fig)
+	load("res://toy_card.gd").place(main.room, FIG_POS, 0.35 - PI / 2.0, "VISITOR", 0.05)
 	var grey := StandardMaterial3D.new()
 	grey.albedo_color = Color(0.60, 0.63, 0.65)
 	grey.roughness = 0.35
@@ -151,7 +152,7 @@ func _build_figure() -> void:
 		_fig_head.add_child(e)
 	var hit := Node3D.new()
 	hit.position = FIG_POS + Vector3(0, 0.073, 0)
-	main.study_kit.add_child(hit)
+	main.room.add_child(hit)
 	main.interactables.append({"node": hit, "half": Vector3(0.045, 0.075, 0.045), "guest_ok": true,
 		"label": func() -> String: return "THE VISITOR" if not active else "THE VISITOR  (it's waving)", "cb": tap_figure})
 

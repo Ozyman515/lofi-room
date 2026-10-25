@@ -72,6 +72,8 @@ var _puffs: Array = []               # [mesh, t, life, vel, grow]
 var _beam: Node3D
 var _beam_core: MeshInstance3D
 var _beam_mat: ShaderMaterial
+var _nbeam: Node3D                       # Jogari's neon breath: a pink core in a cyan sheath
+var _nbeam_mats: Array[ShaderMaterial] = []
 var _crystals: Array[MeshInstance3D] = []
 var _fireball: MeshInstance3D
 var _fire_mat: ShaderMaterial
@@ -230,7 +232,7 @@ func _plan() -> void:
 		_:
 			# a draw: the black kaiju turns up, then a fleet of saucers swarms in and carries all three away
 			_beats.append_array([{"n": "close", "d": 3.0}, {"n": "clash", "d": 7.0}, {"n": "bk_arrive", "d": 24.0}, {"n": "bk_roar", "d": 9.0},
-				{"n": "ufo_swarm", "d": 34.0}, {"n": "abduct", "d": 32.0}, {"n": "fleet_leaves", "d": 14.0}])
+				{"n": "bk_neon", "d": 10.0}, {"n": "ufo_swarm", "d": 34.0}, {"n": "abduct", "d": 32.0}, {"n": "fleet_leaves", "d": 14.0}])
 
 
 func _move_time(mv: String) -> float:
@@ -413,6 +415,8 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 				_play(_groar, 0.0, 0.85)
 		"ice_beam":
 			_ice_beam(t, was, d)
+		"bk_neon":
+			_neon_breath(t, was, d)
 		"fireball":
 			_fireball_attack(t, was, d)
 		"g_retreat":
@@ -780,6 +784,51 @@ func _ice_beam(t: float, was: float, d: float) -> void:
 		_ice_mat.emission_energy_multiplier = _ice_glow_base
 
 
+# Jogari's stripes blaze brighter and brighter, then it breathes a beam of neon, pink inside cyan, and sweeps it
+# from Banira across to King Gaboon; both reel back from it
+func _neon_breath(t: float, was: float, d: float) -> void:
+	K["yaw"] = _face(kx, Z, bx, bz)
+	G["yaw"] = _face(gx, Z, bx, bz)
+	var charge := _rise(t, 0.0, 2.2)
+	B["roar"] = _pulse(t, 1.6, 2.2, 6.6, 7.4)
+	B["lunge"] = 0.25 * B["roar"]
+	B["arms"] = 0.5 * charge
+	_bk_glow(1.0 + 5.0 * charge * (1.0 - _rise(t, 6.6, 8.5)))
+	if _at(t, was, 0.3):
+		_play(_kroar, -4.0, 0.5)
+	if _at(t, was, 2.2):
+		_play(_zap, 0.0, 0.65)
+	var firing := t > 2.2 and t < 6.6
+	_nbeam.visible = firing
+	if firing:
+		var mouth := (_bp["jaw"] as Node3D).to_global(Vector3(0.12, 0.03, 0.0))
+		var u := _rise(t, 2.4, 6.2)
+		var target := Vector3(lerpf(kx, gx, u), 0.5 * S + GROUND, Z)
+		var len := mouth.distance_to(target)
+		_nbeam.global_position = (mouth + target) * 0.5
+		_nbeam.look_at(target, Vector3.UP)
+		var r := 0.04 * S * (1.0 - _rise(t, 6.2, 6.6)) * (0.9 + 0.1 * sin(t * 30.0))
+		(_nbeam.get_child(0) as MeshInstance3D).scale = Vector3(r * 0.45, len, r * 0.45)
+		(_nbeam.get_child(1) as MeshInstance3D).scale = Vector3(r, len, r)
+		for m in _nbeam_mats:
+			m.set_shader_parameter("amount", _pulse(t, 2.2, 2.5, 6.2, 6.6))
+		if int(was * 5.0) != int(t * 5.0):
+			_impact(target, 0.45, Color(1.0, 0.3, 0.8) if int(t * 5.0) % 2 == 0 else Color(0.3, 0.9, 1.0))
+	# Banira takes it first, then King Gaboon as it sweeps across
+	K["tilt"] = 0.35 * _pulse(t, 2.5, 3.0, 4.2, 5.0)
+	K["roar"] = _pulse(t, 2.7, 3.1, 4.0, 4.6)
+	G["recoil"] = _pulse(t, 4.4, 4.9, 6.0, 6.8)
+	G["roar"] = _pulse(t, 4.6, 5.0, 6.0, 6.6)
+	if _at(t, was, 3.0):
+		_dust(Vector3(kx, GROUND, Z), 0.7)
+	if _at(t, was, 5.0):
+		_dust(Vector3(gx, GROUND, Z), 0.7)
+		_jolt_later(0.3, 0.9)
+	if t >= d - 0.05:
+		_nbeam.visible = false
+		_bk_glow(1.0)
+
+
 # King Gaboon rears up, a fireball swells between his hands, and he hurls it into the T-Rex's chest
 func _fireball_attack(t: float, was: float, d: float) -> void:
 	G["rear"] = 1.0
@@ -1086,6 +1135,27 @@ func _build_fx() -> void:
 		_beam.add_child(mi)
 		if k == 0:
 			_beam_core = mi
+	# Jogari's neon breath: the same streaming beam, its stripes' two colours
+	_nbeam = Node3D.new()
+	_nbeam.visible = false
+	main.outside.add_child(_nbeam)
+	for k in 2:
+		var ncm := CylinderMesh.new()
+		ncm.top_radius = 1.0
+		ncm.bottom_radius = 1.0
+		ncm.height = 1.0
+		ncm.radial_segments = 16
+		ncm.rings = 1
+		ncm.cap_top = false
+		ncm.cap_bottom = false
+		var nm := _fx_mat(2, Color(1.0, 0.3, 0.8) if k == 0 else Color(0.3, 0.9, 1.0))
+		_nbeam_mats.append(nm)
+		var nmi := MeshInstance3D.new()
+		nmi.mesh = ncm
+		nmi.material_override = nm
+		nmi.rotation.x = PI / 2.0
+		nmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_nbeam.add_child(nmi)
 	# ice crystals bursting up round King Gaboon where the beam lands: a few long blades, not a cluster
 	var ice := StandardMaterial3D.new()
 	ice.albedo_color = Color(0.7, 0.9, 1.0, 0.85)

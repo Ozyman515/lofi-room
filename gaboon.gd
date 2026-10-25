@@ -24,6 +24,8 @@ const TOY_POS := Vector3(2.32, 2.215, 0.72)    # on top of the bookshelf, beside
 const TOY_SCALE := 0.2
 const TOY_PLAYS := 5
 
+signal walked                        # a walk past the window begins (the news puts out a bulletin)
+
 var main: Node3D
 var active := false
 var count := 0
@@ -97,6 +99,7 @@ func start() -> void:
 	if active:
 		return
 	active = true
+	walked.emit()
 	_x = FROM_X
 	_phase = 0.0
 	_shown = false

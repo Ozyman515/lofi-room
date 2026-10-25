@@ -21,6 +21,8 @@ const PEEK_TIME := 4.5
 const TOY_POS := Vector3(2.32, 2.215, 0.38)    # on top of the bookshelf, a collectable beside King Gaboon's figure
 const TOY_SCALE := 0.2                 # the same size as King Gaboon's figure beside it
 
+signal walked                        # a walk past the window begins (the news puts out a bulletin)
+
 var main: Node3D
 var active := false
 var count := 0                       # how many walks (shared rooms follow the host's count)
@@ -109,6 +111,7 @@ func start() -> void:
 	if active:
 		return
 	active = true
+	walked.emit()
 	_x = FROM_X
 	_phase = 0.0
 	_peeked = false

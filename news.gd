@@ -8,6 +8,10 @@ extends Node
 ## at a lower rate). He and his rooftop are on visual layer 3, which only the news camera sees.
 ## The TV is borrowed only when it isn't busy with a game: a playing tape pauses and resumes afterwards, and a
 ## TV that was off switches itself on for the broadcast and back off after.
+## Besides the fight, a short bulletin goes out when Banira or King Gaboon walks past on its own. And the station
+## cuts away to interviews, which is how the monsters got their names: an ice cream vendor calling out his flavours
+## (the reporter takes "banira" for the creature's name), a big-game hunter who has tracked King Gaboon for twenty
+## years, and the grey visitor, who knows Jogari. Each has its own little set on the reporter's layer.
 
 const Plat := preload("res://platform.gd")
 const LAYER := 4                     # visual layer 3 (bit value 4): the reporter, his roof and his light
@@ -45,12 +49,28 @@ var _duck := 0.0
 var _queued := ""                    # a moment that happened during his opening words
 
 const SPOT := Vector3(-30.0, 0.0, -30.0)     # his rooftop, off to one side, the fight beyond it
+const SETS := Vector3(-300.0, 140.0, -300.0)   # the interview sets, out of everyone's way (only the news camera sees them)
+
+var _kind := "fight"                 # "fight", or a bulletin: "k" (Banira walking past) or "g" (King Gaboon)
+var _sets := {}                      # who -> {"root", "p" (moving parts), "cam" [from, at]}
+var _iv := ""                        # the interview on the air now
+var _iv_i := 0
+var _iv_t := 0.0
+var _iv_dur := 0.0
+var _iv_talk := false
+var _iv_queue: Array = []            # [at _T, who]
+var _named := {}                     # "k" / "g" / "b": the station knows its name now
+var _sub := ""                       # a translation under the caption
 
 
 func setup(m: Node3D, f: Node3D) -> void:
 	main = m
 	fight = f
 	fight.moment.connect(_on_moment)
+	if main.kaiju != null:
+		main.kaiju.walked.connect(func() -> void: _start("k"))
+	if main.gaboon != null:
+		main.gaboon.walked.connect(func() -> void: _start("g"))
 	_rng.randomize()
 	set_process(false)
 
@@ -72,6 +92,7 @@ func _build() -> void:
 		if c is Camera3D:
 			(c as Camera3D).cull_mask &= ~LAYER
 	_build_reporter()
+	_build_sets()
 	_build_overlay()
 	var bus := "TV" if AudioServer.get_bus_index("TV") >= 0 else "Master"
 	_hiss = AudioStreamPlayer.new()
@@ -240,12 +261,17 @@ func _lab(parent: Control, text: String, pos: Vector2, size: float, col: Color) 
 
 # ---- going on and off the air
 
-func _start() -> void:
+func _start(kind := "fight") -> void:
+	if on_air:
+		return
 	if _vp == null:
 		_build()
 	if main.console_on or main.vcr.remote_video:
 		return                                            # the TV is busy with a game or a guest's tape
 	on_air = true
+	_kind = kind
+	_iv = ""
+	_iv_queue.clear()
 	_T = 0.0
 	_end_t = -1.0
 	_rep.visible = true
@@ -260,9 +286,23 @@ func _start() -> void:
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_sting.play()
 	_hiss.play()
-	_ticker.text = "  BREAKING: TWO GIANT MONSTERS CLASH DOWNTOWN  *  RESIDENTS URGED TO STAY INDOORS  *  BRIDGES CLOSED  *  NEWS CHOPPERS ON THE SCENE  *  STAY TUNED TO CH 3  *"
-	_cut("rep", 10.0)
-	_say("We interrupt this program for a special bulletin. I'm on a rooftop downtown, and something enormous is moving out there.", 7.0)
+	_where.text = WHERE
+	match kind:
+		"k":
+			_ticker.text = "  BULLETIN: GIANT CREATURE SIGHTED DOWNTOWN  *  KEEP AWAY FROM WINDOWS  *  ICE CREAM VENDORS REPORT BRISK TRADE  *  STAY TUNED TO CH 3  *"
+			_cut("rep", 6.0)
+			_say(_pick(LINES["b_open_k"]), 6.0)
+			_iv_queue = [[13.0, "vendor"]]
+		"g":
+			_ticker.text = "  BULLETIN: GIANT APE ON THE LOOSE  *  ZOO SAYS 'NOT OURS'  *  HUNTER ARRIVES AT THE DOCKS  *  STAY TUNED TO CH 3  *"
+			_cut("rep", 6.0)
+			_say(_pick(LINES["b_open_g"]), 6.0)
+			_iv_queue = [[13.0, "hunter"]]
+		_:
+			_ticker.text = "  BREAKING: TWO GIANT MONSTERS CLASH DOWNTOWN  *  RESIDENTS URGED TO STAY INDOORS  *  BRIDGES CLOSED  *  NEWS CHOPPERS ON THE SCENE  *  STAY TUNED TO CH 3  *"
+			_cut("rep", 10.0)
+			_say("We interrupt this program for a special bulletin. I'm on a rooftop downtown, and something enormous is moving out there.", 7.0)
+			_iv_queue = [[30.0, "vendor"], [68.0, "hunter"]]
 	set_process(true)
 
 
@@ -270,6 +310,9 @@ func _stop() -> void:
 	on_air = false
 	set_process(false)
 	_rep.visible = false
+	_iv = ""
+	for w in _sets:
+		(_sets[w]["root"] as Node3D).visible = false
 	_hiss.stop()
 	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	var tm: ShaderMaterial = main.tv_mat
@@ -289,19 +332,26 @@ func _on_moment(kind: String) -> void:
 	if kind == "start":
 		_start()
 		return
-	if not on_air:
+	if not on_air or (_kind != "fight" and kind != "end"):
 		return
+	if kind == "bk_arrive":
+		_iv_queue.append([_T + 9.0, "visitor"])
+		_iv_queue.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	if kind == "end":
+		_iv = ""
+		_where.text = WHERE
+		for w in _sets:
+			(_sets[w]["root"] as Node3D).visible = false
 		_cut("rep", 99.0)
-		_say(_pick(LINES["signoff"]), 6.0)
+		_say(_pick(LINES["signoff" if _kind == "fight" else "b_signoff"]), 6.0)
 		_sting.play()
 		_end_t = _T + 7.0
 		return
-	if kind == "enter" or _T < 8.0:
-		_queued = kind                                    # (after the opening words)
+	if kind == "enter" or _T < 8.0 or _iv != "":
+		_queued = kind                                    # (after the opening words, or the interview)
 		return
 	if LINES.has(kind):
-		var big := kind in ["tackle", "slam", "ice_beam", "fireball", "clash", "tail", "bk_arrive", "ufo_swarm", "abduct"]
+		var big := kind in ["tackle", "slam", "ice_beam", "fireball", "clash", "tail", "bk_arrive", "bk_neon", "ufo_swarm", "abduct"]
 		if big or _rng.randf() < 0.6:
 			_cut("field", _rng.randf_range(6.0, 10.0))
 		_say(_pick(LINES[kind]), 6.0)
@@ -310,11 +360,21 @@ func _on_moment(kind: String) -> void:
 
 
 func _pick(list: Array) -> String:
-	return str(list[_rng.randi() % list.size()])
+	return _names(str(list[_rng.randi() % list.size()]))
 
 
-func _say(text: String, _secs: float) -> void:
+# once the station has a name for one, he uses it
+func _names(t: String) -> String:
+	if _named.has("k"):
+		t = t.replace("The white one", "Banira").replace("the white one", "Banira").replace("the T-Rex", "Banira")
+	if _named.has("b"):
+		t = t.replace("the black one", "Jogari").replace("The black one", "Jogari")
+	return t
+
+
+func _say(text: String, _secs: float, sub := "") -> void:
 	_line = text
+	_sub = sub
 	_shown = 0.0
 	_speak = 0.4 + text.length() / 16.0
 
@@ -336,10 +396,17 @@ func _process(delta: float) -> void:
 	if _end_t >= 0.0 and _T >= _end_t:
 		_stop()
 		return
-	if not fight.active and _end_t < 0.0:
+	if not _subject_active() and _end_t < 0.0 and _iv == "":
 		_on_moment("end")
+	# an interview comes up when its time comes (not over the sign-off)
+	if _iv == "" and _end_t < 0.0 and not _iv_queue.is_empty() and _T >= float(_iv_queue[0][0]):
+		var who: String = _iv_queue.pop_front()[1]
+		if _subject_active():
+			_start_iv(who)
+	if _iv != "":
+		_iv_tick(delta)
 	# back to the reporter now and then; out to the cameras again after
-	if _shot_t >= _next_cut:
+	elif _shot_t >= _next_cut:
 		if _shot == "rep":
 			_cut("field", _rng.randf_range(7.0, 12.0))
 			if _queued != "" and LINES.has(_queued):
@@ -348,12 +415,13 @@ func _process(delta: float) -> void:
 		else:
 			_cut("rep", _rng.randf_range(5.0, 8.0))
 			if _speak <= 0.0:
-				_say(_pick(LINES["filler"]), 6.0)
+				_say(_pick(LINES["filler" if _kind == "fight" else "b_filler"]), 6.0)
 	_camera(delta)
 	_animate(delta)
 	# the caption types out as he speaks
 	_shown = minf(_shown + delta * 22.0, _line.length())
-	_caption.text = "\"" + _line.left(int(_shown)) + ("\"" if int(_shown) >= _line.length() else "")
+	_caption.text = "\"" + _line.left(int(_shown)) + ("\"" if int(_shown) >= _line.length() else "") \
+		+ ("\n" + _sub if _sub != "" and int(_shown) >= _line.length() else "")
 	_speak -= delta
 
 	_ticker.position.x -= delta * 40.0 * (_vp.size.x / 320.0)
@@ -374,6 +442,25 @@ func _process(delta: float) -> void:
 func _camera(delta: float) -> void:
 	var shake := Vector3(sin(_T * 1.7), sin(_T * 2.3 + 1.0), 0.0) * 0.02
 	var c := _fight_centre()
+	if _shot.begins_with("iv_"):
+		# a handheld medium shot of whoever we're talking to
+		var st: Dictionary = _sets[_shot.substr(3)]
+		var root: Node3D = st["root"]
+		_cam.global_position = root.to_global(st["cam"][0]) + shake * 1.5
+		_cam.look_at(root.to_global(st["cam"][1]), Vector3.UP)
+		_cam.fov = 40.0
+		return
+	if _kind != "fight" and _shot != "rep":
+		# a bulletin: the station's rooftop cameras on the one walking past
+		var who: Node3D = _subject_node()
+		if who != null:
+			var sc: float = main.kaiju.SCALE if _kind == "k" else main.gaboon.SCALE
+			var at := who.global_position + Vector3(0, 0.75 * sc, 0)
+			var spots := [Vector3(-3.0, 6.0, -2.4), Vector3(8.5, 7.5, -3.0), Vector3(2.0, 13.0, 1.5)]     # cameras on our own roof
+			_cam.global_position = (spots[_field] as Vector3) + Vector3(sin(_T * 0.2) * 0.5, 0, 0) + shake * 4.0
+			_cam.look_at(at, Vector3.UP)
+			_cam.fov = lerpf(60.0, 42.0, smoothstep(0.0, 6.0, _shot_t))
+			return
 	if _shot == "rep":
 		# a medium shot of him, the fight over his shoulder
 		var me := _rep.global_position + Vector3(0, 1.55, 0)
@@ -395,7 +482,9 @@ func _camera(delta: float) -> void:
 
 
 func _animate(delta: float) -> void:
-	var talk := 1.0 if _speak > 0.0 else 0.0
+	if _iv != "":
+		_animate_iv(delta)
+	var talk := 1.0 if _speak > 0.0 and _iv == "" else 0.0
 	var m: MeshInstance3D = _rp["mouth"]
 	m.scale.y = 0.008 + 0.012 * talk * maxf(0.0, sin(_T * 15.0) * sin(_T * 4.1 + 1.0))
 	_duck = move_toward(_duck, 0.0, delta * 0.7)
@@ -406,6 +495,304 @@ func _animate(delta: float) -> void:
 	(_rp["man"] as Node3D).position.y = -0.12 * _duck
 	(_rp["arm_l"] as Node3D).rotation = Vector3(-0.5 - 0.4 * talk * (0.5 + 0.5 * sin(_T * 2.2)) - 0.6 * _look, 0.0, -0.15)
 	(_rp["fore_l"] as Node3D).rotation = Vector3(-0.6 * talk, 0.0, 0.0)
+
+
+func _subject_active() -> bool:
+	match _kind:
+		"k":
+			return main.kaiju != null and main.kaiju.active
+		"g":
+			return main.gaboon != null and main.gaboon.active
+	return fight.active
+
+
+func _subject_node() -> Node3D:
+	if _kind == "k":
+		return main.kaiju._k
+	if _kind == "g":
+		return main.gaboon._g
+	return null
+
+
+# ---- interviews
+
+func _start_iv(who: String) -> void:
+	_iv = who
+	_iv_i = -1
+	_iv_dur = 0.0
+	_iv_t = 0.0
+	for w in _sets:
+		(_sets[w]["root"] as Node3D).visible = w == who
+	_where.text = str(IV[who]["strip"])
+	_cut("iv_" + who, 999.0)
+	_iv_next()
+
+
+func _iv_next() -> void:
+	_iv_i += 1
+	var lines: Array = IV[_iv]["lines"]
+	if _iv_i >= lines.size():
+		# back to the newsman, who has a name for it now
+		var who := _iv
+		_named[str(IV[who]["name"])] = true
+		_iv = ""
+		_where.text = WHERE
+		(_sets[who]["root"] as Node3D).visible = false
+		_cut("rep", 7.0)
+		_say(_pick(IV[who]["after"]), 6.0)
+		return
+	var l: Array = lines[_iv_i]
+	_iv_talk = l[0] == "a"
+	_say(("CH 3:  " if l[0] == "q" else "") + str(l[1]), 6.0, str(l[2]))
+	_speak = 0.0 if not _iv_talk else _speak
+	_iv_t = 0.0
+	_iv_dur = maxf(3.0, 1.2 + str(l[1]).length() / 12.0 + (1.5 if str(l[2]) != "" else 0.0))
+
+
+func _iv_tick(delta: float) -> void:
+	_iv_t += delta
+	if _iv_t >= _iv_dur:
+		_iv_next()
+
+
+const WHERE := "CH 3 NEWS  -  DOWNTOWN"
+
+const IV := {
+	"vendor": {"strip": "ICE CREAM VENDOR  -  OLD TOWN", "name": "k", "lines": [
+		["q", "Sir! Sir! Do you know what that thing is?", ""],
+		["a", "Banira! Chokoreeto! Ichigo!", "(Vanilla! Chocolate! Strawberry!)"],
+		["q", "Ba... Banira? Is that its name?", ""],
+		["a", "Aisu kuriimu! Hitotsu hyaku en!", "(Ice cream! A hundred yen a scoop!)"]],
+		"after": ["You heard him, folks. The creature has a name, and that name is Banira.",
+			"Banira. That's what they're calling it down in Old Town. Back to the rooftops."]},
+	"hunter": {"strip": "BIG-GAME HUNTER  -  THE DOCKS", "name": "g", "lines": [
+		["q", "Sir, you look like a man who knows something about that ape.", ""],
+		["a", "Know him? I've tracked him across three continents for twenty years!", ""],
+		["a", "That, my boy, is King Gaboon. And King Gaboon bows to no one.", ""]],
+		"after": ["King Gaboon. A hunter's word for it, folks, and I'm not about to argue.",
+			"King Gaboon. Twenty years that man has been chasing him. Back to the rooftops."]},
+	"visitor": {"strip": "A VISITOR  -  DECLINED TO GIVE A NAME", "name": "b", "lines": [
+		["q", "Excuse me, sir... the black one. Do you know what it is?", ""],
+		["a", "Jogari. We left it here a long time ago. It was supposed to stay asleep.", ""],
+		["a", "Nobody stays asleep in this town. ...Got a light?", ""]],
+		"after": ["Jogari. You heard the... gentleman. Back to the rooftops.",
+			"He called it Jogari. And then he asked me for a light. Back to the fight."]},
+}
+
+
+# ---- the interview sets: each a bit of street with its own light, on the reporter's layer
+
+func _build_sets() -> void:
+	_sets["vendor"] = _build_vendor(SETS)
+	_sets["hunter"] = _build_hunter(SETS + Vector3(-40, 0, 0))
+	_sets["visitor"] = _build_visitor_set(SETS + Vector3(-80, 0, 0))
+	for w in _sets:
+		var root: Node3D = _sets[w]["root"]
+		root.visible = false
+		for n in root.find_children("*", "VisualInstance3D", true, false):
+			(n as VisualInstance3D).layers = LAYER
+
+
+func _set_root(at: Vector3, wall: Color, lamp: Color) -> Node3D:
+	var r := Node3D.new()
+	main.outside.add_child(r)
+	r.global_position = at
+	_box(r, Vector3(0, -0.05, 0), Vector3(8.0, 0.1, 6.0), _mat(Color(0.2, 0.19, 0.21), 0.9))          # pavement
+	_box(r, Vector3(0, 2.0, -1.4), Vector3(8.0, 4.0, 0.2), _mat(wall, 0.9))                           # a wall behind
+	var l := OmniLight3D.new()
+	l.light_cull_mask = LAYER
+	l.omni_range = 7.0
+	l.light_energy = 2.0
+	l.light_color = lamp
+	l.position = Vector3(0.9, 2.6, 1.8)
+	r.add_child(l)
+	var fill := OmniLight3D.new()
+	fill.light_cull_mask = LAYER
+	fill.omni_range = 6.0
+	fill.light_energy = 0.6
+	fill.light_color = Color(0.7, 0.75, 1.0)
+	fill.position = Vector3(-1.5, 1.6, 1.2)
+	r.add_child(fill)
+	return r
+
+
+# a chrome microphone poking in from the side of the frame, held out to whoever is talking
+func _set_mic(r: Node3D, mouth: Vector3) -> void:
+	var chrome := _mat(Color(0.75, 0.77, 0.8), 0.35)
+	chrome.metallic = 0.5
+	var mic := Node3D.new()
+	mic.position = mouth + Vector3(0.2, -0.06, 0.24)
+	r.add_child(mic)
+	_cap(mic, Vector3(0.08, -0.04, 0.06), 0.017, 0.18, chrome).rotation = Vector3(0.6, 0.0, 1.0)
+	_ell(mic, Vector3.ZERO, Vector3(0.04, 0.05, 0.04), chrome)
+
+
+# a plain standing figure, the same build as the newsman; faces +z. Returns its moving parts.
+func _person(parent: Node3D, c: Dictionary) -> Dictionary:
+	var body := Node3D.new()
+	parent.add_child(body)
+	var skin := _mat(c["skin"], 0.6)
+	var dark := _mat(Color(0.05, 0.05, 0.05), 0.5)
+	for sx in [-0.13, 0.13]:
+		_cap(body, Vector3(sx, 0.45, 0), 0.11, 0.9, _mat(c["legs"], 0.8))
+		_box(body, Vector3(sx, 0.04, 0.06), Vector3(0.14, 0.08, 0.28), _mat(c["shoes"], 0.6))
+	var torso := Node3D.new()
+	torso.position = Vector3(0, 0.95, 0)
+	body.add_child(torso)
+	var jacket := _mat(c["jacket"], 0.85)
+	_ell(torso, Vector3(0, 0.3, 0), Vector3(0.27, 0.36, 0.17), jacket)
+	var vee := PrismMesh.new()                                            # the shirt in the V of the jacket
+	vee.size = Vector3(0.15, 0.24, 0.02)
+	vee.left_to_right = 0.5
+	_put(torso, vee, Vector3(0, 0.44, 0.155), _mat(c["shirt"], 0.7)).rotation.z = PI
+	_ell(torso, Vector3(-0.27, 0.56, 0), Vector3(0.1, 0.07, 0.11), jacket)
+	_ell(torso, Vector3(0.27, 0.56, 0), Vector3(0.1, 0.07, 0.11), jacket)
+	var head := Node3D.new()
+	head.position = Vector3(0, 0.72, 0)
+	torso.add_child(head)
+	_cap(head, Vector3(0, 0.0, 0), 0.055, 0.14, skin)
+	_ell(head, Vector3(0, 0.16, 0.01), Vector3(0.1, 0.13, 0.11), skin)
+	if c.has("hair"):
+		_ell(head, Vector3(0, 0.21, -0.02), Vector3(0.105, 0.09, 0.1), _mat(c["hair"], 0.6))
+	_ell(head, Vector3(-0.035, 0.175, 0.1), Vector3(0.012, 0.009, 0.006), dark)
+	_ell(head, Vector3(0.035, 0.175, 0.1), Vector3(0.012, 0.009, 0.006), dark)
+	_box(head, Vector3(-0.04, 0.197, 0.1), Vector3(0.045, 0.012, 0.02), _mat(c.get("brows", Color(0.2, 0.18, 0.17)), 0.6))
+	_box(head, Vector3(0.04, 0.197, 0.1), Vector3(0.045, 0.012, 0.02), _mat(c.get("brows", Color(0.2, 0.18, 0.17)), 0.6))
+	_ell(head, Vector3(0, 0.14, 0.115), Vector3(0.018, 0.03, 0.02), skin)
+	_ell(head, Vector3(-0.1, 0.16, 0.0), Vector3(0.014, 0.03, 0.02), skin)
+	_ell(head, Vector3(0.1, 0.16, 0.0), Vector3(0.014, 0.03, 0.02), skin)
+	var mouth := _ell(head, Vector3(0, 0.095, 0.1), Vector3(0.03, 0.008, 0.01), dark)
+	var parts := {"man": body, "torso": torso, "head": head, "mouth": mouth}
+	for side in [-1.0, 1.0]:
+		var arm := Node3D.new()
+		arm.position = Vector3(side * 0.29, 0.52, 0)
+		torso.add_child(arm)
+		_cap(arm, Vector3(side * 0.02, -0.17, 0.0), 0.06, 0.34, jacket)
+		var fore := Node3D.new()
+		fore.position = Vector3(side * 0.03, -0.34, 0.0)
+		arm.add_child(fore)
+		_cap(fore, Vector3(0, -0.13, 0.02), 0.05, 0.28, jacket)
+		_ell(fore, Vector3(0, -0.29, 0.03), Vector3(0.045, 0.055, 0.04), skin)
+		parts["arm_r" if side > 0 else "arm_l"] = arm
+		parts["fore_r" if side > 0 else "fore_l"] = fore
+	return parts
+
+
+# the ice cream vendor at his cart in Old Town: white jacket and paper cap, a striped awning behind him
+func _build_vendor(at: Vector3) -> Dictionary:
+	var r := _set_root(at, Color(0.42, 0.24, 0.2), Color(1.0, 0.9, 0.75))
+	var white := Color(0.93, 0.93, 0.9)
+	var p := _person(r, {"skin": Color(0.86, 0.7, 0.56), "legs": Color(0.25, 0.25, 0.3), "shoes": Color(0.1, 0.08, 0.07),
+		"jacket": white, "shirt": white, "hair": Color(0.45, 0.44, 0.43), "brows": Color(0.4, 0.39, 0.38)})
+	var head: Node3D = p["head"]
+	_box(head, Vector3(0, 0.275, 0.0), Vector3(0.2, 0.06, 0.18), _mat(white, 0.7)).rotation.z = 0.12     # paper cap
+	_box(head, Vector3(0, 0.247, 0.0), Vector3(0.21, 0.015, 0.19), _mat(Color(0.85, 0.3, 0.35), 0.6)).rotation.z = 0.12
+	_box(p["torso"], Vector3(0, 0.12, 0.16), Vector3(0.36, 0.48, 0.02), _mat(Color(0.98, 0.98, 0.96), 0.8))   # apron
+	_box(p["torso"], Vector3(0, 0.6, 0.16), Vector3(0.07, 0.03, 0.02), _mat(Color(0.8, 0.15, 0.2), 0.6))    # bow tie
+	var scoop := _mat(Color(0.75, 0.77, 0.8), 0.2)
+	scoop.metallic = 0.8
+	_cap(p["fore_r"], Vector3(0, -0.36, 0.05), 0.012, 0.12, scoop)                                          # the scoop in his hand
+	# the cart: three tubs under the lid, a parasol over it, a sign on the front
+	var cart := _mat(Color(0.95, 0.9, 0.82), 0.6)
+	_box(r, Vector3(0.8, 0.42, 0.25), Vector3(0.75, 0.8, 0.45), cart)
+	_box(r, Vector3(0.8, 0.83, 0.25), Vector3(0.79, 0.03, 0.49), _mat(Color(0.55, 0.75, 0.9), 0.5))
+	for k in 3:
+		var col: Color = [Color(0.98, 0.95, 0.82), Color(0.42, 0.25, 0.15), Color(0.98, 0.6, 0.7)][k]
+		_put(r, _cyl_mesh(0.08, 0.02), Vector3(0.58 + k * 0.22, 0.855, 0.27), _mat(col, 0.7))
+	var sign := Label3D.new()
+	sign.text = "ICE CREAM"
+	sign.font_size = 48
+	sign.pixel_size = 0.0028
+	sign.modulate = Color(0.85, 0.2, 0.3)
+	sign.position = Vector3(0.8, 0.55, 0.48)
+	r.add_child(sign)
+	_put(r, _cyl_mesh(0.015, 1.3), Vector3(1.05, 1.5, 0.1), _mat(Color(0.6, 0.6, 0.62), 0.4))             # parasol pole
+	var canopy := CylinderMesh.new()
+	canopy.top_radius = 0.02
+	canopy.bottom_radius = 0.6
+	canopy.height = 0.25
+	canopy.radial_segments = 12
+	_put(r, canopy, Vector3(1.05, 2.18, 0.1), _mat(Color(0.98, 0.65, 0.75), 0.7))
+	# the shop behind: a lit window and a striped awning
+	_box(r, Vector3(-1.4, 1.4, -1.29), Vector3(1.5, 1.1, 0.02), _mat(Color(1.0, 0.85, 0.55), 0.5, 1.2))
+	for k in 5:
+		var aw: MeshInstance3D = _box(r, Vector3(-2.0 + k * 0.3, 2.2, -1.0), Vector3(0.3, 0.05, 0.7),
+			_mat(Color(0.85, 0.2, 0.25) if k % 2 == 0 else Color(0.95, 0.93, 0.9), 0.7))
+		aw.rotation.x = 0.35
+	_set_mic(r, Vector3(0, 1.76, 0.1))
+	return {"root": r, "p": p, "cam": [Vector3(0.55, 1.62, 2.3), Vector3(0.35, 1.4, 0.0)], "style": "wave"}
+
+
+# the big-game hunter on the docks: pith helmet, khaki, a great moustache, binoculars round his neck
+func _build_hunter(at: Vector3) -> Dictionary:
+	var r := _set_root(at, Color(0.24, 0.2, 0.17), Color(1.0, 0.88, 0.7))
+	var khaki := Color(0.66, 0.58, 0.4)
+	var p := _person(r, {"skin": Color(0.9, 0.68, 0.58), "legs": Color(0.55, 0.47, 0.32), "shoes": Color(0.3, 0.18, 0.1),
+		"jacket": khaki, "shirt": Color(0.88, 0.84, 0.72), "brows": Color(0.75, 0.72, 0.68)})
+	var head: Node3D = p["head"]
+	var helmet := _mat(Color(0.88, 0.84, 0.68), 0.7)
+	_ell(head, Vector3(0, 0.24, -0.005), Vector3(0.135, 0.1, 0.15), helmet)
+	_put(head, _cyl_mesh(0.2, 0.012), Vector3(0, 0.21, 0.0), helmet).scale = Vector3(1.0, 1.0, 1.15)
+	_put(head, _cyl_mesh(0.137, 0.022), Vector3(0, 0.228, -0.005), _mat(Color(0.35, 0.28, 0.2), 0.6)).scale = Vector3(1.0, 1.0, 1.1)   # hat band
+	var tache := _mat(Color(0.82, 0.8, 0.76), 0.7)                                                          # a grand white moustache
+	for sx in [-1.0, 1.0]:
+		_ell(head, Vector3(sx * 0.035, 0.112, 0.108), Vector3(0.04, 0.014, 0.016), tache).rotation.z = sx * -0.35
+	var blk := _mat(Color(0.06, 0.06, 0.06), 0.4)
+	for sx in [-1.0, 1.0]:
+		_put(p["torso"], _cyl_mesh(0.026, 0.11), Vector3(sx * 0.03, 0.3, 0.2), blk)          # binoculars, hanging
+	for sx in [-1.0, 1.0]:
+		_box(p["torso"], Vector3(sx * 0.08, 0.45, 0.17), Vector3(0.012, 0.3, 0.012), blk).rotation.z = sx * 0.35   # the strap
+	# the docks: stacked crates, a bollard, a lamp
+	var crate := _mat(Color(0.45, 0.32, 0.2), 0.85)
+	_box(r, Vector3(-1.2, 0.35, -0.6), Vector3(0.7, 0.7, 0.7), crate)
+	_box(r, Vector3(-1.1, 1.0, -0.65), Vector3(0.6, 0.6, 0.6), crate)
+	_box(r, Vector3(1.4, 0.3, -0.5), Vector3(0.8, 0.6, 0.7), crate)
+	_put(r, _cyl_mesh(0.14, 0.5), Vector3(0.95, 0.25, 0.6), _mat(Color(0.15, 0.15, 0.17), 0.5))
+	_set_mic(r, Vector3(0, 1.76, 0.1))
+	return {"root": r, "p": p, "cam": [Vector3(0.5, 1.65, 2.2), Vector3(0.1, 1.45, 0.0)], "style": "point"}
+
+
+# the grey visitor on a bench under a street lamp, coat collar up, cigarette going, a glass in his hand
+func _build_visitor_set(at: Vector3) -> Dictionary:
+	var r := _set_root(at, Color(0.14, 0.13, 0.15), Color(0.95, 0.9, 0.75))
+	var wood := _mat(Color(0.3, 0.2, 0.14), 0.8)
+	_box(r, Vector3(0, 0.45, -0.05), Vector3(0.8, 0.08, 0.6), wood)
+	_box(r, Vector3(0, 0.8, -0.42), Vector3(0.8, 0.6, 0.08), wood)
+	for sx in [-1.0, 1.0]:
+		_box(r, Vector3(sx * 0.36, 0.6, -0.05), Vector3(0.08, 0.25, 0.7), wood)
+		_box(r, Vector3(sx * 0.36, 0.71, -0.05), Vector3(0.12, 0.03, 0.74), wood)
+		_box(r, Vector3(sx * 0.33, 0.2, -0.05), Vector3(0.05, 0.4, 0.5), _mat(Color(0.1, 0.1, 0.11), 0.4))
+	var lamp := _mat(Color(0.12, 0.12, 0.13), 0.5)
+	_put(r, _cyl_mesh(0.04, 3.0), Vector3(-0.9, 1.5, -0.6), lamp)
+	_box(r, Vector3(-0.7, 3.0, -0.6), Vector3(0.5, 0.05, 0.05), lamp)
+	_ell(r, Vector3(-0.5, 2.9, -0.6), Vector3(0.12, 0.08, 0.12), _mat(Color(1.0, 0.9, 0.7), 0.5, 2.0))
+	var v: Node3D = load("res://stressed_alien.gd").new()
+	r.add_child(v)
+	v.build(0.5)
+	_set_mic(r, Vector3(0.12, 1.16, -0.02))
+	return {"root": r, "p": {}, "cam": [Vector3(0.45, 1.2, 1.55), Vector3(0.08, 1.0, -0.1)], "style": "sit"}
+
+
+# what the interviewee does: talks when it's his line, and the vendor waves his scoop, the hunter points
+func _animate_iv(_delta: float) -> void:
+	var st: Dictionary = _sets[_iv]
+	var p: Dictionary = st["p"]
+	if p.is_empty():
+		return
+	var talk := 1.0 if _iv_talk and _iv_t < _iv_dur - 0.6 else 0.0
+	(p["mouth"] as Node3D).scale.y = 0.008 + 0.014 * talk * maxf(0.0, sin(_T * 14.0) * sin(_T * 4.3 + 1.0))
+	(p["head"] as Node3D).rotation = Vector3(0.06 * sin(_T * 1.4) * talk, 0.15 * sin(_T * 0.6), 0.05 * sin(_T * 0.9))
+	match str(st["style"]):
+		"wave":                        # the scoop up, waving it like he's calling out to the whole street
+			(p["arm_r"] as Node3D).rotation = Vector3(-0.5, 0.0, 2.2 + 0.35 * sin(_T * 5.0) * talk)
+			(p["fore_r"] as Node3D).rotation = Vector3(0.0, 0.0, 0.5)
+			(p["arm_l"] as Node3D).rotation = Vector3(-0.5, 0.0, -0.1)
+			(p["fore_l"] as Node3D).rotation = Vector3(-1.2, 0.0, 0.0)
+		"point":                       # one arm up at the sky, where the ape is; the other fist on his hip
+			(p["arm_l"] as Node3D).rotation = Vector3(0.0, 0.0, -2.5 - 0.15 * sin(_T * 3.0) * talk)
+			(p["fore_l"] as Node3D).rotation = Vector3(0.0, 0.0, -0.1)
+			(p["arm_r"] as Node3D).rotation = Vector3(0.0, 0.0, 0.45)
+			(p["fore_r"] as Node3D).rotation = Vector3(0.0, 0.0, -1.6)
 
 
 # ---- what he says
@@ -434,6 +821,8 @@ const LINES := {
 	"bk_arrive": ["Wait. Something else is coming up behind them. A third one! Black as night!",
 		"There's another one! It's bigger than both of them!"],
 	"bk_roar": ["Listen to that! Its stripes are glowing like the signs on Main Street!", "All three of them, roaring at each other. God help us."],
+	"bk_neon": ["Its stripes are blazing! It's breathing... light! Pink and blue, like every sign in town at once!",
+		"A beam of neon! It's knocked both of them back! I've never seen colours like that!"],
 	"ufo_swarm": ["Lights in the clouds... dozens of them. Those are not helicopters.", "Flying saucers! A whole fleet of them, circling the monsters!"],
 	"abduct": ["Beams of light! They're lifting them! All three of them are leaving the ground!", "They're being pulled up into the sky. I can't believe what I'm seeing."],
 	"fleet_leaves": ["They're gone. Up into the clouds, monsters and all.", "And just like that, the sky is empty."],
@@ -442,6 +831,15 @@ const LINES := {
 		"Authorities advise residents to keep away from windows. Well, I'm on a roof, so.",
 		"Our cameras are on several rooftops. We'll stay with this as long as we can.",
 		"I've covered fires, floods and a strike at the docks. Nothing like this."],
+	"b_open_k": ["We interrupt this program. Something enormous is walking through downtown, right past the apartment towers.",
+		"This is a Channel 3 bulletin. A giant white creature has been sighted downtown. Stay away from your windows."],
+	"b_open_g": ["We interrupt this program. A giant ape is walking through the city. I repeat, a giant ape.",
+		"This is a Channel 3 bulletin. Something huge and hairy is moving between the towers downtown."],
+	"b_filler": ["If you're just joining us: a giant creature is walking through downtown. Stay indoors.",
+		"It doesn't seem to be in a hurry. It's just... looking in the windows.",
+		"Our cameras are on the rooftops. We'll stay with it as long as we can."],
+	"b_signoff": ["And it's gone, past the towers and out of sight. Channel 3 will stay on this story. Back to your program.",
+		"The street is quiet again. For Channel 3, reporting live from downtown. Back to your program."],
 	"signoff": ["And that's it. They're gone, into the night. This has been a special report. Back to your regular program.",
 		"The city is quiet again. Reporting live from downtown, for Channel 3. Good night."],
 }
@@ -496,11 +894,15 @@ static func _make_sting() -> AudioStreamWAV:
 
 # ---- small builders
 
-static func _mat(c: Color, rough: float) -> StandardMaterial3D:
+static func _mat(c: Color, rough: float, emit := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
 	m.roughness = rough
 	m.disable_fog = true
+	if emit > 0.0:
+		m.emission_enabled = true
+		m.emission = c
+		m.emission_energy_multiplier = emit
 	return m
 
 
@@ -538,3 +940,12 @@ func _put(parent: Node3D, mesh: Mesh, pos: Vector3, m: Material) -> MeshInstance
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	return mi
+
+
+static func _cyl_mesh(r: float, h: float) -> CylinderMesh:
+	var c := CylinderMesh.new()
+	c.top_radius = r
+	c.bottom_radius = r
+	c.height = h
+	c.radial_segments = 16
+	return c
