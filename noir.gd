@@ -445,11 +445,11 @@ func _build_office() -> void:
 	glass.rotation.y = PI                    # faces into the office (-z)
 	o.add_child(glass)
 	var slat := _m(Color(0.75, 0.70, 0.60), 0.6)
-	for k in 3:                              # the blind is pulled most of the way up: a few slats at the top, the street below
+	for k in 6:                              # the blind is half raised: slats over the top, the street below
 		var sy := wy1 - 0.04 - k * 0.075
 		var sl: MeshInstance3D = main._box(Vector3((wx0 + wx1) / 2.0, sy, wz - 0.08), Vector3(wx1 - wx0 - 0.04, 0.05, 0.01), slat, o)
 		sl.rotation.x = 0.9                  # tilted open: the light comes through in stripes
-	main._box(Vector3((wx0 + wx1) / 2.0, wy1 - 0.25, wz - 0.08), Vector3(wx1 - wx0 - 0.02, 0.025, 0.04), slat, o)   # bottom rail
+	main._box(Vector3((wx0 + wx1) / 2.0, wy1 - 0.47, wz - 0.08), Vector3(wx1 - wx0 - 0.02, 0.025, 0.04), slat, o)   # bottom rail
 	# heavy curtains either side of the window, on a rod, with a pelmet over the top
 	var drape := _m(Color(0.30, 0.10, 0.10), 0.95)
 	var drape_dk := _m(Color(0.20, 0.06, 0.06), 0.95)
