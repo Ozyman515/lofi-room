@@ -91,7 +91,7 @@ func _build() -> void:
 
 func _build_reporter() -> void:
 	_rep = Node3D.new()
-	main.room.add_child(_rep)
+	main.outside.add_child(_rep)
 	_rep.visible = false
 	var roof_y := 33.0                         # the tallest tower downtown, above the other roofs
 	_rep.position = SPOT + Vector3(0, roof_y, 0)

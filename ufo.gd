@@ -8,7 +8,7 @@ const Model := preload("res://ufo_model.gd")
 
 const SCALE := 4.5
 const Y := 1.12                     # puts the port at standing eye height
-const Z := -4.9                      # just outside the glass
+const Z := -6.95                     # just past the balcony railing, level with the window
 const FROM_X := -14.0
 const STOP_X := -1.95                # the middle of a pane (not behind the centre post)
 const TO_X := 22.0
@@ -36,7 +36,7 @@ func setup(m: Node3D) -> void:
 	_u.scale = Vector3.ONE * SCALE
 	_u.visible = false
 	_u.get_node("Beam").visible = false
-	main.room.add_child(_u)
+	main.outside.add_child(_u)
 	_hatch = _u.get_node("Port/Hatch")
 	_alien = _u.get_node("Port/Alien")
 	_hum = AudioStreamPlayer.new()

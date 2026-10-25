@@ -104,6 +104,8 @@ var leave_panel: Node3D
 var game_mode := false                # holding a controller: it drives the game and you cannot walk
 var pad_nodes: Array[Node3D] = []     # the controllers lying on the rug
 var held_pad_idx := -1
+var outside: Node3D                      # the city, the monsters, the saucers (not part of any room)
+var apartment: Node3D                    # apartment.gd: the hallway, living room and balcony round the bedroom
 var net: Node                            # NetSession (null when the WebRTC plugin isn't loaded)
 var net_avatars: Node3D
 var net_phone: Node3D
@@ -221,6 +223,9 @@ func _ready() -> void:
 	room = Node3D.new()
 	room.name = "Room"
 	add_child(room)
+	outside = Node3D.new()                    # the city and whatever goes on in it: drawn from every room
+	outside.name = "Outside"
+	add_child(outside)
 	_build_environment()
 	_build_shell()
 	_build_window()
@@ -238,6 +243,8 @@ func _ready() -> void:
 	_build_weather()
 	_build_power()
 	_finish_cords()
+	apartment = load("res://apartment.gd").new()
+	apartment.build(self)
 	_setup_player()
 	var pr: Node = load("res://page_renderer.gd").new()
 	pr.name = "PageRenderer"
@@ -250,7 +257,8 @@ func _ready() -> void:
 
 # ---------------------------------------------------------------- multiplayer
 
-const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(0.7, 0.0, 0.2), Vector3(-0.3, 0.0, 0.1), Vector3(0.9, 0.0, 1.6)]
+const GUEST_SPAWNS := [Vector3(0.2, 0.0, 1.0), Vector3(-2.7, 0.0, 4.6), Vector3(-2.1, 0.0, 4.1), Vector3(-1.5, 0.0, 4.7),
+	Vector3(-0.9, 0.0, 4.2)]           # the host's own spot, then just inside the front door
 
 
 func _build_multiplayer() -> void:
@@ -268,9 +276,10 @@ func _build_multiplayer() -> void:
 	net_avatars.setup(net, self)
 	net_phone = load("res://net_phone.gd").new()
 	net_phone.name = "WallPhone"
-	net_phone.position = Vector3(-0.45, 1.45, FRONT_Z - 0.025)
+	net_phone.position = Vector3(-3.0, 1.45, FRONT_Z + 0.1 + 0.025)    # in the hallway by the front door
+	net_phone.rotation.y = PI
 	net_phone.scale = Vector3.ONE * 1.5
-	room.add_child(net_phone)
+	apartment.hallway.add_child(net_phone)
 	net_phone.build(net, func(it: Dictionary) -> void: interactables.append(it))
 	if noir != null:
 		net_phone.secret_cb = noir.request_start         # the keypad's secret code
@@ -482,7 +491,9 @@ func _on_net_state() -> void:
 	# guests appear at their own spot so nobody stands inside the host
 	if net.state == net.State.JOINED and not _net_moved and not seated:
 		_net_moved = true
-		origin.position = GUEST_SPAWNS[(net.my_id - 1) % GUEST_SPAWNS.size()]
+		origin.position = GUEST_SPAWNS[1 + (net.my_id - 2) % (GUEST_SPAWNS.size() - 1)] if net.my_id >= 2 else GUEST_SPAWNS[1]
+		if not xr_active and desktop_cam != null:
+			desktop_cam.rotation.y = -PI / 2.0         # facing down the hallway, away from the door
 	elif net.state == net.State.OFFLINE and _net_moved:
 		_net_moved = false
 		if not seated:
@@ -592,7 +603,10 @@ func _build_shell() -> void:
 	var ceil_m := _mat(Color(0.20, 0.08, 0.26))
 	_box(Vector3(-0.7, -0.05, (FRONT_Z - 2.0) / 2.0), Vector3(6.8, 0.1, 4.2 + (FRONT_Z - 2.0)), floor_m)
 	_box(Vector3(-0.7, 2.85, (FRONT_Z - 2.0) / 2.0), Vector3(6.8, 0.1, 4.2 + (FRONT_Z - 2.0)), ceil_m)
-	_box(Vector3(-0.7, 1.4, FRONT_Z + 0.05), Vector3(6.8, 2.8, 0.1), wall)     # front
+	# front wall, with the doorway out to the hallway (x 0.43 .. 1.37, 2.12 high)
+	_box(Vector3((-4.1 + 0.43) / 2.0, 1.4, FRONT_Z + 0.05), Vector3(0.43 + 4.1, 2.8, 0.1), wall)
+	_box(Vector3((1.37 + 2.7) / 2.0, 1.4, FRONT_Z + 0.05), Vector3(2.7 - 1.37, 2.8, 0.1), wall)
+	_box(Vector3(0.9, (2.12 + 2.8) / 2.0, FRONT_Z + 0.05), Vector3(0.94, 2.8 - 2.12, 0.1), wall)
 	_box(Vector3(-3.95, 1.4, (FRONT_Z - 2.0) / 2.0), Vector3(0.1, 2.8, 4.0 + (FRONT_Z - 2.0)), wall)       # left (moved out: wider room)
 	_box(Vector3(2.55, 1.4, (FRONT_Z - 2.0) / 2.0), Vector3(0.1, 2.8, 4.0 + (FRONT_Z - 2.0)), wall)        # right
 	# back wall with a big window opening (see WIN_X0 / WIN_X1 / WIN_Y0 / WIN_Y1)
@@ -1779,18 +1793,26 @@ func _update_lighting(delta: float) -> void:
 	var open := 1.0 - curtain_amt          # fraction of the window still uncovered
 	var cloudy := weather.overcast if weather != null else 0.0
 	# daylight-ish light (window glow, ambient, soft fill) fades away with the curtain, and dims a bit with clouds
-	var sky_light := open * (1.0 - 0.35 * cloudy)
+	# out of the bedroom its curtain doesn't matter: the living room and the balcony are open to the sky
+	var where: String = apartment.current if apartment != null else "bedroom"
+	var room_open := open if where == "bedroom" else (0.75 if where == "hallway" else 1.0)
+	var sky_light := room_open * (1.0 - 0.35 * cloudy)
 	world_env.ambient_light_energy = lerpf(0.05, 0.6, sky_light)
 	if weather != null:
 		# a big lightning strike lights up everything for a moment, a little of it even leaks past the curtains
-		world_env.ambient_light_energy += weather.room_flash * 1.6 * (0.25 + 0.75 * open)
-	window_light.light_energy = 2.4 * sky_light
-	fill_light.light_energy = lerpf(0.10, 0.7, sky_light)
+		world_env.ambient_light_energy += weather.room_flash * 1.6 * (0.25 + 0.75 * room_open)
+	window_light.light_energy = 2.4 * open * (1.0 - 0.35 * cloudy)
+	fill_light.light_energy = lerpf(0.10, 0.7, open * (1.0 - 0.35 * cloudy))
 	for led in curtain_switch_leds:
 		led.emission = Color(1.0, 0.7, 0.3) if curtain_target > 0.5 else Color(0.4, 0.8, 1.0)
 	if weather != null:
-		weather.window_open = open
-		weather.sound_open = 1.0 - curtain_amt * curtain_amt      # a half-closed curtain still lets most of the weather sound through
+		weather.window_open = room_open
+		var snd := 1.0 - curtain_amt * curtain_amt      # a half-closed curtain still lets most of the weather sound through
+		match where:
+			"balcony": snd = 1.0
+			"living": snd = 0.9
+			"hallway": snd = 0.45
+		weather.sound_open = snd
 
 
 # ---------------------------------------------------------------- player
@@ -2198,7 +2220,7 @@ func _konami_feed(sym: String) -> bool:
 
 func _walkable(x: float, z: float) -> bool:
 	if x < ROOM_X_MIN or x > ROOM_HALF.x or z < -ROOM_HALF.y or z > FRONT_Z - 0.25:
-		return false
+		return apartment != null and apartment.walkable(x, z)       # out of the bedroom: the rest of the flat
 	for r in BLOCKERS:
 		if r.has_point(Vector2(x, z)):
 			return false
@@ -2231,6 +2253,8 @@ func _try_move(motion: Vector3) -> void:
 
 
 func _in_room(x: float, z: float) -> bool:
+	if apartment != null and apartment.in_bounds(x, z):
+		return true
 	return x >= ROOM_X_MIN and x <= ROOM_HALF.x and z >= -ROOM_HALF.y and z <= FRONT_Z - 0.25
 
 
@@ -2509,60 +2533,14 @@ func set_beanbag_count(n: int) -> void:
 # ---------------------------------------------------------------- door (front wall)
 
 func _build_door() -> void:
-	var wood := _mat(Color(0.42, 0.17, 0.28), 0.65)
-	var panel := _mat(Color(0.34, 0.12, 0.24), 0.65)
+	# the bedroom side of the doorway out to the hallway; the door itself (it swings out into the hallway by
+	# itself as you walk up) and the front door with its "Leave?" sign are in apartment.gd
 	var trim := _mat(Color(0.20, 0.07, 0.22), 0.7)
-	var brass := _mat(Color(0.95, 0.75, 0.50), 0.3, 0.6)
 	var x := 0.9
 	var fz := FRONT_Z
 	_box(Vector3(x - 0.5, 1.07, fz - 0.035), Vector3(0.07, 2.14, 0.07), trim)     # jambs
 	_box(Vector3(x + 0.5, 1.07, fz - 0.035), Vector3(0.07, 2.14, 0.07), trim)
 	_box(Vector3(x, 2.14, fz - 0.035), Vector3(1.07, 0.07, 0.07), trim)           # header
-	_box(Vector3(x, 1.05, fz - 0.02), Vector3(0.94, 2.1, 0.04), wood)             # slab
-	_box(Vector3(x, 1.55, fz - 0.045), Vector3(0.64, 0.78, 0.012), panel)         # raised panels
-	_box(Vector3(x, 0.55, fz - 0.045), Vector3(0.64, 0.78, 0.012), panel)
-	_box(Vector3(x + 0.36, 1.0, fz - 0.05), Vector3(0.05, 0.16, 0.012), brass)    # handle plate
-	_sphere(Vector3(x + 0.36, 1.0, fz - 0.065), 0.032, brass)
-	_box(Vector3(x, 0.008, fz - 0.025), Vector3(0.92, 0.012, 0.04), _mat(WARM, 0.5, 2.0))  # light under the door
-	# pointing at the door offers to leave; a small "Are you sure?" sign then asks before the game closes
-	var slab := _box(Vector3(x, 1.05, fz - 0.02), Vector3(0.94, 2.1, 0.04), wood)
-	slab.visible = false
-	interactables.append({"node": slab, "half": Vector3(0.47, 1.05, 0.06), "when": func() -> bool: return not leave_prompt,
-		"label": func() -> String: return "LEAVE", "cb": _ask_leave, "guest_ok": true})
-	leave_panel = Node3D.new()
-	leave_panel.position = Vector3(x, 1.5, fz - 0.45)
-	leave_panel.visible = false
-	room.add_child(leave_panel)
-	var sign_m := _mat(Color(0.12, 0.05, 0.16), 0.5)
-	_box(Vector3(0, 0, 0), Vector3(0.72, 0.36, 0.02), sign_m, leave_panel)
-	var tl := Label3D.new()
-	tl.text = "Leave the room?"
-	tl.font_size = 64
-	tl.pixel_size = 0.0007
-	tl.modulate = Color(1.0, 0.9, 0.95)
-	tl.outline_size = 0
-	tl.rotation = Vector3(0, PI, 0)
-	tl.position = Vector3(0, 0.1, -0.012)
-	leave_panel.add_child(tl)
-	# the player faces +z, so their left is +x: STAY on the left, LEAVE on the right
-	var stay_m := _mat(Color(0.20, 0.55, 0.35), 0.5)
-	var leave_m := _mat(Color(0.75, 0.22, 0.30), 0.5)
-	var stay_b := _box(Vector3(0.17, -0.07, -0.01), Vector3(0.28, 0.12, 0.02), stay_m, leave_panel)
-	var leave_b := _box(Vector3(-0.17, -0.07, -0.01), Vector3(0.28, 0.12, 0.02), leave_m, leave_panel)
-	for lb in [[stay_b, "STAY", 0.17], [leave_b, "LEAVE", -0.17]]:
-		var l := Label3D.new()
-		l.text = lb[1]
-		l.font_size = 48
-		l.pixel_size = 0.0007
-		l.modulate = Color(1, 1, 1)
-		l.outline_size = 0
-		l.rotation = Vector3(0, PI, 0)
-		l.position = Vector3(float(lb[2]), -0.07, -0.024)
-		leave_panel.add_child(l)
-	interactables.append({"node": stay_b, "guest_ok": true, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
-		"label": func() -> String: return "STAY", "cb": _cancel_leave})
-	interactables.append({"node": leave_b, "guest_ok": true, "half": Vector3(0.14, 0.06, 0.03), "when": func() -> bool: return leave_prompt,
-		"label": func() -> String: return "YES, LEAVE", "cb": _do_leave})
 
 
 func _ask_leave() -> void:
@@ -2849,6 +2827,8 @@ func _nearest_seat() -> int:
 			continue                                   # somebody's in it
 		if net_game != null and net_game.seat_taken(i):
 			continue                                   # another player is sitting there
+		if apartment != null and not apartment.can_reach(seat_nodes[i]):
+			continue                                   # on the other side of a wall
 		var sp := seat_nodes[i].global_position
 		var dist := Vector2(p.x, p.z).distance_to(Vector2(sp.x, sp.z))
 		if dist < best_d:
@@ -2949,7 +2929,7 @@ func _collect_aabb(node: Node, parent_xf: Transform3D, acc: Array) -> void:
 func _build_city() -> void:
 	var city := Node3D.new()
 	city.name = "City"
-	room.add_child(city)
+	outside.add_child(city)                    # (not the bedroom's: it's seen from the balcony and the living room too)
 	var mat := ShaderMaterial.new()
 	city_mat = mat
 	mat.shader = load("res://shaders/building.gdshader")
@@ -3006,6 +2986,9 @@ func _wrap_row(city: Node3D, mat: Material, rng: RandomNumberGenerator, z: float
 		var top := rng.randf_range(hmin, hmax)
 		ang += side * ((rng.randf_range(0.8, 2.6) * grow + w * 0.5) / r)
 		var pos := Vector3(r * sin(ang), (top - 40.0) / 2.0, -r * cos(ang))
+		if pos.x > 4.0 and Vector2(pos.x - 11.8, pos.z + 1.0).length() < 18.0:
+			ang += side * ((w * 0.5) / r)
+			continue                                   # keep a view open off the balcony's east side
 		var b := _box(pos, Vector3(w, top + 40.0, depth), mat, city)
 		b.rotation.y = -ang
 		if rng.randf() < 0.4:
@@ -5020,6 +5003,8 @@ func _update_pointer(delta: float) -> void:
 		var sc_pos := Vector2.ZERO
 		var it_hit: Dictionary = {}
 		for sc in screens:
+			if apartment != null and not apartment.can_reach(sc):
+				continue
 			var h: Dictionary = sc.hit(o, d, POINTER_RANGE)
 			if not h.is_empty() and float(h["t"]) < best:
 				best = float(h["t"])
@@ -5029,6 +5014,8 @@ func _update_pointer(delta: float) -> void:
 		for it in interactables:
 			if it.has("when") and not bool((it["when"] as Callable).call()):
 				continue
+			if apartment != null and not apartment.can_reach(it["node"]):
+				continue                                 # (things in other rooms, behind the walls)
 			var t := _ray_box(o, d, it["node"], (it["half_fn"] as Callable).call() if it.has("half_fn") else it["half"])
 			if t >= 0.0 and t < best:
 				best = t

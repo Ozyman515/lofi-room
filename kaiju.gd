@@ -52,7 +52,7 @@ func setup(m: Node3D) -> void:
 	_k = Model.build()
 	_k.scale = Vector3.ONE * SCALE
 	_k.visible = false
-	main.room.add_child(_k)
+	main.outside.add_child(_k)
 	_body = _k.get_node("Body")
 	_head = _body.get_node("Head")
 	_jaw = _head.get_node("Jaw")

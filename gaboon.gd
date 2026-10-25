@@ -46,7 +46,7 @@ func setup(m: Node3D) -> void:
 	_g = Model.build()
 	_g.scale = Vector3.ONE * SCALE
 	_g.visible = false
-	main.room.add_child(_g)
+	main.outside.add_child(_g)
 	_gr = _parts(_g)
 	_thump = _player(KaijuScript._make_thump(), 0.0)
 	_roar = _player(_make_roar(), -2.0)

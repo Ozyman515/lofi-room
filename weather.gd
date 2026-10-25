@@ -1,4 +1,5 @@
 extends Node3D
+const Plat := preload("res://platform.gd")
 ## Weather outside the window: clear dusk, rain, snow or a thunderstorm.
 ## Particles fall in front of the city, the sky and fog change, and the sounds are made in code
 ## (rain, wind, thunder), so there are no audio files to ship. Sounds go through a "Weather" bus
@@ -30,6 +31,8 @@ var _bolt_halo_m: StandardMaterial3D
 
 var _rain: GPUParticles3D
 var _snow: GPUParticles3D
+var _rain_e: GPUParticles3D        # the same again past the balcony's east side (it's a corner flat)
+var _snow_e: GPUParticles3D
 var _rain_pl: AudioStreamPlayer
 var _wind_pl: AudioStreamPlayer
 var _thunder_pl: AudioStreamPlayer
@@ -230,13 +233,13 @@ func _apply_mode_targets() -> void:
 func _build_particles() -> void:
 	# rain: thin streaks falling in front of the city
 	_rain = GPUParticles3D.new()
-	_rain.amount = 7000
+	_rain.amount = 7500 if not Plat.low_power() else 4000
 	_rain.lifetime = 0.9
 	_rain.visibility_aabb = AABB(Vector3(-14, -16, -16), Vector3(28, 30, 28))
-	_rain.position = Vector3(-1.3, 9.0, -8.3)
+	_rain.position = Vector3(-0.35, 9.0, -8.45)              # outside the windows, over the balcony too
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(8.0, 0.2, 5.5)
+	pm.emission_box_extents = Vector3(10.15, 0.2, 6.15)
 	pm.direction = Vector3(0.12, -1.0, 0.0)
 	pm.spread = 1.5
 	pm.initial_velocity_min = 13.0
@@ -258,13 +261,13 @@ func _build_particles() -> void:
 
 	# snow: soft slow flakes that drift about
 	_snow = GPUParticles3D.new()
-	_snow.amount = 6000
+	_snow.amount = 6500 if not Plat.low_power() else 3500
 	_snow.lifetime = 10.0
 	_snow.visibility_aabb = AABB(Vector3(-14, -16, -16), Vector3(28, 30, 28))
-	_snow.position = Vector3(-1.3, 9.0, -8.3)
+	_snow.position = Vector3(-0.35, 9.0, -8.45)
 	var sm := ParticleProcessMaterial.new()
 	sm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	sm.emission_box_extents = Vector3(8.0, 0.2, 5.5)
+	sm.emission_box_extents = Vector3(10.15, 0.2, 6.15)
 	sm.direction = Vector3(0.1, -1.0, 0.0)
 	sm.spread = 12.0
 	sm.initial_velocity_min = 0.9
@@ -285,6 +288,19 @@ func _build_particles() -> void:
 	_snow.draw_pass_1 = flake
 	_snow.emitting = false
 	add_child(_snow)
+	# and down the east side
+	_rain_e = _rain.duplicate()
+	_rain_e.process_material = pm.duplicate()
+	(_rain_e.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(5.3, 0.2, 8.9)
+	_rain_e.position = Vector3(15.1, 9.0, -5.7)
+	_rain_e.amount = 4000 if not Plat.low_power() else 2000
+	add_child(_rain_e)
+	_snow_e = _snow.duplicate()
+	_snow_e.process_material = sm.duplicate()
+	(_snow_e.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(5.3, 0.2, 8.9)
+	_snow_e.position = Vector3(15.1, 9.0, -5.7)
+	_snow_e.amount = 3500 if not Plat.low_power() else 1800
+	add_child(_snow_e)
 
 
 func _soft_dot() -> Texture2D:
@@ -658,6 +674,13 @@ func _process(delta: float) -> void:
 	rpm.direction = Vector3(0.10 + 0.25 * clampf(_wind_vol, 0.0, 1.0), -1.0, 0.0)
 	var spm := _snow.process_material as ParticleProcessMaterial
 	spm.direction = Vector3(0.1 + 0.6 * clampf(_wind_vol, 0.0, 1.0), -1.0, 0.0)
+	if _rain_e != null:
+		_rain_e.emitting = _rain.emitting
+		_rain_e.amount_ratio = _rain.amount_ratio
+		(_rain_e.process_material as ParticleProcessMaterial).direction = rpm.direction
+		_snow_e.emitting = _snow.emitting
+		_snow_e.amount_ratio = _snow.amount_ratio
+		(_snow_e.process_material as ParticleProcessMaterial).direction = spm.direction
 
 	_update_lightning(delta)
 

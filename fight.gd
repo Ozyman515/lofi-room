@@ -600,7 +600,7 @@ func _show_bk() -> void:
 	if _bh == null:
 		_bh = Node3D.new()
 		_bh.name = "FightBlackKaiju"
-		main.room.add_child(_bh)
+		main.outside.add_child(_bh)
 		_bkt = Node3D.new()
 		_bh.add_child(_bkt)
 		var m: Node3D = load("res://black_kaiju_model.gd").build()
@@ -658,7 +658,7 @@ func _show_fleet() -> void:
 			u.scale = Vector3.ONE * UFO_SIZE * (1.0 if i >= 3 else 1.4)      # three big ones do the lifting
 			for l in u.find_children("*", "OmniLight3D", true, false):
 				l.queue_free()                                  # a light each would be too many; they glow anyway
-			main.room.add_child(u)
+			main.outside.add_child(u)
 			_fleet.append({"node": u, "beam": u.get_node("Beam"), "a": TAU * i / FLEET, "r": 60.0 + 25.0 * (i % 4),
 				"h": 62.0 + 12.0 * (i % 3), "w": 0.25 + 0.04 * (i % 5)})
 	for f in _fleet:
@@ -882,7 +882,7 @@ func _build() -> void:
 	# the T-Rex
 	_kh = Node3D.new()
 	_kh.name = "FightKaiju"
-	main.room.add_child(_kh)
+	main.outside.add_child(_kh)
 	_kt = Node3D.new()
 	_kh.add_child(_kt)
 	var k: Node3D = KModel.build()
@@ -906,7 +906,7 @@ func _build() -> void:
 	# King Gaboon
 	_gh = Node3D.new()
 	_gh.name = "FightGaboon"
-	main.room.add_child(_gh)
+	main.outside.add_child(_gh)
 	_gt = Node3D.new()
 	_gh.add_child(_gt)
 	var g: Node3D = GModel.build()
@@ -933,7 +933,7 @@ func _build() -> void:
 	_key.light_color = Color(0.8, 0.85, 1.0)
 	_key.position = Vector3(CX, 70.0, Z + 40.0)
 	_key.visible = false
-	main.room.add_child(_key)
+	main.outside.add_child(_key)
 	_fill = OmniLight3D.new()                     # and the city's pink glow from below, in front
 	_fill.light_cull_mask = 2
 	_fill.omni_range = 90.0
@@ -941,7 +941,7 @@ func _build() -> void:
 	_fill.light_color = Color(1.0, 0.55, 0.8)
 	_fill.position = Vector3(CX, 12.0, Z + 45.0)
 	_fill.visible = false
-	main.room.add_child(_fill)
+	main.outside.add_child(_fill)
 	_kh.visible = false
 	_gh.visible = false
 	_build_fx()
@@ -1044,14 +1044,14 @@ func _build_fx() -> void:
 		mi.material_override = _fx_mat(0, Color.WHITE)
 		mi.visible = false
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		main.room.add_child(mi)
+		main.outside.add_child(mi)
 		var l: OmniLight3D = null
 		if not lp:
 			l = OmniLight3D.new()
 			l.omni_range = 70.0
 			l.light_energy = 0.0
 			l.visible = false
-			main.room.add_child(l)
+			main.outside.add_child(l)
 		_flashes.append([mi, l, 1.0, 1.0, 1.0])
 	for i in (5 if lp else 9):                           # dust: soft round puffs that rise, spread and fade
 		var q := QuadMesh.new()
@@ -1061,12 +1061,12 @@ func _build_fx() -> void:
 		mi.material_override = _fx_mat(1, Color(0.55, 0.5, 0.55))
 		mi.visible = false
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		main.room.add_child(mi)
+		main.outside.add_child(mi)
 		_puffs.append([mi, 1.0, 1.0, Vector3.ZERO, 1.0])
 	# the ice beam: a streaming core inside a softer sheath, pointing along its -z
 	_beam = Node3D.new()
 	_beam.visible = false
-	main.room.add_child(_beam)
+	main.outside.add_child(_beam)
 	_beam_mat = _fx_mat(2, Color(0.55, 0.88, 1.0))
 	for k in 2:
 		var cm := CylinderMesh.new()
@@ -1104,7 +1104,7 @@ func _build_fx() -> void:
 		mi.mesh = cm
 		mi.material_override = ice
 		mi.visible = false
-		main.room.add_child(mi)
+		main.outside.add_child(mi)
 		_crystals.append(mi)
 	# the fireball: a swirling sphere of flame; the blast: a shell that swells and fades
 	var sm := SphereMesh.new()
@@ -1117,18 +1117,18 @@ func _build_fx() -> void:
 	_fireball.mesh = sm
 	_fireball.material_override = _fire_mat
 	_fireball.visible = false
-	main.room.add_child(_fireball)
+	main.outside.add_child(_fireball)
 	_boom_mat = _fx_mat(4, Color(1.0, 0.5, 0.12))
 	_boom = MeshInstance3D.new()
 	_boom.mesh = sm
 	_boom.material_override = _boom_mat
 	_boom.visible = false
-	main.room.add_child(_boom)
+	main.outside.add_child(_boom)
 	_charge = MeshInstance3D.new()
 	_charge.mesh = sm
 	_charge.material_override = _fx_mat(0, Color(0.6, 0.9, 1.0))
 	_charge.visible = false
-	main.room.add_child(_charge)
+	main.outside.add_child(_charge)
 
 
 func _impact(at: Vector3, power: float, col: Color) -> void:
@@ -1247,7 +1247,7 @@ func _build_helis() -> void:
 	for i in HELIS:
 		var root := Node3D.new()
 		root.visible = false
-		main.room.add_child(root)
+		main.outside.add_child(root)
 		var police := i % 2 == 1
 		var paint := StandardMaterial3D.new()
 		paint.albedo_color = Color(0.12, 0.13, 0.18) if police else Color(0.85, 0.85, 0.88)
