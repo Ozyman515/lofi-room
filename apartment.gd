@@ -423,8 +423,8 @@ func _build_living() -> void:
 
 # the 70" flat screen on the west wall, a couch facing it, a coffee table, an armchair by the east window, a record
 # shelf, plants and lamps
-const LIV_TV := Vector3(2.68, 1.3, 0.7)      # the screen's centre (on the west wall, facing east)
-const LIV_TV_SIZE := Vector2(1.55, 0.87)     # 70 inches across
+const LIV_TV := Vector3(2.68, 1.6, 0.7)      # the screen's centre (on the west wall, facing east)
+const LIV_TV_SIZE := Vector2(2.86, 1.61)     # a big one: about 130 inches across
 var liv_tv_mat: ShaderMaterial               # (a copy of the bedroom TV's picture, without the old-TV look)
 var liv_tv_on := true
 var _liv_glow: OmniLight3D
@@ -471,7 +471,7 @@ func _furnish_living(p: Node3D) -> void:
 		"cb": func() -> void: set_liv_tv(not liv_tv_on),
 		"hover": main._glow_hover(pw_m)})
 	_label("TV", Vector3(stand_x + 0.178, 0.514, LIV_TV.z + 0.8), PI / 2.0, 24, Color(0.85, 0.8, 0.9), p).rotation.x = -PI / 2.0
-	_liv_glow = _light(Vector3(LIV_TV.x + 0.6, 1.25, LIV_TV.z), Color(0.45, 0.6, 1.0), 0.9, 4.0, p)
+	_liv_glow = _light(Vector3(LIV_TV.x + 0.8, LIV_TV.y - 0.2, LIV_TV.z), Color(0.45, 0.6, 1.0), 1.1, 5.0, p)
 	# things on the console: a game console under the TV, a little plant, a speaker each side
 	_box(Vector3(stand_x, 0.53, LIV_TV.z - 0.35), Vector3(0.28, 0.06, 0.32), _mat(Color(0.9, 0.9, 0.93), 0.4), p)
 	main._cyl(Vector3(stand_x, 0.58, LIV_TV.z + 0.45), 0.06, 0.12, _mat(Color(0.85, 0.45, 0.55), 0.7), p)
@@ -598,8 +598,8 @@ func _furnish_living(p: Node3D) -> void:
 		_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p)
 		_light(Vector3(5.0, 2.5, 2.4), Color(0.6, 0.3, 0.75), 0.5, 5.0, p)   # soft fill
 	# ---- two speakers either side of the TV (they play the TV's sound unless you set them otherwise)
-	main._make_speaker("Living room speaker L", Vector3(MID_X + 0.15, 1.3, LIV_TV.z - 1.15), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
-	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.3, LIV_TV.z + 1.15), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
+	main._make_speaker("Living room speaker L", Vector3(MID_X + 0.15, 1.45, LIV_TV.z - LIV_TV_SIZE.x / 2.0 - 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
+	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.45, LIV_TV.z + LIV_TV_SIZE.x / 2.0 + 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
 	main.bank.set_mode(main.bank.speakers.size() - 2, "tv")
 	main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
 	if main.pc != null:
