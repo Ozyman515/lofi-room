@@ -40,8 +40,8 @@ var _T := 0.0
 var _frame := 0
 var _was_tv_on := true
 var _paused_tape := false
-var _hiss: AudioStreamPlayer
-var _sting: AudioStreamPlayer
+var _audio := {}                     # TV bus -> [hiss, sting]
+var _tvs: Array = []                 # the TVs showing the broadcast: {vcr, mat, bus, was_on, paused}
 var _rng := RandomNumberGenerator.new()
 var _end_t := -1.0
 var _look := 0.0                     # how far he has turned to look back at the fight
@@ -94,17 +94,21 @@ func _build() -> void:
 	_build_reporter()
 	_build_sets()
 	_build_overlay()
-	var bus := "TV" if AudioServer.get_bus_index("TV") >= 0 else "Master"
-	_hiss = AudioStreamPlayer.new()
-	_hiss.stream = _make_hiss()
-	_hiss.bus = bus
-	_hiss.volume_db = -26.0
-	add_child(_hiss)
-	_sting = AudioStreamPlayer.new()
-	_sting.stream = _make_sting()
-	_sting.bus = bus
-	_sting.volume_db = -6.0
-	add_child(_sting)
+	# the sting and the line hiss, on each TV's own sound (heard from whichever TVs are showing the news)
+	var hiss := _make_hiss()
+	var sting := _make_sting()
+	for bus in ["TV", "TV_living", "TV_theater"]:
+		var h := AudioStreamPlayer.new()
+		h.stream = hiss
+		h.bus = bus if AudioServer.get_bus_index(bus) >= 0 else "Master"
+		h.volume_db = -26.0
+		add_child(h)
+		var st := AudioStreamPlayer.new()
+		st.stream = sting
+		st.bus = h.bus
+		st.volume_db = -6.0
+		add_child(st)
+		_audio[bus] = [h, st]
 
 
 # ---- the newsman: dark suit, white shirt, thin tie, slicked-back hair going grey at the temples, heavy brows,
@@ -226,8 +230,17 @@ func _start(kind := "fight") -> void:
 		return
 	if _vp == null:
 		_build()
-	if main.console_on or main.vcr.remote_video:
-		return                                            # the TV is busy with a game or a guest's tape
+	# every TV that isn't busy carries it: the CRT (unless a game or a guest's tape is on it), the Big TV, the
+	# Theater Screen
+	_tvs.clear()
+	if not (main.console_on or main.vcr.remote_video):
+		_tvs.append({"vcr": main.vcr, "mat": main.tv_mat, "bus": "TV"})
+	if main.apartment != null:
+		for rt in [main.apartment.liv_tv, main.apartment.th_tv]:
+			if rt != null:
+				_tvs.append({"vcr": rt.vcr, "mat": rt.own_mat, "bus": rt.bus})
+	if _tvs.is_empty():
+		return
 	on_air = true
 	_kind = kind
 	_iv = ""
@@ -235,17 +248,21 @@ func _start(kind := "fight") -> void:
 	_T = 0.0
 	_end_t = -1.0
 	_rep.visible = true
-	_was_tv_on = main.vcr.tv_on
-	if not _was_tv_on:
-		main.vcr.toggle_tv()                              # it clicks on by itself
-	_paused_tape = main.vcr.state == main.vcr.State.PLAYING and not main.vcr._paused_flag
-	if _paused_tape:
-		main.vcr._set_paused(true)
-	main.vcr._show_status("")
-	main.vcr._osd_show("BREAKING NEWS", 3.0)
+	for t in _tvs:
+		var v = t["vcr"]
+		t["was_on"] = v.tv_on
+		if not v.tv_on:
+			v.toggle_tv()                                 # it clicks on by itself
+		t["paused"] = v.state == v.State.PLAYING and not v._paused_flag
+		if t["paused"]:
+			v._set_paused(true)
+		v._show_status("")
+		v._osd_show("BREAKING NEWS", 3.0)
+		var au: Array = _audio.get(t["bus"], [])
+		if au.size() == 2:
+			(au[1] as AudioStreamPlayer).play()
+			(au[0] as AudioStreamPlayer).play()
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_sting.play()
-	_hiss.play()
 	_where.text = WHERE
 	match kind:
 		"k":
@@ -273,19 +290,23 @@ func _stop() -> void:
 	_iv = ""
 	for w in _sets:
 		(_sets[w]["root"] as Node3D).visible = false
-	_hiss.stop()
+	for b in _audio:
+		(_audio[b][0] as AudioStreamPlayer).stop()
 	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	var tm: ShaderMaterial = main.tv_mat
-	var vt: Texture2D = main.vcr.current_frame_texture()
-	if vt != null:
-		tm.set_shader_parameter("video_tex", vt)
-	tm.set_shader_parameter("use_video", main.vcr.state == main.vcr.State.PLAYING)
-	if _paused_tape:
-		main.vcr._set_paused(false)
-	elif main.vcr.state == main.vcr.State.IDLE:
-		main.vcr._show_idle_status()
-	if not _was_tv_on and main.vcr.tv_on:
-		main.vcr.toggle_tv()
+	for t in _tvs:
+		var v = t["vcr"]
+		var tm: ShaderMaterial = t["mat"]
+		var vt: Texture2D = v.current_frame_texture()
+		if vt != null:
+			tm.set_shader_parameter("video_tex", vt)
+		tm.set_shader_parameter("use_video", v.state == v.State.PLAYING)
+		if t["paused"]:
+			v._set_paused(false)
+		elif v.state == v.State.IDLE:
+			v._show_idle_status()
+		if not t["was_on"] and v.tv_on:
+			v.toggle_tv()
+	_tvs.clear()
 
 
 func _on_moment(kind: String) -> void:
@@ -304,7 +325,10 @@ func _on_moment(kind: String) -> void:
 			(_sets[w]["root"] as Node3D).visible = false
 		_cut("rep", 99.0)
 		_say(_pick(LINES["signoff" if _kind == "fight" else "b_signoff"]), 6.0)
-		_sting.play()
+		for t in _tvs:
+			var au: Array = _audio.get(t["bus"], [])
+			if au.size() == 2:
+				(au[1] as AudioStreamPlayer).play()
 		_end_t = _T + 7.0
 		return
 	if kind == "enter" or _T < 8.0 or _iv != "":
@@ -393,10 +417,11 @@ func _process(delta: float) -> void:
 		_frame += 1
 		_vp.render_target_update_mode = SubViewport.UPDATE_ONCE if _frame % 2 == 0 else SubViewport.UPDATE_DISABLED
 	# keep the TV on the broadcast (the VCR would otherwise put its own picture back)
-	var tm: ShaderMaterial = main.tv_mat
-	tm.set_shader_parameter("video_tex", _vp.get_texture())
-	tm.set_shader_parameter("video_aspect", float(_vp.size.x) / float(_vp.size.y))
-	tm.set_shader_parameter("use_video", true)
+	for t in _tvs:
+		var tm: ShaderMaterial = t["mat"]
+		tm.set_shader_parameter("video_tex", _vp.get_texture())
+		tm.set_shader_parameter("video_aspect", float(_vp.size.x) / float(_vp.size.y))
+		tm.set_shader_parameter("use_video", true)
 
 
 func _camera(delta: float) -> void:
