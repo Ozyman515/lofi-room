@@ -428,6 +428,10 @@ const LIV_TV_SIZE := Vector2(2.86, 1.61)     # a big one: about 130 inches acros
 const RoomTV := preload("res://room_tv.gd")
 var liv_tv: Node3D                           # room_tv.gd: its own player, or the game room TV's picture
 var th_tv: Node3D
+var th_dark := false                         # the theater's house lights are off (in a shared room: the host's)
+var _th_lights: Array = []                   # [OmniLight3D, energy]
+var _th_glow: Array = []                     # [material, glow]
+var _th_rocker: MeshInstance3D
 var _liv_glow: OmniLight3D
 var _liv_led: StandardMaterial3D
 
@@ -1089,7 +1093,9 @@ func _build_theater() -> void:
 		if y < prev:                                    # the riser up to the step behind
 			var rh := prev - y
 			_box(Vector3(cx, y + rh / 2.0, st[0] + 0.005), Vector3(x1 - x0, rh, 0.01), _mat(Color(0.22, 0.05, 0.10), 0.9), p)
-			_box(Vector3(cx, prev - 0.005, st[0] - 0.01), Vector3(x1 - x0, 0.01, 0.025), _mat(Color(1.0, 0.7, 0.35), 0.5, 1.6), p)   # a light along the step edge
+			var sl := _mat(Color(1.0, 0.7, 0.35), 0.5, 1.6)
+			_th_glow.append([sl, 1.6])
+			_box(Vector3(cx, prev - 0.005, st[0] - 0.01), Vector3(x1 - x0, 0.01, 0.025), sl, p)   # a light along the step edge
 		prev = y
 	_box(Vector3(cx, H + 0.05, (z0 + z1) / 2.0), Vector3(x1 - x0 + 0.1, 0.1, z1 - z0 + 0.1), ceil_m, p)
 	_box(Vector3(x0, (H + lo) / 2.0, (z0 + z1) / 2.0), Vector3(0.1, H - lo, z1 - z0), wall, p)
@@ -1163,16 +1169,58 @@ func _build_theater() -> void:
 			main.seat_eye.append(1.12)
 			main.seat_swivel.append(false)
 		_blockers["theater"].append(Rect2(5.2, rz - 0.3, 3.7, 0.62))
-	# lights: dim sconces on the side walls, a faint glow off the screen
-	var sconce := _mat(Color(1.0, 0.6, 0.4), 0.5, 0.7)
-	for k in 3:
-		var lz := 6.6 + k * 1.9
-		for side in [x0 + 0.08, x1 - 0.08]:
-			_box(Vector3(side, 2.0, lz), Vector3(0.05, 0.22, 0.14), sconce, p)
-	_light(Vector3(cx, 1.6, 7.2), main.WARM, 0.45, 5.0, p)
+	# house lights: wall sconces in the gaps between the panels (a brass plate and a glass shade that throws its
+	# light up the wall), and the warm light they give the room; a switch by the door turns them all off
+	var sbrass := _mat(Color(0.75, 0.55, 0.3), 0.3)
+	sbrass.metallic = 0.6
+	var shade := _mat(Color(1.0, 0.72, 0.5), 0.5, 1.2)
+	_th_glow.append([shade, 1.2])
+	for k in 4:
+		var lz := 6.9 + k * 1.2
+		for sd in [-1.0, 1.0]:
+			var wx: float = (x0 + 0.06) if sd < 0.0 else (x1 - 0.06)
+			_box(Vector3(wx - sd * 0.0, 1.95, lz), Vector3(0.02, 0.26, 0.1), sbrass, p)                # back plate
+			_box(Vector3(wx - sd * 0.07, 1.98, lz), Vector3(0.12, 0.16, 0.16), shade, p)             # the shade
+			_box(Vector3(wx - sd * 0.035, 1.88, lz), Vector3(0.05, 0.02, 0.03), sbrass, p)            # its arm
+	for sd in [-1.0, 1.0]:
+		var wx2: float = (x0 + 0.5) if sd < 0.0 else (x1 - 0.5)
+		_th_lights.append([_light(Vector3(wx2, 2.1, 7.5), main.WARM, 0.45, 4.0, p), 0.45])
+		if not Plat.low_power():
+			_th_lights.append([_light(Vector3(wx2, 1.8, 10.0), main.WARM, 0.35, 3.5, p), 0.35])
 	th_tv.add_glow(_light(Vector3(cx, sy, z1 - 1.4), Color(0.6, 0.65, 1.0), 0.6, 5.5, p))
-	if not Plat.low_power():
-		_light(Vector3(cx, 2.3, 10.4), Color(0.8, 0.4, 0.6), 0.35, 4.5, p)
+	# the light switch, inside the door on the right
+	var swp := _mat(Color(0.85, 0.8, 0.75), 0.5)
+	var sw := Node3D.new()
+	sw.position = Vector3(TH_DOOR + 0.75, 1.2, z0 + 0.05)
+	p.add_child(sw)
+	_box(Vector3.ZERO, Vector3(0.09, 0.14, 0.012), swp, sw)
+	_th_rocker = _box(Vector3(0, 0, 0.012), Vector3(0.03, 0.06, 0.016), _mat(Color(0.95, 0.92, 0.88), 0.4), sw)
+	_th_rocker.rotation.x = 0.25
+	main.interactables.append({"node": sw, "half": Vector3(0.06, 0.09, 0.04), "guest_ok": true,
+		"label": func() -> String: return "HOUSE LIGHTS  [%s]" % ("OFF" if th_dark else "ON"),
+		"cb": func() -> void: request_th_dark(not th_dark)})
+
+
+# the switch: a guest asks the host (the host's theater); everyone else just flips it
+func request_th_dark(on: bool) -> void:
+	if main._is_guest():
+		if not bool(main.guest_allow_seen.get("lights", false)):
+			main._net_say("The host's lights: ask them to let guests use the lights.")
+			return
+		main.net.send_var(1, 3, {"k": "th_lights", "dark": on})
+		return
+	set_th_dark(on)
+
+
+func set_th_dark(on: bool) -> void:
+	th_dark = on
+	for l in _th_lights:
+		(l[0] as OmniLight3D).visible = not on
+	for g in _th_glow:
+		var m: StandardMaterial3D = g[0]
+		m.emission_energy_multiplier = 0.0 if on else float(g[1])
+		m.albedo_color.v = 0.25 if on else 1.0
+	_th_rocker.rotation.x = -0.25 if on else 0.25
 
 
 # the floor under (x, z): only the theater isn't flat

@@ -1877,6 +1877,10 @@ func _update_lighting(delta: float) -> void:
 	# out of the bedroom its curtain doesn't matter: the living room and the balcony are open to the sky
 	var where: String = apartment.current if apartment != null else "bedroom"
 	var room_open := open if where == "bedroom" else (0.75 if where == "hallway" else 1.0)
+	if where == "theater":
+		room_open = 0.0 if apartment.th_dark else 0.3        # no windows in there; lights off is properly dark
+	elif where in ["game", "study", "noir"]:
+		room_open = 0.45                                      # inside rooms, no windows
 	var sky_light := room_open * (1.0 - 0.35 * cloudy)
 	world_env.ambient_light_energy = lerpf(0.05, 0.6, sky_light)
 	if weather != null:

@@ -173,7 +173,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -586,6 +586,9 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 			main.recliner_from_guest(d)
 		"seat":
 			_host_seat(from, int(d.get("i", -1)))
+		"th_lights":
+			if bool(main.guest_allow.get("lights", false)) and main.apartment != null:
+				main.apartment.set_th_dark(bool(d.get("dark", false)))
 		"lp":
 			if bool(main.guest_allow.get("music", false)) and main.apartment != null and main.pc != null:
 				if str(d.get("a", "")) == "stop":
@@ -624,6 +627,8 @@ func _apply_state(d: Dictionary) -> void:
 	if main.tv_rating != null:
 		main.tv_rating.apply_state(d.get("tv_rate", []))
 	main.recliner_from_host(d.get("rec", []))
+	if main.apartment != null and bool(d.get("th_dark", false)) != main.apartment.th_dark:
+		main.apartment.set_th_dark(bool(d.get("th_dark", false)))
 	var se = d.get("seats", {})
 	seats_seen = se if se is Dictionary else {}
 	main.net_apply_game(d)
