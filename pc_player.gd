@@ -1396,6 +1396,43 @@ func play_random_default() -> void:
 	_play_index(randi() % playlist.size())
 
 
+# the record player in the living room: each press puts on the next record from the game's own music folder
+func lp_next() -> void:
+	var dir := default_music_dir()
+	var from_dir := not playlist.is_empty() and playlist[0].get_base_dir() == dir
+	if not from_dir:
+		var da := DirAccess.open(dir)
+		if da == null:
+			return
+		var found: Array[String] = []
+		da.list_dir_begin()
+		var f := da.get_next()
+		while f != "":
+			if not da.current_is_dir() and AUDIO_EXTS.has(f.get_extension().to_lower()):
+				found.append(dir.path_join(f))
+			f = da.get_next()
+		da.list_dir_end()
+		if found.is_empty():
+			return
+		found.sort_custom(func(a: String, b: String) -> bool: return a.naturalnocasecmp_to(b) < 0)
+		playlist.clear()
+		for x in found:
+			playlist.append(x)
+		index = -1
+	if from_dir and audio.stream_paused:
+		_toggle_play()                         # the record was only lifted: drop the needle back on
+	else:
+		_play_index((index + 1) % playlist.size())
+
+
+func lp_stop() -> void:
+	_stop()
+
+
+func now_playing() -> String:
+	return _title.text if _title != null else ""
+
+
 func save_music_dir() -> void:
 	if _browser != null:
 		_browser.save_dir()

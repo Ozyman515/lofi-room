@@ -586,6 +586,12 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 			main.recliner_from_guest(d)
 		"seat":
 			_host_seat(from, int(d.get("i", -1)))
+		"lp":
+			if bool(main.guest_allow.get("music", false)) and main.apartment != null and main.pc != null:
+				if str(d.get("a", "")) == "stop":
+					main.pc._toggle_play()
+				else:
+					main.pc.lp_next()
 		"noir_pull":
 			if main.apartment != null:
 				main.apartment.secret_pull(false)

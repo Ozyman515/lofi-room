@@ -321,11 +321,12 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 			gx = lerpf(_g0, touch_g + 0.05 * S, u)
 			_walk(delta, 1.0, 1.0, 1.0, 1.0)
 		"grapple":
-			var push := sin(t * 1.25) * 0.07 * S
-			kx = touch_k + push
-			gx = touch_g + push
+			# locked together, but not inside each other (only a bite gets in close)
+			var push := sin(t * 1.25) * 0.04 * S
+			kx = touch_k - 0.1 * S + push
+			gx = touch_g + 0.08 * S + push
 			K["arms"] = 1.0
-			K["lunge"] = 0.35 + 0.25 * sin(t * 1.25)
+			K["lunge"] = 0.2 + 0.12 * sin(t * 1.25)
 			G["grab"] = 1.0
 			K["bite"] = 0.4 * _pulse(fmod(t, 3.0), 0.3, 0.8, 1.5, 2.2)
 			G["roar"] = 0.5 * _pulse(fmod(t + 1.5, 3.0), 0.3, 0.8, 1.5, 2.2)
@@ -369,8 +370,8 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 			G["recoil"] = _pulse(t, 1.2, 1.5, 3.0, 4.0)
 			gx = _g0 + 0.16 * S * _rise(t, 1.2, 2.4)
 		"tackle":
-			kx = lerpf(_k0, touch_k + 0.1 * S, _rise(t, 0.0, 1.0))
-			K["lunge"] = _pulse(t, 0.0, 0.8, 1.6, 2.4)
+			kx = lerpf(_k0, touch_k - 0.2 * S, _rise(t, 0.0, 1.0))      # shoulder to chest, not through it
+			K["lunge"] = 0.3 * _pulse(t, 0.0, 0.8, 1.6, 2.4)
 			_walk(delta, 2.0 * (1.0 - _rise(t, 0.9, 1.1)), 0.0, 1.0, 1.0)
 			if _at(t, was, 1.0):
 				_impact(Vector3(CX, 0.55 * S + GROUND, Z), 1.0, Color(1.0, 0.9, 0.75))
@@ -383,7 +384,7 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 			if _at(t, was, 2.5):
 				_play(_kroar, -1.0, 0.8)
 		"slam":
-			gx = lerpf(_g0, touch_g - 0.05 * S, _rise(t, 0.0, 1.0))
+			gx = lerpf(_g0, touch_g + 0.06 * S, _rise(t, 0.0, 1.0))
 			G["grab"] = _pulse(t, 0.4, 1.0, 1.6, 2.0)
 			G["rear"] = 1.0 + 0.2 * _pulse(t, 0.6, 1.2, 1.6, 2.0)
 			if _at(t, was, 1.7):
@@ -475,8 +476,8 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 			if kx < CX - 2.6 * S and gx > CX + 2.6 * S:
 				_bt = d
 		"clash":
-			kx = lerpf(_k0, touch_k, _rise(t, 0.0, 0.6))
-			gx = lerpf(_g0, touch_g, _rise(t, 0.0, 0.6))
+			kx = lerpf(_k0, touch_k - 0.07 * S, _rise(t, 0.0, 0.6))
+			gx = lerpf(_g0, touch_g + 0.07 * S, _rise(t, 0.0, 0.6))
 			K["lunge"] = _pulse(t, 0.0, 0.5, 0.8, 1.4)
 			G["punch_r"] = _pulse(t, 0.2, 0.5, 0.7, 1.2)
 			if _at(t, was, 0.6):

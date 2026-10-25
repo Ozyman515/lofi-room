@@ -44,8 +44,9 @@ const TH_X0 := 4.6                           # theater: west and east wall lines
 const TH_X1 := 9.65
 const TH_S := 12.35
 const TH_WALK := Rect2(4.9, 5.68, 4.5, 6.37)
-const TH_LOW := -0.44                        # the front of the theater is sunk below the hallway: the rows step down
-const TH_ROWS := [[7.8, 0.0, [5.65, 6.45, 7.25, 8.05]], [9.0, -0.22, [6.05, 6.85, 7.65, 8.45]], [10.2, -0.44, [5.65, 6.45, 7.25, 8.05]]]   # z, floor, seat x's (staggered)
+const TH_MID := -0.45                        # (each row a good step lower than the one behind: heads clear the seats in front)
+const TH_LOW := -0.9                        # the front of the theater is sunk below the hallway: the rows step down
+const TH_ROWS := [[7.8, 0.0, [5.65, 6.45, 7.25, 8.05]], [9.0, TH_MID, [6.05, 6.85, 7.65, 8.45]], [10.2, TH_LOW, [5.65, 6.45, 7.25, 8.05]]]   # z, floor, seat x's (staggered)
 const TH_SCREEN := Vector2(4.0, 2.25)
 const STUDY_DOOR := 2.4
 const STUDY_E := 4.6                         # study east wall line
@@ -229,7 +230,7 @@ func _door_slab(parent: Node3D, hinge: Vector3, yaw: float, width: float, wood: 
 	parent.add_child(frame)
 	var pivot := Node3D.new()
 	frame.add_child(pivot)
-	_box(Vector3(width / 2.0, 1.05, 0.0), Vector3(width - 0.02, 2.08, 0.04), wood, pivot)
+	_box(Vector3(width / 2.0, 1.06, 0.0), Vector3(width + 0.05, 2.12, 0.04), wood, pivot)     # (a little bigger than the hole: no gaps)
 	for side in [-1.0, 1.0]:
 		_box(Vector3(width / 2.0, 1.52, side * 0.024), Vector3(width * 0.68, 0.74, 0.01), panel, pivot)
 		_box(Vector3(width / 2.0, 0.55, side * 0.024), Vector3(width * 0.68, 0.74, 0.01), panel, pivot)
@@ -560,11 +561,29 @@ func _furnish_living(p: Node3D) -> void:
 		var col := Color.from_hsv(rng.randf(), 0.5, 0.75)
 		var sl := _box(Vector3(sx4, 0.32, rz - 0.06), Vector3(0.012, 0.3, 0.28), _mat(col, 0.8), p)
 		sl.rotation.z = rng.randf_range(-0.06, 0.06)
-	_box(Vector3(rx - 0.25, 0.94, rz), Vector3(0.45, 0.08, 0.36), dark, p)                    # turntable
-	main._cyl(Vector3(rx - 0.28, 0.985, rz), 0.15, 0.01, _mat(Color(0.03, 0.03, 0.04), 0.3), p)
-	main._cyl(Vector3(rx - 0.28, 0.99, rz), 0.05, 0.01, _mat(Color(0.95, 0.45, 0.55), 0.6), p)
-	_box(Vector3(rx - 0.1, 1.0, rz - 0.08), Vector3(0.02, 0.02, 0.18), metal, p)              # tone arm
-	_box(Vector3(rx + 0.4, 1.02, rz), Vector3(0.22, 0.24, 0.2), _mat(Color(0.15, 0.10, 0.18), 0.55), p)   # speaker
+	# the record player: point at it to put on the next record from the game's music folder (it plays through the
+	# room's speakers like the PC does, and its own little speaker beside it); the platter turns while music plays
+	var tt_m := _mat(Color(0.12, 0.08, 0.14), 0.4)
+	var tt := _box(Vector3(rx - 0.25, 0.94, rz), Vector3(0.45, 0.08, 0.36), tt_m, p)                    # turntable
+	_lp_platter = Node3D.new()
+	_lp_platter.position = Vector3(rx - 0.28, 0.985, rz)
+	p.add_child(_lp_platter)
+	main._cyl(Vector3.ZERO, 0.15, 0.01, _mat(Color(0.03, 0.03, 0.04), 0.3), _lp_platter)
+	main._cyl(Vector3(0, 0.005, 0), 0.05, 0.01, _mat(Color(0.95, 0.45, 0.55), 0.6), _lp_platter)
+	main._box(Vector3(0.03, 0.011, 0.0), Vector3(0.03, 0.002, 0.008), _mat(Color(1.0, 0.9, 0.8), 0.6), _lp_platter)   # a mark on the label, so you see it turn
+	_lp_arm = Node3D.new()
+	_lp_arm.position = Vector3(rx - 0.08, 1.0, rz + 0.12)
+	p.add_child(_lp_arm)
+	_box(Vector3(0, 0, -0.1), Vector3(0.02, 0.02, 0.2), metal, _lp_arm)                         # tone arm (pivots at the back corner)
+	main.interactables.append({"node": tt, "half": Vector3(0.24, 0.07, 0.2), "guest_ok": true,
+		"label": func() -> String:
+			if _lp_spinning():
+				return "NEXT RECORD  (now: %s)" % main.pc.now_playing().left(30)
+			return "PUT ON A RECORD",
+		"cb": lp_press, "hover": main._glow_hover(tt_m)})
+	main.interactables.append({"node": _lp_arm, "half": Vector3(0.04, 0.04, 0.12), "guest_ok": true,
+		"when": _lp_spinning, "label": func() -> String: return "LIFT THE NEEDLE  (stop)", "cb": lp_lift})
+	main._make_speaker("Record player speaker", Vector3(rx + 0.4, 1.02, rz), PI, 0.0, Vector3(0.22, 0.24, 0.2), 0.06, p)
 	_blockers["living"].append(Rect2(rx - 0.8, rz - 0.3, 1.6, 0.6))
 	# ---- plants and the floor lamp in the corners
 	var pot := _mat(Color(0.55, 0.25, 0.20), 0.8)
@@ -601,6 +620,46 @@ func _furnish_living(p: Node3D) -> void:
 	liv_tv._route()
 	if main.pc != null:
 		main.pc.refresh_speakers()
+
+
+var _lp_platter: Node3D
+var _lp_arm: Node3D
+
+func _lp_spinning() -> bool:
+	var b = main.bank
+	if b == null:
+		return false
+	if b.is_live():
+		return main.pc._remote_song != ""             # a guest: the host's music is playing
+	return b.playing and not b.stream_paused
+
+
+# a guest asks the host (whose music it is); the host or someone alone just plays it
+func lp_press() -> void:
+	if main._is_guest():
+		if not bool(main.guest_allow_seen.get("music", false)):
+			main._net_say("The host's record player: ask them to let guests use the music.")
+			return
+		main.net.send_var(1, 3, {"k": "lp", "a": "next"})
+		return
+	main.pc.lp_next()
+
+
+func lp_lift() -> void:
+	if main._is_guest():
+		if bool(main.guest_allow_seen.get("music", false)):
+			main.net.send_var(1, 3, {"k": "lp", "a": "stop"})
+		return
+	main.pc._toggle_play()                     # (pauses: the next press drops the needle back on)
+
+
+func _lp_tick(delta: float) -> void:
+	if _lp_platter == null:
+		return
+	var on := _lp_spinning()
+	if on:
+		_lp_platter.rotation.y -= delta * TAU * 33.3 / 60.0
+	_lp_arm.rotation.y = lerp_angle(_lp_arm.rotation.y, 0.45 if on else 0.0, minf(1.0, delta * 3.0))
 
 
 func set_liv_tv(on: bool) -> void:
@@ -742,8 +801,8 @@ func _build_game() -> void:
 	var gd := _door_slab(doors_root, Vector3(GAME_DOOR - 0.47, 0.0, HALL_S + 0.05), 0.0, 0.94, wood, panel, brass)
 	_doors.append({"pivot": gd, "at": Vector2(GAME_DOOR, HALL_S + 0.05), "open": 0.0, "sign": -1.0, "links": ["hallway", "game"]})
 	var plate := _mat(Color(0.12, 0.05, 0.16), 0.5)
-	_box(Vector3(GAME_DOOR, 1.72, HALL_S - 0.005), Vector3(0.42, 0.13, 0.01), plate, doors_root)
-	_label("GAME ROOM", Vector3(GAME_DOOR, 1.72, HALL_S - 0.012), PI, 34, Color(0.5, 0.95, 1.0), doors_root)
+	_box(Vector3(GAME_DOOR, 2.38, HALL_S - 0.005), Vector3(0.42, 0.13, 0.01), plate, hallway)
+	_label("GAME ROOM", Vector3(GAME_DOOR, 2.38, HALL_S - 0.012), PI, 34, Color(0.5, 0.95, 1.0), hallway)
 	# neon over the arcade: INSERT COIN
 	var neon := Label3D.new()
 	neon.text = "INSERT COIN"
@@ -850,8 +909,8 @@ func _build_study() -> void:
 	var sd := _door_slab(doors_root, Vector3(STUDY_DOOR - 0.47, 0.0, HALL_S + 0.05), 0.0, 0.94, wood, panel, brass)
 	_doors.append({"pivot": sd, "at": Vector2(STUDY_DOOR, HALL_S + 0.05), "open": 0.0, "sign": -1.0, "links": ["hallway", "study"]})
 	var plate := _mat(Color(0.12, 0.05, 0.16), 0.5)
-	_box(Vector3(STUDY_DOOR, 1.72, HALL_S - 0.005), Vector3(0.42, 0.13, 0.01), plate, doors_root)
-	_label("STUDY", Vector3(STUDY_DOOR, 1.72, HALL_S - 0.012), PI, 34, Color(1.0, 0.85, 0.6), doors_root)
+	_box(Vector3(STUDY_DOOR, 2.38, HALL_S - 0.005), Vector3(0.42, 0.13, 0.01), plate, hallway)
+	_label("STUDY", Vector3(STUDY_DOOR, 2.38, HALL_S - 0.012), PI, 34, Color(1.0, 0.85, 0.6), hallway)
 	# a rug, a reading armchair with a lamp and a little table, a cork board over the desk
 	var rug := _mat(Color(0.45, 0.20, 0.35), 0.95)
 	_box(Vector3(2.9, 0.006, 7.6), Vector3(2.2, 0.012, 1.6), rug, p)
@@ -1022,13 +1081,16 @@ func _build_theater() -> void:
 	var cx := (x0 + x1) / 2.0
 	var lo := TH_LOW - 0.05
 	# floor: the level back, then the steps down to the front
-	var steps := [[z0, 8.4, 0.0], [8.4, 9.6, -0.22], [9.6, z1, TH_LOW]]
+	var steps := [[z0, 8.4, 0.0], [8.4, 9.6, TH_MID], [9.6, z1, TH_LOW]]
+	var prev := 0.0
 	for st in steps:
 		var y: float = st[2]
 		_box(Vector3(cx, y - 0.05, (st[0] + st[1]) / 2.0), Vector3(x1 - x0, 0.1, st[1] - st[0]), carpet, p)
-		if y < 0.0:                                     # the riser up to the step behind
-			_box(Vector3(cx, y + 0.11, st[0] + 0.005), Vector3(x1 - x0, 0.22, 0.01), _mat(Color(0.22, 0.05, 0.10), 0.9), p)
-			_box(Vector3(cx, y + 0.215, st[0] - 0.01), Vector3(x1 - x0, 0.01, 0.025), _mat(Color(1.0, 0.7, 0.35), 0.5, 1.6), p)   # a light along the step edge
+		if y < prev:                                    # the riser up to the step behind
+			var rh := prev - y
+			_box(Vector3(cx, y + rh / 2.0, st[0] + 0.005), Vector3(x1 - x0, rh, 0.01), _mat(Color(0.22, 0.05, 0.10), 0.9), p)
+			_box(Vector3(cx, prev - 0.005, st[0] - 0.01), Vector3(x1 - x0, 0.01, 0.025), _mat(Color(1.0, 0.7, 0.35), 0.5, 1.6), p)   # a light along the step edge
+		prev = y
 	_box(Vector3(cx, H + 0.05, (z0 + z1) / 2.0), Vector3(x1 - x0 + 0.1, 0.1, z1 - z0 + 0.1), ceil_m, p)
 	_box(Vector3(x0, (H + lo) / 2.0, (z0 + z1) / 2.0), Vector3(0.1, H - lo, z1 - z0), wall, p)
 	_box(Vector3(x1, (H + lo) / 2.0, (z0 + z1) / 2.0), Vector3(0.1, H - lo, z1 - z0), wall, p)
@@ -1045,10 +1107,10 @@ func _build_theater() -> void:
 	var td := _door_slab(doors_root, Vector3(TH_DOOR - 0.47, 0.0, HALL_S + 0.05), 0.0, 0.94, wood, panel, brass)
 	_doors.append({"pivot": td, "at": Vector2(TH_DOOR, HALL_S + 0.05), "open": 0.0, "sign": -1.0, "links": ["hallway", "theater"]})
 	var plate := _mat(Color(0.12, 0.05, 0.16), 0.5)
-	_box(Vector3(TH_DOOR, 1.72, HALL_S - 0.005), Vector3(0.46, 0.13, 0.01), plate, doors_root)
-	_label("THEATER", Vector3(TH_DOOR, 1.72, HALL_S - 0.012), PI, 34, Color(1.0, 0.6, 0.65), doors_root)
+	_box(Vector3(TH_DOOR, 2.38, HALL_S - 0.005), Vector3(0.46, 0.13, 0.01), plate, hallway)
+	_label("THEATER", Vector3(TH_DOOR, 2.38, HALL_S - 0.012), PI, 34, Color(1.0, 0.6, 0.65), hallway)
 	# the screen, on the south wall, with curtains either side
-	var sy := TH_LOW + 0.45 + TH_SCREEN.y / 2.0
+	var sy := TH_LOW + 0.75 + TH_SCREEN.y / 2.0
 	var scr := Node3D.new()
 	scr.position = Vector3(cx, sy, z1 - 0.02)
 	scr.rotation.y = PI                          # faces north, toward the seats
@@ -1120,7 +1182,7 @@ func floor_y(x: float, z: float) -> float:
 	if z < 8.4:
 		return 0.0
 	if z < 9.6:
-		return -0.22
+		return TH_MID
 	return TH_LOW
 
 
@@ -1137,7 +1199,7 @@ func _build_exterior() -> void:
 	_box(Vector3((x0 + x1) / 2.0, H + 0.2, (z0 + z1) / 2.0), Vector3(x1 - x0 + 0.2, 0.3, z1 - z0 + 0.2), roof, p)                   # the roof (top floor)
 	_box(Vector3((x0 + x1) / 2.0, H + 0.5, z0 - 0.05), Vector3(x1 - x0 + 0.2, 0.35, 0.12), roof, p)                               # parapet
 	_box(Vector3(x1 + 0.05, H + 0.5, (z0 + z1) / 2.0), Vector3(0.12, 0.35, z1 - z0 + 0.2), roof, p)
-	_box(Vector3((x0 + x1) / 2.0, (-40.0 - 0.7) / 2.0, (z0 + z1) / 2.0), Vector3(x1 - x0, 40.0 - 0.7, z1 - z0), m, p)          # below (the theater dips into it)
+	_box(Vector3((x0 + x1) / 2.0, (-40.0 - 1.2) / 2.0, (z0 + z1) / 2.0), Vector3(x1 - x0, 40.0 - 1.2, z1 - z0), m, p)          # below (the theater dips into it)
 	var slab := _mat(Color(0.28, 0.20, 0.30), 0.85)
 	var rail_m := _mat(Color(0.10, 0.08, 0.13), 0.4)
 	for k in 9:                                               # the neighbours' balconies, all the way down
@@ -1361,6 +1423,8 @@ func _process(delta: float) -> void:
 		d["open"] = o
 		(d["pivot"] as Node3D).rotation.y = float(d["sign"]) * 1.65 * smoothstep(0.0, 1.0, o)
 	# the bookcase: open after the red book is pulled, and while anybody is in the office or the way through
+	if living.visible:
+		_lp_tick(delta)
 	if street != null and street.visible and (current == "balcony" or current == "living" or current == "bedroom"):
 		_traffic(delta)
 	if not _secret.is_empty():
@@ -1374,18 +1438,28 @@ func _process(delta: float) -> void:
 		_secret["open"] = so
 		(_secret["pivot"] as Node3D).rotation.y = 1.5 * smoothstep(0.0, 1.0, so)
 	# what's drawn: the room I'm in, what it looks out on, and rooms behind an open door
-	var seen := {current: true}
-	for s in SEES.get(current, []):
-		seen[s] = true
+	# (two steps out, so a room seen through a doorway shows the room beyond it too: no popping in)
+	var nb := {}
+	for r in SEES:
+		nb[r] = (SEES[r] as Array).duplicate()
 	for d in _doors:
 		if float(d["open"]) > 0.02:
 			var links: Array = d["links"]
-			if current in links:
-				for l in links:
-					seen[l] = true
-	if not _secret.is_empty() and float(_secret["open"]) > 0.02 and current in ["study", "noir"]:
-		seen["study"] = true
-		seen["noir"] = true
+			(nb[links[0]] as Array).append(links[1])
+			(nb[links[1]] as Array).append(links[0])
+	if not _secret.is_empty() and float(_secret["open"]) > 0.02:
+		(nb["study"] as Array).append("noir")
+		(nb["noir"] as Array).append("study")
+	var seen := {current: true}
+	var ring: Array = [current]
+	for step in 2:
+		var next: Array = []
+		for r in ring:
+			for o in nb.get(r, []):
+				if not seen.has(o):
+					seen[o] = true
+					next.append(o)
+		ring = next
 	if seen != _seen:
 		_seen = seen
 		for rid in rooms:
