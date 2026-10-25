@@ -367,49 +367,219 @@ func _build_living() -> void:
 	_box(Vector3(BAL_DOOR.y + gw / 2.0 - 0.1, BAL_DOOR_TOP - 0.02, NORTH_Z + 0.09), Vector3(gw, 0.04, 0.04), trim, p)
 	_box(Vector3(BAL_DOOR.y + gw / 2.0 - 0.1, 0.02, NORTH_Z + 0.09), Vector3(gw, 0.04, 0.04), trim, p)
 	_box(Vector3(BAL_DOOR.y + 0.03, BAL_DOOR_TOP / 2.0, NORTH_Z + 0.09), Vector3(0.04, BAL_DOOR_TOP, 0.04), trim, p)
-	# moving in: boxes everywhere
-	var card := _mat(Color(0.70, 0.50, 0.32), 0.95)
-	var card2 := _mat(Color(0.62, 0.43, 0.27), 0.95)
-	var tape_m := _mat(Color(0.82, 0.70, 0.52), 0.5)
-	var ink := Color(0.22, 0.12, 0.10)
-	var stacks := [
-		[Vector3(3.4, 0.0, 1.9), Vector3(0.6, 0.45, 0.45), 0.2, "LIVING RM"],
-		[Vector3(3.4, 0.45, 1.9), Vector3(0.5, 0.35, 0.4), -0.1, "FRAGILE"],
-		[Vector3(3.3, 0.0, 0.9), Vector3(0.7, 0.5, 0.5), 0.05, "BIG TV"],
-		[Vector3(8.4, 0.0, -0.6), Vector3(0.6, 0.45, 0.6), 0.3, "COUCH STUFF"],
-		[Vector3(8.6, 0.0, 0.4), Vector3(0.5, 0.4, 0.45), -0.2, "LAMPS"],
-		[Vector3(8.5, 0.4, 0.4), Vector3(0.4, 0.3, 0.38), 0.1, ""],
-		[Vector3(6.4, 0.0, 2.7), Vector3(0.55, 0.42, 0.42), 0.4, "BOOKS"],
-	]
-	for i in stacks.size():
-		var s: Array = stacks[i]
-		var bp: Vector3 = s[0]
-		var bs: Vector3 = s[1]
-		var b := Node3D.new()
-		b.position = bp
-		b.rotation.y = float(s[2])
-		p.add_child(b)
-		_box(Vector3(0, bs.y / 2.0, 0), bs, card if i % 2 == 0 else card2, b)
-		_box(Vector3(0, bs.y + 0.002, 0), Vector3(0.07, 0.004, bs.z + 0.002), tape_m, b)
-		_box(Vector3(0, bs.y - 0.06, bs.z / 2.0 + 0.002), Vector3(0.07, 0.12, 0.004), tape_m, b)
-		if str(s[3]) != "":
-			var l := _label(str(s[3]), Vector3(0, bs.y * 0.45, bs.z / 2.0 + 0.004), 0.0, 40, ink, b)
-			l.pixel_size = 0.0011
-		if bp.y == 0.0:
-			var r := maxf(bs.x, bs.z) / 2.0 + 0.1
-			_blockers["living"].append(Rect2(bp.x - r, bp.z - r, r * 2.0, r * 2.0))
-	# a floor lamp somebody already unpacked, and a rolled-up rug
+	_furnish_living(p)
+
+
+# the 70" flat screen on the west wall, a couch facing it, a coffee table, an armchair by the east window, a record
+# shelf, plants and lamps
+const LIV_TV := Vector3(2.68, 1.3, 0.7)      # the screen's centre (on the west wall, facing east)
+const LIV_TV_SIZE := Vector2(1.55, 0.87)     # 70 inches across
+var liv_tv_mat: ShaderMaterial               # (a copy of the bedroom TV's picture, without the old-TV look)
+var liv_tv_on := true
+var _liv_glow: OmniLight3D
+var _liv_screen: MeshInstance3D
+var _liv_led: StandardMaterial3D
+
+func _furnish_living(p: Node3D) -> void:
+	var lp := Plat.low_power()
+	var wood := _mat(Color(0.30, 0.15, 0.18), 0.6)
+	var dark := _mat(Color(0.07, 0.05, 0.09), 0.4)
+	var metal := _mat(Color(0.12, 0.10, 0.14), 0.35)
+	metal.metallic = 0.6
+	# ---- the TV and its stand
+	var stand_x := MID_X + 0.05 + 0.22
+	_box(Vector3(stand_x, 0.25, LIV_TV.z), Vector3(0.42, 0.5, 1.9), wood, p)                       # media console
+	_box(Vector3(stand_x + 0.212, 0.25, LIV_TV.z), Vector3(0.01, 0.4, 1.8), _mat(Color(0.24, 0.11, 0.15), 0.6), p)
+	for dz in [-0.47, 0.47]:
+		_box(Vector3(stand_x + 0.22, 0.25, LIV_TV.z + dz), Vector3(0.01, 0.005, 0.85), dark, p)    # drawer lines
+	_blockers["living"].append(Rect2(MID_X, LIV_TV.z - 1.0, 0.55, 2.0))
+	var tv := Node3D.new()
+	tv.position = LIV_TV
+	tv.rotation.y = PI / 2.0                   # local +z faces east, into the room
+	p.add_child(tv)
+	_box(Vector3(0, 0, -0.02), Vector3(LIV_TV_SIZE.x + 0.03, LIV_TV_SIZE.y + 0.03, 0.04), dark, tv)   # thin bezel
+	var q := QuadMesh.new()
+	q.size = LIV_TV_SIZE
+	liv_tv_mat = (main.tv_mat as ShaderMaterial).duplicate()
+	_liv_screen = MeshInstance3D.new()
+	_liv_screen.mesh = q
+	_liv_screen.material_override = liv_tv_mat
+	_liv_screen.position = Vector3(0, 0, 0.001)
+	tv.add_child(_liv_screen)
+	# a soft pink light strip behind it (bias lighting)
+	var strip := _mat(main.PINK, 0.5, 2.2)
+	_box(Vector3(0, LIV_TV_SIZE.y / 2.0 - 0.05, -0.05), Vector3(LIV_TV_SIZE.x - 0.1, 0.012, 0.012), strip, tv)
+	_box(Vector3(0, -LIV_TV_SIZE.y / 2.0 + 0.05, -0.05), Vector3(LIV_TV_SIZE.x - 0.1, 0.012, 0.012), strip, tv)
+	# a power LED, and a power button on the console
+	_liv_led = _mat(Color(0.2, 1.0, 0.4), 0.4, 3.0)
+	main._sphere(Vector3(LIV_TV_SIZE.x / 2.0 - 0.03, -LIV_TV_SIZE.y / 2.0 - 0.008, 0.005), 0.005, _liv_led, Vector3.ONE, tv, 8)
+	var pw_m := _mat(Color(0.25, 0.22, 0.30), 0.5)
+	var pw := _box(Vector3(stand_x + 0.17, 0.505, LIV_TV.z + 0.8), Vector3(0.07, 0.015, 0.05), pw_m, p)
+	main.interactables.append({"node": pw, "half": Vector3(0.05, 0.03, 0.04), "guest_ok": true,
+		"label": func() -> String: return "BIG TV  [%s]" % ("ON" if liv_tv_on else "OFF"),
+		"cb": func() -> void: set_liv_tv(not liv_tv_on),
+		"hover": main._glow_hover(pw_m)})
+	_label("TV", Vector3(stand_x + 0.178, 0.514, LIV_TV.z + 0.8), PI / 2.0, 24, Color(0.85, 0.8, 0.9), p).rotation.x = -PI / 2.0
+	_liv_glow = _light(Vector3(LIV_TV.x + 0.6, 1.25, LIV_TV.z), Color(0.45, 0.6, 1.0), 0.9, 4.0, p)
+	# things on the console: a game console under the TV, a little plant, a speaker each side
+	_box(Vector3(stand_x, 0.53, LIV_TV.z - 0.35), Vector3(0.28, 0.06, 0.32), _mat(Color(0.9, 0.9, 0.93), 0.4), p)
+	main._cyl(Vector3(stand_x, 0.58, LIV_TV.z + 0.45), 0.06, 0.12, _mat(Color(0.85, 0.45, 0.55), 0.7), p)
+	main._sphere(Vector3(stand_x, 0.69, LIV_TV.z + 0.45), 0.08, _mat(Color(0.18, 0.45, 0.30), 0.8), Vector3(1, 1.2, 1), p, 10)
+	# ---- the couch: three cushions, facing the TV (west)
+	var fabric := _mat(Color(0.42, 0.24, 0.55), 0.95)
+	var fabric_dk := _mat(Color(0.32, 0.17, 0.43), 0.95)
+	var pillow_a := _mat(Color(0.95, 0.55, 0.65), 0.95)
+	var pillow_b := _mat(Color(1.0, 0.75, 0.45), 0.95)
+	var cx := 6.3
+	var cz := LIV_TV.z
+	var cl := 2.3                               # length (along z)
+	var c := Node3D.new()
+	c.position = Vector3(cx, 0, cz)
+	c.rotation.y = PI / 2.0                     # local -z faces west (the TV); local +x is along -z... local x runs along the couch
+	p.add_child(c)
+	_box(Vector3(0, 0.22, 0.05), Vector3(cl, 0.3, 0.9), fabric_dk, c)                     # base
+	for i in 3:
+		var sx := -cl / 2.0 + 0.2 + (cl - 0.4) * (i + 0.5) / 3.0
+		_box(Vector3(sx, 0.44, -0.02), Vector3((cl - 0.4) / 3.0 - 0.02, 0.14, 0.72), fabric, c)        # seat cushions
+		_box(Vector3(sx, 0.72, 0.36), Vector3((cl - 0.4) / 3.0 - 0.02, 0.48, 0.2), fabric, c)          # back cushions
+		var seat := Node3D.new()
+		seat.position = Vector3(sx, 0.0, -0.05)
+		c.add_child(seat)
+		main.seat_nodes.append(seat)
+		main.seat_eye.append(1.12)
+		main.seat_swivel.append(false)
+	_box(Vector3(0, 0.6, 0.47), Vector3(cl, 0.8, 0.12), fabric_dk, c)                     # back
+	for sx2 in [-cl / 2.0 + 0.1, cl / 2.0 - 0.1]:
+		_box(Vector3(sx2, 0.5, 0.05), Vector3(0.2, 0.36, 0.9), fabric_dk, c)              # arms
+		_box(Vector3(sx2, 0.04, 0.4), Vector3(0.05, 0.08, 0.05), dark, c)                 # feet
+		_box(Vector3(sx2, 0.04, -0.3), Vector3(0.05, 0.08, 0.05), dark, c)
+	var pl1 := _box(Vector3(-cl / 2.0 + 0.35, 0.68, 0.2), Vector3(0.36, 0.34, 0.12), pillow_a, c)
+	pl1.rotation = Vector3(-0.25, 0.3, 0.1)
+	var pl2 := _box(Vector3(cl / 2.0 - 0.35, 0.68, 0.2), Vector3(0.36, 0.34, 0.12), pillow_b, c)
+	pl2.rotation = Vector3(-0.25, -0.3, -0.1)
+	var throw_m := _mat(Color(0.98, 0.85, 0.80), 0.95)
+	_box(Vector3(cl / 2.0 - 0.3, 0.98, 0.42), Vector3(0.5, 0.03, 0.3), throw_m, c)        # a blanket over the back
+	_blockers["living"].append(Rect2(cx - 0.5, cz - cl / 2.0, 1.0, cl))
+	# ---- rug and coffee table
+	var rug_m := _mat(Color(0.55, 0.22, 0.45), 0.95)
+	_box(Vector3(4.6, 0.006, cz), Vector3(2.6, 0.012, 2.6), rug_m, p)
+	_box(Vector3(4.6, 0.007, cz), Vector3(2.3, 0.012, 2.3), _mat(Color(0.45, 0.16, 0.38), 0.95), p)
+	var tx := 5.1
+	_box(Vector3(tx, 0.4, cz), Vector3(0.6, 0.05, 1.1), wood, p)
+	_box(Vector3(tx, 0.12, cz), Vector3(0.5, 0.03, 1.0), wood, p)                           # lower shelf
+	for lx in [-0.26, 0.26]:
+		for lz in [-0.5, 0.5]:
+			_box(Vector3(tx + lx, 0.2, cz + lz), Vector3(0.04, 0.4, 0.04), metal, p)
+	_blockers["living"].append(Rect2(tx - 0.35, cz - 0.6, 0.7, 1.2))
+	main._cyl(Vector3(tx + 0.1, 0.475, cz - 0.3), 0.045, 0.1, _mat(Color(0.95, 0.9, 0.85), 0.5), p)      # mug
+	_box(Vector3(tx - 0.05, 0.435, cz + 0.15), Vector3(0.05, 0.02, 0.17), dark, p)                       # remote
+	for k in 3:                                                                                           # magazines
+		var mg := _box(Vector3(tx + 0.02, 0.145 + k * 0.012, cz + 0.2), Vector3(0.24, 0.01, 0.32),
+			_mat([Color(0.9, 0.5, 0.6), Color(0.4, 0.6, 0.9), Color(0.95, 0.8, 0.4)][k], 0.8), p)
+		mg.rotation.y = k * 0.25
+	# ---- an armchair by the east window, turned toward the TV
+	var ac := Node3D.new()
+	ac.position = Vector3(8.4, 0, -0.9)
+	ac.rotation.y = PI / 2.0 - 0.45
+	p.add_child(ac)
+	var chair_m := _mat(Color(0.85, 0.45, 0.30), 0.95)
+	var chair_dk := _mat(Color(0.70, 0.35, 0.24), 0.95)
+	_box(Vector3(0, 0.24, 0.02), Vector3(0.8, 0.3, 0.8), chair_dk, ac)
+	_box(Vector3(0, 0.44, -0.04), Vector3(0.56, 0.12, 0.62), chair_m, ac)
+	_box(Vector3(0, 0.7, 0.36), Vector3(0.8, 0.62, 0.14), chair_dk, ac)
+	for sx3 in [-0.34, 0.34]:
+		_box(Vector3(sx3, 0.5, 0.02), Vector3(0.14, 0.32, 0.8), chair_dk, ac)
+	var aseat := Node3D.new()
+	aseat.position = Vector3(0, 0, -0.05)
+	ac.add_child(aseat)
+	main.seat_nodes.append(aseat)
+	main.seat_eye.append(1.12)
+	main.seat_swivel.append(false)
+	_blockers["living"].append(Rect2(7.95, -1.4, 0.95, 1.0))
+	# a side table with a lamp beside it
+	_box(Vector3(8.75, 0.28, 0.0), Vector3(0.4, 0.56, 0.4), wood, p)
+	main._cyl(Vector3(8.75, 0.62, 0.0), 0.05, 0.12, metal, p)
+	main._cyl(Vector3(8.75, 0.78, 0.0), 0.13, 0.18, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4), p)
+	_blockers["living"].append(Rect2(8.5, -0.25, 0.5, 0.5))
+	# ---- a record shelf against the south wall, with a turntable on top
+	var rx := 7.4
+	var rz := FRONT_Z - 0.25
+	_box(Vector3(rx, 0.45, rz), Vector3(1.5, 0.9, 0.4), wood, p)
+	for k in 2:
+		_box(Vector3(rx - 0.37 + k * 0.74, 0.45, rz - 0.2), Vector3(0.68, 0.78, 0.01), dark, p)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 909
+	for k in 22:                                                                              # record sleeves
+		var sx4 := rx - 0.68 + k * 0.062
+		var col := Color.from_hsv(rng.randf(), 0.5, 0.75)
+		var sl := _box(Vector3(sx4, 0.32, rz - 0.06), Vector3(0.012, 0.3, 0.28), _mat(col, 0.8), p)
+		sl.rotation.z = rng.randf_range(-0.06, 0.06)
+	_box(Vector3(rx - 0.25, 0.94, rz), Vector3(0.45, 0.08, 0.36), dark, p)                    # turntable
+	main._cyl(Vector3(rx - 0.28, 0.985, rz), 0.15, 0.01, _mat(Color(0.03, 0.03, 0.04), 0.3), p)
+	main._cyl(Vector3(rx - 0.28, 0.99, rz), 0.05, 0.01, _mat(Color(0.95, 0.45, 0.55), 0.6), p)
+	_box(Vector3(rx - 0.1, 1.0, rz - 0.08), Vector3(0.02, 0.02, 0.18), metal, p)              # tone arm
+	_box(Vector3(rx + 0.4, 1.02, rz), Vector3(0.22, 0.24, 0.2), _mat(Color(0.15, 0.10, 0.18), 0.55), p)   # speaker
+	_blockers["living"].append(Rect2(rx - 0.8, rz - 0.3, 1.6, 0.6))
+	# ---- plants and the floor lamp in the corners
+	var pot := _mat(Color(0.55, 0.25, 0.20), 0.8)
+	var leaf := _mat(Color(0.18, 0.45, 0.30), 0.8)
+	for pp in [Vector3(9.25, 0, -1.7), Vector3(3.05, 0, 3.05)]:
+		main._cyl(pp + Vector3(0, 0.22, 0), 0.2, 0.44, pot, p)
+		main._sphere(pp + Vector3(0, 0.75, 0), 0.3, leaf, Vector3(1.0, 1.4, 1.0), p, 10)
+		main._sphere(pp + Vector3(0.12, 1.05, 0.05), 0.2, leaf, Vector3(1.0, 1.3, 1.0), p, 10)
+		_blockers["living"].append(Rect2(pp.x - 0.3, pp.z - 0.3, 0.6, 0.6))
 	var lamp_m := _mat(Color(0.12, 0.08, 0.14), 0.5)
-	main._cyl(Vector3(9.1, 0.02, 2.9), 0.16, 0.04, lamp_m, p)
-	main._cyl(Vector3(9.1, 0.8, 2.9), 0.015, 1.56, lamp_m, p)
-	var shade: MeshInstance3D = main._cyl(Vector3(9.1, 1.62, 2.9), 0.2, 0.3, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4), p)
-	shade.scale = Vector3(1.0, 1.0, 1.0)
-	_light(Vector3(9.0, 1.6, 2.7), main.WARM, 1.0, 5.5, p)
-	_light(Vector3(6.0, 2.2, -1.2), main.PINK, 0.8, 5.0, p)          # the city's glow through the glass
-	_blockers["living"].append(Rect2(8.85, 2.65, 0.5, 0.5))
-	var rug: MeshInstance3D = main._cyl(Vector3(3.0, 0.12, -0.4), 0.12, 2.0, _mat(Color(0.55, 0.20, 0.42), 0.95), p)
-	rug.rotation.x = PI / 2.0                    # rolled up along the west wall
-	_blockers["living"].append(Rect2(2.6, -1.5, 0.6, 2.2))
+	main._cyl(Vector3(9.2, 0.02, 2.95), 0.16, 0.04, lamp_m, p)
+	main._cyl(Vector3(9.2, 0.8, 2.95), 0.015, 1.56, lamp_m, p)
+	main._cyl(Vector3(9.2, 1.62, 2.95), 0.2, 0.3, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4), p)
+	_blockers["living"].append(Rect2(8.95, 2.7, 0.5, 0.5))
+	# ---- a big print on the south wall, over the records
+	var frame_m := _mat(Color(0.10, 0.06, 0.12), 0.5)
+	_box(Vector3(7.4, 1.75, FRONT_Z - 0.04), Vector3(1.2, 0.7, 0.03), frame_m, p)
+	var art := _mat(Color(0.95, 0.55, 0.45), 0.8, 0.3)
+	_box(Vector3(7.4, 1.75, FRONT_Z - 0.058), Vector3(1.1, 0.6, 0.01), art, p)
+	main._sphere(Vector3(7.25, 1.82, FRONT_Z - 0.065), 0.16, _mat(Color(1.0, 0.85, 0.45), 0.6, 0.8), Vector3(1, 1, 0.05), p, 16)   # a sun
+	_box(Vector3(7.4, 1.58, FRONT_Z - 0.066), Vector3(1.1, 0.26, 0.005), _mat(Color(0.45, 0.20, 0.50), 0.8), p)                     # hills
+	# ---- lights
+	_light(Vector3(9.1, 1.6, 2.75), main.WARM, 1.0, 5.5, p)
+	_light(Vector3(6.0, 2.2, -1.2), main.PINK, 0.7, 5.0, p)          # the city's glow through the glass
+	if not lp:                                                        # (the headset gets fewer lights)
+		_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p)
+		_light(Vector3(5.0, 2.5, 2.4), Color(0.6, 0.3, 0.75), 0.5, 5.0, p)   # soft fill
+	# ---- two speakers either side of the TV (they play the TV's sound unless you set them otherwise)
+	main._make_speaker("Living room speaker L", Vector3(MID_X + 0.15, 1.3, LIV_TV.z - 1.15), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
+	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.3, LIV_TV.z + 1.15), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
+	main.bank.set_mode(main.bank.speakers.size() - 2, "tv")
+	main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
+	if main.pc != null:
+		main.pc.refresh_speakers()
+
+
+func set_liv_tv(on: bool) -> void:
+	liv_tv_on = on
+	_liv_led.albedo_color = Color(0.2, 1.0, 0.4) if on else Color(0.3, 0.05, 0.05)
+	_liv_led.emission = Color(0.2, 1.0, 0.4) if on else Color(0.6, 0.05, 0.05)
+	_liv_led.emission_energy_multiplier = 3.0 if on else 0.5
+
+
+# the big TV shows what the bedroom TV shows (a tape, a game, the news), as a clean flat picture
+var _liv_params: Array = []
+func _mirror_tv() -> void:
+	if liv_tv_mat == null or main.tv_mat == null:
+		return
+	if _liv_params.is_empty():
+		for u in (main.tv_mat.shader as Shader).get_shader_uniform_list():
+			var n := str(u["name"])
+			if n != "crt_mode" and n != "screen_aspect" and n != "tv_power":
+				_liv_params.append(n)
+	var src: ShaderMaterial = main.tv_mat
+	for n in _liv_params:
+		liv_tv_mat.set_shader_parameter(n, src.get_shader_parameter(n))
+	liv_tv_mat.set_shader_parameter("crt_mode", 0)
+	liv_tv_mat.set_shader_parameter("screen_aspect", LIV_TV_SIZE.x / LIV_TV_SIZE.y)
+	var pw = src.get_shader_parameter("tv_power")
+	liv_tv_mat.set_shader_parameter("tv_power", float(pw if pw != null else 1.0) if liv_tv_on else 0.0)
+	_liv_glow.visible = liv_tv_on and float(pw if pw != null else 1.0) > 0.5
 
 
 # ---------------------------------------------------------------- the balcony: round the corner, under the balcony above
@@ -483,14 +653,14 @@ func _build_balcony() -> void:
 	# a little table and two chairs in the corner, facing the city
 	var wood := _mat(Color(0.36, 0.18, 0.20), 0.7)
 	var cushion := _mat(Color(0.85, 0.40, 0.55), 0.95)
-	var tbl := Vector3(10.85, 0.0, -3.4)
+	var tbl := Vector3(11.1, 0.0, -3.75)          # tucked into the corner so you can still walk round to the east side
 	main._cyl(tbl + Vector3(0, 0.72, 0), 0.32, 0.04, wood, p)
 	main._cyl(tbl + Vector3(0, 0.36, 0), 0.03, 0.72, rail_m, p)
 	main._cyl(tbl + Vector3(0, 0.015, 0), 0.2, 0.03, rail_m, p)
 	var mugs := _mat(Color(0.95, 0.9, 0.85), 0.5)
 	main._cyl(tbl + Vector3(0.1, 0.79, 0.05), 0.04, 0.1, mugs, p)
 	_blockers["balcony"].append(Rect2(tbl.x - 0.4, tbl.z - 0.4, 0.8, 0.8))
-	for cs in [[Vector3(9.95, 0.0, -3.0), -PI * 0.25 - 0.1], [Vector3(10.95, 0.0, -2.45), -PI * 0.25 + 0.35]]:
+	for cs in [[Vector3(10.35, 0.0, -3.85), -PI * 0.25 - 0.35], [Vector3(11.15, 0.0, -2.95), -PI * 0.25 + 0.35]]:
 		var cp: Vector3 = cs[0]
 		var c := Node3D.new()
 		c.position = cp
@@ -657,6 +827,8 @@ func _process(delta: float) -> void:
 			if current in links:
 				for l in links:
 					seen[l] = true
+	if living.visible:
+		_mirror_tv()
 	if seen != _seen:
 		_seen = seen
 		for rid in rooms:

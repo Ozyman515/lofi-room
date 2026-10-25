@@ -849,11 +849,11 @@ func _glow_hover(m: StandardMaterial3D) -> Callable:
 			m.emission_energy_multiplier = 0.6
 
 
-func _make_speaker(spk_name: String, pos: Vector3, yaw: float, tilt: float, size: Vector3, cone_r: float) -> void:
+func _make_speaker(spk_name: String, pos: Vector3, yaw: float, tilt: float, size: Vector3, cone_r: float, parent: Node3D = null) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation = Vector3(tilt, yaw, 0.0)       # local +z is the front of the speaker
-	room.add_child(root)
+	(parent if parent != null else room).add_child(root)
 	var body_m := _mat(Color(0.15, 0.10, 0.18), 0.55)
 	var body := _box(Vector3.ZERO, size, body_m, root)
 	var cone_m := _mat(Color(0.07, 0.05, 0.09), 0.9)
@@ -4289,7 +4289,7 @@ func _load_prefs() -> void:
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
 			weather.snap()
 		for i in bank.speakers.size():
-			var sv: Variant = g.call("spk_" + String(bank.speakers[i]["name"]), "pc")
+			var sv: Variant = g.call("spk_" + String(bank.speakers[i]["name"]), "tv" if String(bank.speakers[i]["name"]).begins_with("Living") else "pc")
 			bank.set_mode(i, ("pc" if sv else "off") if sv is bool else str(sv))     # (older copies saved on/off)
 		for gi in light_groups.size():
 			set_light(gi, bool(g.call("light_" + String(light_groups[gi]["name"]), true)))
