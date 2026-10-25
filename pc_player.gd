@@ -730,19 +730,19 @@ var _dbg_shelf_btn: Button
 
 func _build_debug_window() -> void:
 	_dbg_window = PanelContainer.new()
-	_dbg_window.offset_left = 150.0
+	_dbg_window.offset_left = 60.0
 	_dbg_window.offset_top = 6.0
-	_dbg_window.offset_right = 874.0
+	_dbg_window.offset_right = 964.0
 	_dbg_window.offset_bottom = 545.0
 	_dbg_window.visible = false
 	ui.root.add_child(_dbg_window)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	_dbg_window.add_child(v)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 6)
+	_dbg_window.add_child(outer)
 	var head := HBoxContainer.new()
-	v.add_child(head)
+	outer.add_child(head)
 	var t := Label.new()
-	t.text = "Debug"
+	t.text = "Debug  (scroll for more)"
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
 	var back := Button.new()
@@ -752,6 +752,15 @@ func _build_debug_window() -> void:
 		_st_window.visible = true
 		_st_refresh())
 	head.add_child(back)
+	# everything else scrolls (there's more than fits on the screen)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	outer.add_child(scroll)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(v)
 	var note := Label.new()
 	note.text = "Seats in front of the TV. Players = as many as there are people in the room (one when you're alone)."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
