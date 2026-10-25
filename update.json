@@ -1,5 +1,5 @@
 {
- "version": 109,
+ "version": 110,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -129,6 +129,10 @@
    "sha": "e7edbe5de4bd2078084e0e12d58e4331fcecc085fa4c01cf2b769339040b3cd9",
    "size": 3374
   },
+  "apartment.gd": {
+   "sha": "3b6515c8ecbbc2a20bce7986bae879edf526a26ede9eebf037a8e9e067adcd35",
+   "size": 42612
+  },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
    "size": 155
@@ -238,16 +242,16 @@
    "size": 22629
   },
   "fight.gd": {
-   "sha": "520e3a5079d1112f2418ff3ca93597a869d04c0a6ae5f34d61f9082328b6b206",
-   "size": 56313
+   "sha": "fd79b6004162a42c4166c277676869fd2897899ab194909ed5bb68707028efea",
+   "size": 56358
   },
   "file_browser.gd": {
    "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
    "size": 4561
   },
   "gaboon.gd": {
-   "sha": "86f8fbf33d2959655965e3678135ab40062903c4d73bb7f573edde517735fcda",
-   "size": 13062
+   "sha": "d91abbb5e9563adcf9d4a4b61b2375811693cac94e9c23a1359bf994a0c439e6",
+   "size": 13065
   },
   "gaboon_model.gd": {
    "sha": "d36234825b72f576c946b96c95025350bcbfccce422d49282ecb5a9c6cc16b8b",
@@ -274,8 +278,8 @@
    "size": 8732
   },
   "kaiju.gd": {
-   "sha": "23aaadea8ecf705ea51f62720d870a6f3edd216fc9c64de0e2b57b754ffa54d7",
-   "size": 12210
+   "sha": "06aecadb373d73e33dcebb56fcb420fbb9d3b0390785cf90a04d314a77cb684a",
+   "size": 12213
   },
   "kaiju/full/armL.res": {
    "sha": "a86ca459a8555bee5d50bf6dea6ac0d2719d55f8cd2a2cf6c8dbccfc6251ea49",
@@ -406,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "56ed28bbfab5a70d9d4d87a05c7c5cc78fdcbdf0eccea11e59f2a4c9b39d3998",
-   "size": 213069
+   "sha": "c9a20a27763e0391dccd3bb23c536e3869970436cfb4f23d00ca94d622c93b00",
+   "size": 213007
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -478,8 +482,8 @@
    "size": 9088
   },
   "news.gd": {
-   "sha": "50d8ee41e174379524d7f32d09883620016edfe77c1d03f32ebbfa375863fb83",
-   "size": 22905
+   "sha": "f3b96404589f288c0be3931c8baa6d8962b7633d3d84adee31cc2d5dc108b22c",
+   "size": 22908
   },
   "noir.gd": {
    "sha": "bc936a9dc0431cdbdb51c8b8db809a5ce31a6a4bade8c04b263384ef00a8f165",
@@ -626,8 +630,8 @@
    "size": 10601
   },
   "ufo.gd": {
-   "sha": "63cf1069adf00c6dfc44e19f3b400e2c50fa981b95125ade74886cbc18dd71a6",
-   "size": 13718
+   "sha": "31fcbcc0624c7591088ab5e18da104881f3f6a6e9c1ed1debe7b31988b7d25d0",
+   "size": 13751
   },
   "ufo_model.gd": {
    "sha": "9c1781112de964c5449786ee8ac40f81126a5f1e0bb9e23441e8529a64d8e663",
@@ -642,12 +646,12 @@
    "size": 42070
   },
   "version.txt": {
-   "sha": "98ef8a73c127ede2e6548dabea6eeec13a2cdff5a905f8e68f194c5c2fb036a7",
+   "sha": "e00e6031fc5e7ef95c526573343419859e112cebd550f10e2089bf393f5ed2bd",
    "size": 4
   },
   "weather.gd": {
-   "sha": "8b8ecd8aa548c8f1d6d04cc14c11cc13fdd49e1dc0fff81e7b9040ae5a823572",
-   "size": 29355
+   "sha": "df25ca1f70bfa733b7e00fcf249190ce36470a9da5bd51a165f0de08715e05e2",
+   "size": 30624
   }
  },
  "remove": [
