@@ -260,7 +260,7 @@ func _process(delta: float) -> void:
 func _build_desk() -> void:
 	_desk = Node3D.new()
 	_desk.visible = false
-	main.room.add_child(_desk)
+	main.study_kit.add_child(_desk)
 	# typewriter where the keyboard is, facing the chair
 	_typewriter = Props.typewriter()
 	_typewriter.position = Vector3(1.45, DESK_Y, -1.40)

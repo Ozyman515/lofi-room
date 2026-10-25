@@ -38,7 +38,13 @@ const EAST_WIN := Vector2(-1.75, 2.95)       # living room east window (z span)
 const WIN_LO := 0.5
 const WIN_HI := 2.5
 const FRONT_DOOR_Z := 4.4
-const LOCKED := [[2.4, "STUDY"], [7.0, "THEATER"]]   # hallway south wall: x, name (still being done up)
+const LOCKED := [[7.0, "THEATER"]]          # hallway south wall: x, name (still being done up)
+const STUDY_DOOR := 2.4
+const STUDY_E := 4.6                         # study east wall line
+const STUDY_WALK := Rect2(0.72, 5.68, 3.56, 4.37)
+# the desk and the bookshelf were built in the bedroom's back-right corner; turned round, that corner is the study's
+# front-left: the desk against the study's south wall, the bookshelf against its west wall
+const STUDY_KIT_XF := Transform3D(Basis(Vector3.UP, PI), Vector3(2.95, 0.0, 8.3))
 const GAME_DOOR := -1.6                     # x of the game room door (hallway south wall)
 const GAME_S := 10.35                       # game room south wall line
 const GAME_E := 0.4                         # game room east wall line
@@ -55,13 +61,14 @@ const LIV_WALK := Rect2(2.88, -1.75, 6.47, 4.85)
 const BAL_WALK_N := Rect2(-3.7, -4.08, 15.25, 1.75)
 const BAL_WALK_E := Rect2(9.95, -4.08, 1.6, 7.15)
 const DOORWAYS := [Rect2(0.55, 3.0, 0.7, 0.9), Rect2(3.75, 2.9, 1.7, 1.0), Rect2(5.15, -2.55, 1.5, 0.95),
-	Rect2(GAME_DOOR - 0.35, 4.95, 0.7, 0.85)]
+	Rect2(GAME_DOOR - 0.35, 4.95, 0.7, 0.85), Rect2(STUDY_DOOR - 0.35, 4.95, 0.7, 0.85)]
 
 var main: Node3D
 var hallway: Node3D
 var living: Node3D
 var balcony: Node3D
 var game: Node3D
+var study: Node3D
 var exterior: Node3D
 var doors_root: Node3D
 var rooms := {}                   # id -> root node ("bedroom" is the main room)
@@ -76,6 +83,7 @@ const SEES := {
 	"bedroom": ["balcony"],
 	"hallway": ["living"],
 	"game": [],
+	"study": [],
 	"living": ["hallway", "balcony"],
 	"balcony": ["bedroom", "living"],
 }
@@ -90,18 +98,21 @@ func build(m: Node3D) -> void:
 	living = _root("LivingRoom")
 	balcony = _root("Balcony")
 	game = _root("GameRoom")
+	study = _root("Study")
 	exterior = _root("Exterior")
 	doors_root = _root("Doors")             # seen from both sides, so always drawn
-	for id in ["hallway", "living", "balcony", "game"]:
+	for id in ["hallway", "living", "balcony", "game", "study"]:
 		_blockers[id] = []
 	rooms["hallway"] = hallway
 	rooms["living"] = living
 	rooms["balcony"] = balcony
 	rooms["game"] = game
+	rooms["study"] = study
 	_build_hallway()
 	_build_living()
 	_build_balcony()
 	_build_game()
+	_build_study()
 	_build_exterior()
 
 
@@ -233,7 +244,7 @@ func _build_hallway() -> void:
 	_box(Vector3((x0 + x1) / 2.0, H + 0.05, zc), Vector3(x1 - x0, 0.1, zl + 0.1), ceil_m, p)
 	# its own north wall (the bedroom and living room have theirs: this is the hallway's face of it)
 	_wall_x(x0, x1, FRONT_Z + 0.05, FRONT_Z + 0.1, [[BED_DOOR.x, BED_DOOR.y, 0.0, DOOR_TOP], [ARCH.x, ARCH.y, 0.0, ARCH_TOP]], wall, p)
-	_wall_x(x0, x1, HALL_S, HALL_S + 0.1, [[GAME_DOOR - 0.47, GAME_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # south, the game room door
+	_wall_x(x0, x1, HALL_S, HALL_S + 0.1, [[GAME_DOOR - 0.47, GAME_DOOR + 0.47, 0.0, DOOR_TOP], [STUDY_DOOR - 0.47, STUDY_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # south: game room, study
 	_box(Vector3(WEST_X, H / 2.0, zc), Vector3(0.1, H, zl + 0.1), wall, p)                               # west (front door)
 	_box(Vector3(EAST_X, H / 2.0, zc), Vector3(0.1, H, zl + 0.1), wall, p)                               # east end
 	# baseboards
@@ -800,6 +811,105 @@ func _build_game() -> void:
 			n.position += GAME_KIT_SHIFT
 
 
+# ---------------------------------------------------------------- the study: the desk and PC, the bookshelf, a reading chair
+
+func _build_study() -> void:
+	var p := study
+	var wall := _mat(Color(0.24, 0.13, 0.30))
+	var floor_m := _mat(Color(0.28, 0.14, 0.14), 0.7)
+	var ceil_m := _mat(Color(0.20, 0.10, 0.24))
+	var trim := _mat(Color(0.20, 0.07, 0.22), 0.7)
+	var wood := _mat(Color(0.42, 0.17, 0.28), 0.65)
+	var panel := _mat(Color(0.34, 0.12, 0.24), 0.65)
+	var brass := _mat(Color(0.95, 0.75, 0.50), 0.3, 0.6)
+	var x0 := GAME_E + 0.05
+	var x1 := STUDY_E - 0.05
+	var z0 := HALL_S + 0.1
+	var z1 := GAME_S - 0.05
+	var cx := (x0 + x1) / 2.0
+	var cz := (z0 + z1) / 2.0
+	_box(Vector3(cx, -0.05, cz), Vector3(x1 - x0, 0.1, z1 - z0), floor_m, p)
+	_box(Vector3(cx, H + 0.05, cz), Vector3(x1 - x0, 0.1, z1 - z0), ceil_m, p)
+	_box(Vector3(x0 + 0.01, H / 2.0, cz), Vector3(0.02, H, z1 - z0), wall, p)                          # west (the game room behind)
+	_box(Vector3(x1 - 0.01, H / 2.0, cz), Vector3(0.02, H, z1 - z0), wall, p)                          # east
+	_box(Vector3(cx, H / 2.0, z1 + 0.04), Vector3(x1 - x0, H, 0.1), wall, p)                           # south
+	_wall_x(x0, x1, z0, z0 + 0.04, [[STUDY_DOOR - 0.47, STUDY_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # north
+	# wood floorboards (long strips, a slightly different shade each)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31
+	var bz := z0
+	while bz < z1 - 0.01:
+		var sh := rng.randf_range(-0.03, 0.03)
+		_box(Vector3(cx, 0.001, bz + 0.09), Vector3(x1 - x0, 0.002, 0.17), _mat(Color(0.30 + sh, 0.15 + sh * 0.5, 0.14), 0.7), p)
+		bz += 0.18
+	# the door
+	_door_frame(hallway, Vector3(STUDY_DOOR, 0.0, HALL_S - 0.02), 0.0, 0.94, DOOR_TOP, trim)
+	_door_frame(p, Vector3(STUDY_DOOR, 0.0, z0 + 0.03), 0.0, 0.94, DOOR_TOP, trim)
+	var sd := _door_slab(doors_root, Vector3(STUDY_DOOR - 0.47, 0.0, HALL_S + 0.05), 0.0, 0.94, wood, panel, brass)
+	_doors.append({"pivot": sd, "at": Vector2(STUDY_DOOR, HALL_S + 0.05), "open": 0.0, "sign": -1.0, "links": ["hallway", "study"]})
+	var plate := _mat(Color(0.12, 0.05, 0.16), 0.5)
+	_box(Vector3(STUDY_DOOR, 1.72, HALL_S - 0.005), Vector3(0.42, 0.13, 0.01), plate, doors_root)
+	_label("STUDY", Vector3(STUDY_DOOR, 1.72, HALL_S - 0.012), PI, 34, Color(1.0, 0.85, 0.6), doors_root)
+	# a rug, a reading armchair with a lamp and a little table, a cork board over the desk
+	var rug := _mat(Color(0.45, 0.20, 0.35), 0.95)
+	_box(Vector3(2.9, 0.006, 7.6), Vector3(2.2, 0.012, 1.6), rug, p)
+	_box(Vector3(2.9, 0.007, 7.6), Vector3(1.9, 0.012, 1.3), _mat(Color(0.55, 0.28, 0.40), 0.95), p)
+	var ac := Node3D.new()
+	ac.position = Vector3(3.85, 0.0, 7.0)
+	ac.rotation.y = PI / 2.0 + 0.5               # turned toward the bookshelf and the room
+	p.add_child(ac)
+	var chair_m := _mat(Color(0.35, 0.50, 0.45), 0.95)
+	var chair_dk := _mat(Color(0.26, 0.40, 0.36), 0.95)
+	_box(Vector3(0, 0.24, 0.02), Vector3(0.8, 0.3, 0.8), chair_dk, ac)
+	_box(Vector3(0, 0.44, -0.04), Vector3(0.56, 0.12, 0.62), chair_m, ac)
+	_box(Vector3(0, 0.75, 0.36), Vector3(0.8, 0.72, 0.14), chair_dk, ac)
+	for sx in [-0.34, 0.34]:
+		_box(Vector3(sx, 0.5, 0.02), Vector3(0.14, 0.32, 0.8), chair_dk, ac)
+	var seat := Node3D.new()
+	seat.position = Vector3(0, 0, -0.05)
+	ac.add_child(seat)
+	main.seat_nodes.append(seat)
+	main.seat_eye.append(1.12)
+	main.seat_swivel.append(false)
+	_blockers["study"].append(Rect2(3.4, 6.55, 0.95, 0.95))
+	_box(Vector3(4.15, 0.28, 7.85), Vector3(0.4, 0.56, 0.4), wood, p)                            # side table
+	_blockers["study"].append(Rect2(3.9, 7.6, 0.5, 0.5))
+	var stack := [Color(0.85, 0.45, 0.55), Color(0.35, 0.55, 0.62), Color(0.95, 0.75, 0.45)]
+	for k in 3:
+		var bk := _box(Vector3(4.15, 0.58 + k * 0.035, 7.85), Vector3(0.24 - k * 0.02, 0.03, 0.17), _mat(stack[k], 0.8), p)
+		bk.rotation.y = k * 0.3
+	var lamp_m := _mat(Color(0.12, 0.08, 0.14), 0.5)
+	main._cyl(Vector3(4.2, 0.02, 6.35), 0.15, 0.04, lamp_m, p)
+	main._cyl(Vector3(4.2, 0.78, 6.35), 0.014, 1.5, lamp_m, p)
+	main._cyl(Vector3(4.2, 1.58, 6.35), 0.19, 0.28, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.3), p)
+	_blockers["study"].append(Rect2(4.0, 6.15, 0.4, 0.4))
+	var cork := _mat(Color(0.72, 0.52, 0.34), 0.95)
+	_box(Vector3(1.45 + 0.0, 1.8, z1 - 0.02), Vector3(1.1, 0.7, 0.03), _mat(Color(0.25, 0.12, 0.10), 0.6), p)
+	_box(Vector3(1.45, 1.8, z1 - 0.04), Vector3(1.0, 0.6, 0.01), cork, p)
+	var notes := [Color(1.0, 0.9, 0.45), Color(0.6, 0.9, 1.0), Color(1.0, 0.6, 0.7), Color(0.75, 1.0, 0.6)]
+	for k in 6:
+		var nt := _box(Vector3(1.05 + (k % 3) * 0.32 + rng.randf_range(-0.05, 0.05), 1.92 - (k / 3) * 0.26, z1 - 0.047),
+			Vector3(0.14, 0.12, 0.004), _mat(notes[k % 4], 0.8), p)
+		nt.rotation.z = rng.randf_range(-0.2, 0.2)
+	# a plant in the corner, and the lights
+	var pot := _mat(Color(0.55, 0.25, 0.20), 0.8)
+	var leaf := _mat(Color(0.18, 0.45, 0.30), 0.8)
+	main._cyl(Vector3(4.25, 0.22, 9.95), 0.2, 0.44, pot, p)
+	main._sphere(Vector3(4.25, 0.75, 9.95), 0.3, leaf, Vector3(1.0, 1.4, 1.0), p, 10)
+	_blockers["study"].append(Rect2(3.95, 9.65, 0.6, 0.6))
+	_light(Vector3(4.05, 1.5, 6.5), main.WARM, 0.9, 4.0, p)
+	if not Plat.low_power():
+		_light(Vector3(2.5, 2.5, 7.8), Color(0.75, 0.45, 0.85), 0.5, 5.0, p)
+	# the desk, the PC, the shelf, carried over
+	main.study_kit.reparent(p, false)
+	main.study_kit.transform = STUDY_KIT_XF
+	for i in main.study_speakers:
+		var spk: Dictionary = main.bank.speakers[i]
+		for k in ["player", "tv", "con"]:
+			var n: Node3D = spk[k]
+			n.position = STUDY_KIT_XF * n.position
+
+
 # ---------------------------------------------------------------- the building around us (floors above and below)
 
 func _build_exterior() -> void:
@@ -843,6 +953,8 @@ func room_at(x: float, z: float) -> String:
 		return "living"
 	if z > HALL_S and z <= GAME_S and x >= WEST_X and x <= GAME_E:
 		return "game"
+	if z > HALL_S and z <= GAME_S and x > GAME_E and x <= STUDY_E:
+		return "study"
 	if (z < NORTH_Z and z >= BAL_N - 0.2 and x >= WEST_X - 0.1 and x <= BAL_E + 0.2) \
 			or (x > EAST_X and x <= BAL_E + 0.2 and z >= BAL_N - 0.2 and z <= FRONT_Z + 0.1):
 		return "balcony"
@@ -853,7 +965,7 @@ func room_at(x: float, z: float) -> String:
 func walkable(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
 	var ok := false
-	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK]:
+	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK]:
 		if (r as Rect2).has_point(pt):
 			ok = true
 			break
@@ -872,7 +984,7 @@ func walkable(x: float, z: float) -> bool:
 # any space at all (for walking out of something you ended up inside)
 func in_bounds(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
-	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK]:
+	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK]:
 		if (r as Rect2).has_point(pt):
 			return true
 	for r in DOORWAYS:

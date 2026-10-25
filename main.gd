@@ -45,10 +45,9 @@ const LOUNGE_BLOCKERS := [
 ]
 var _blockers_extra: Array[Rect2] = []    # bedroom furniture added after BLOCKERS was written
 const ARCADE_BLOCK := Rect2(1.4, 1.55, 1.2, 0.8)     # the arcade cabinet, in its kit's coordinates
+const STUDY_BLOCKS := [Rect2(0.4, -2.1, 2.2, 1.05), Rect2(2.0, -0.65, 0.6, 1.9)]   # the desk and the bookshelf, in the study kit's
 const BLOCKERS := [
 	Rect2(-2.6, -2.1, 1.95, 2.4),   # bed
-	Rect2(0.4, -2.1, 2.2, 1.05),    # desk
-	Rect2(2.0, -0.65, 0.6, 1.9),    # bookshelf
 	Rect2(-4.0, -0.45, 0.75, 1.2),  # dresser (moved toward the TV corner)
 ]
 
@@ -233,6 +232,9 @@ func _ready() -> void:
 	arcade_kit = Node3D.new()
 	arcade_kit.name = "ArcadeKit"
 	add_child(arcade_kit)
+	study_kit = Node3D.new()
+	study_kit.name = "StudyKit"
+	add_child(study_kit)
 	_build_environment()
 	_build_shell()
 	_build_window()
@@ -525,6 +527,7 @@ func _mat(color: Color, rough: float = 0.85, emission: float = 0.0) -> StandardM
 var _into: Node3D = null
 var game_kit: Node3D                     # the TV corner (TV, VCR, console, carts, pads, rug, beanbags, speakers): in the game room
 var arcade_kit: Node3D                   # the arcade cabinet: in the game room
+var study_kit: Node3D                    # the desk with the PC, its speakers and lamp, the bookshelf: in the study
 func _host() -> Node3D:
 	return _into if _into != null else room
 
@@ -769,6 +772,7 @@ func _lamp(pos: Vector3, s: float) -> void:
 # ---------------------------------------------------------------- desk
 
 func _build_desk() -> void:
+	_into = study_kit
 	var wood := _mat(Color(0.55, 0.25, 0.22), 0.6)
 	var dark := _mat(Color(0.12, 0.05, 0.14))
 	_box(Vector3(1.45, 0.76, -1.55), Vector3(1.9, 0.05, 0.8), wood)
@@ -829,11 +833,12 @@ func _build_desk() -> void:
 	sit_label.outline_modulate = Color(0.2, 0.05, 0.3)
 	sit_label.position = Vector3(1.45, 1.3, -0.8)
 	sit_label.visible = false
-	_host().add_child(sit_label)
+	add_child(sit_label)                      # (shown over whichever seat is near, in any room)
 	seat_nodes.append(chair)
 	seat_eye.append(SEAT_EYE_HEIGHT)
 	seat_swivel.append(true)
 
+	_into = null
 	# the poster on the right wall: the 90s anime one, or any picture you pick (poster.gd)
 	poster = load("res://poster.gd").new()
 	poster.name = "Poster"
@@ -941,12 +946,17 @@ func _set_monitor(on: bool) -> void:
 		_end_focus(true)
 
 
+var study_speakers: Array[int] = []        # the desk speakers (went with the study kit)
 var kit_speakers: Array[int] = []          # speakers that went with the game kit (their sound has to follow)
 
 func _build_speakers() -> void:
 	# two desk speakers either side of the monitor
+	_into = study_kit
 	_make_speaker("Desk speaker L", Vector3(0.96, 0.915, -1.76), 0.15, 0.0, Vector3(0.14, 0.26, 0.16), 0.046)
+	study_speakers.append(bank.speakers.size() - 1)
 	_make_speaker("Desk speaker R", Vector3(1.94, 0.915, -1.76), -0.15, 0.0, Vector3(0.14, 0.26, 0.16), 0.046)
+	study_speakers.append(bank.speakers.size() - 1)
+	_into = null
 	# wall speakers: one up on the left wall over the recliner, tipped down toward it, and one either side of the
 	# TV (on the left wall and the front wall), both turned a little toward the room
 	var ws := Vector3(0.18, 0.32, 0.16)
@@ -962,6 +972,7 @@ func _build_speakers() -> void:
 # ---------------------------------------------------------------- bookshelf
 
 func _build_shelf() -> void:
+	_into = study_kit
 	var wood := _mat(Color(0.30, 0.12, 0.20), 0.7)
 	var z0 := -0.5
 	var z1 := 1.1
@@ -988,6 +999,7 @@ func _build_shelf() -> void:
 	_shelf_book_mats = book_mats
 	_fill_shelf()
 	_plant(Vector3(2.34, 2.215, 0.0), 0.6)
+	_into = null
 
 
 # ---------------------------------------------------------------- comics on the shelf
@@ -1055,6 +1067,13 @@ static func _file_size(p: String) -> int:
 
 
 func _fill_shelf() -> void:
+	var was := _into
+	_into = study_kit                          # (it's rebuilt when the folder changes, long after building)
+	_fill_shelf_now()
+	_into = was
+
+
+func _fill_shelf_now() -> void:
 	for n in _shelf_nodes:
 		n.queue_free()
 	_shelf_nodes.clear()
@@ -1294,7 +1313,7 @@ func _open_book(path: String) -> void:
 		bk.free()
 		updater.show_toast(err, 6.0)
 		return
-	_host().add_child(bk)
+	add_child(bk)                               # (books get carried from room to room)
 	_add_book(bk)
 	_hold_book(bk)
 	if net_books != null:
@@ -1574,6 +1593,21 @@ func _build_bedroom_corner() -> void:
 	for i in 3:
 		var c := _cyl(spots[i], 0.3, 0.14, _mat(cols[i], 0.95))
 		c.rotation = Vector3(0.0 if i < 2 else 0.12, 0.0, 0.0 if i < 2 else -0.1)
+	# a window seat where the desk used to be: cushions to sit on and watch the city
+	var bench_m := _mat(Color(0.34, 0.14, 0.22), 0.6)
+	_box(Vector3(1.45, 0.22, -1.72), Vector3(1.9, 0.44, 0.5), bench_m)
+	_box(Vector3(1.45, 0.47, -1.72), Vector3(1.84, 0.08, 0.46), _mat(Color(0.92, 0.62, 0.72), 0.95))
+	for k in 3:
+		var pil := _box(Vector3(0.75 + k * 0.7, 0.63, -1.88), Vector3(0.38, 0.3, 0.12), _mat([Color(1.0, 0.78, 0.5), Color(0.6, 0.45, 0.9), Color(0.45, 0.75, 0.85)][k], 0.95))
+		pil.rotation = Vector3(-0.3, 0.1 * (k - 1), 0.08 * (k - 1))
+	for k in 2:
+		var ws := Node3D.new()
+		ws.position = Vector3(1.0 + k * 0.9, 0.0, -1.62)
+		_host().add_child(ws)
+		seat_nodes.append(ws)
+		seat_eye.append(1.08)
+		seat_swivel.append(false)
+	_blockers_extra.append(Rect2(0.45, -2.1, 2.0, 0.66))
 	_blockers_extra.append(Rect2(-3.95, FRONT_Z - 0.75, 0.8, 0.8))
 	_blockers_extra.append(Rect2(-3.85, 1.55, 0.45, 0.4))
 
@@ -1613,9 +1647,13 @@ func _plant(pos: Vector3, s: float) -> void:
 func _build_lights() -> void:
 	window_light = _light(Vector3((WIN_X0 + WIN_X1) / 2.0, 1.7, -1.6), PINK, 2.4, 6.5)      # window glow
 	var l_night := _light(Vector3(-0.5, 0.95, -1.7), WARM, 1.0, 2.5)                     # nightstand lamp
+	_into = study_kit
 	var l_desk := _light(Vector3(2.2, 1.15, -1.7), WARM, 1.0, 2.5)                      # desk lamp
+	_into = null
 	var l_lantern := _light(Vector3(1.6, 2.25, 0.3), Color(1.0, 0.6, 0.35), 0.9, 3.5)     # paper lantern
+	_into = study_kit
 	monitor_light = _light(Vector3(1.45, 1.1, -1.3), Color(0.65, 0.40, 1.0), 0.9, 2.2)    # monitor
+	_into = null
 	fill_light = _light(Vector3(-0.8, 2.4, 0.9), Color(0.6, 0.25, 0.7), 0.7, 7.0)      # soft fill
 	var glow := _light(Vector3(-2.6, 0.6, 0.9 + LOUNGE_DZ), Color(0.45, 0.6, 1.0), 1.0, 3.2)     # CRT glow
 	glow.reparent(lounge, false)
@@ -2005,7 +2043,7 @@ func _process(delta: float) -> void:
 		fwd.y = 0.0
 		if fwd.length() > 0.2:
 			var node := seat_nodes[cur_seat]
-			node.rotation.y = lerp_angle(node.rotation.y, atan2(-fwd.x, -fwd.z), clampf(4.0 * delta, 0.0, 1.0))
+			node.global_rotation.y = lerp_angle(node.global_rotation.y, atan2(-fwd.x, -fwd.z), clampf(4.0 * delta, 0.0, 1.0))
 	if konami_t > 0.0:
 		konami_t -= delta
 		if konami_t <= 0.0:
@@ -2275,6 +2313,11 @@ func _walkable(x: float, z: float) -> bool:
 		var ak := arcade_kit.to_local(Vector3(x, 0.0, z))
 		if ARCADE_BLOCK.has_point(Vector2(ak.x, ak.z)):
 			return false
+	if study_kit != null:
+		var sk := study_kit.to_local(Vector3(x, 0.0, z))
+		for r in STUDY_BLOCKS:
+			if (r as Rect2).has_point(Vector2(sk.x, sk.z)):
+				return false
 	if lounge != null:
 		var l := lounge.to_local(Vector3(x, 0.0, z))
 		for r in LOUNGE_BLOCKERS:
@@ -4925,8 +4968,12 @@ func _build_power() -> void:
 	var white := Color(0.92, 0.88, 0.92)
 	var yellow := Color(0.95, 0.80, 0.20)
 	# wall outlets (back wall faces +z, left wall faces +x)
+	_into = study_kit
 	_outlet(Vector3(1.1, 0.3, -2.0), 0.0)             # desk power strip
 	_outlet(Vector3(2.2, 0.3, -2.0), 0.0)             # desk lamp
+	_plug(Vector3(1.1, 0.3, -2.0), 0.0)
+	_plug(Vector3(2.2, 0.3, -2.0), 0.0)
+	_into = null
 	_outlet(Vector3(-0.15, 0.3, -2.0), 0.0)           # nightstand lamp
 	_into = game_kit
 	_outlet(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)       # TV + console strip
@@ -4934,13 +4981,12 @@ func _build_power() -> void:
 	_into = null
 	_outlet(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)        # fairy lights
 	_outlet(Vector3(-3.9, 0.3, -0.62), PI / 2.0)                # the recliner's wall speaker
-	_plug(Vector3(1.1, 0.3, -2.0), 0.0)
-	_plug(Vector3(2.2, 0.3, -2.0), 0.0)
 	_plug(Vector3(-0.15, 0.3, -2.0), 0.0)
 	_plug(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)
 	_plug(Vector3(-3.9, 0.3, -0.62), PI / 2.0)
 
 	# desk: strip on the floor under the desk, monitor + keyboard, lamp
+	_into = study_kit
 	_power_strip(Vector3(1.5, 0.017, -1.88), PI / 2.0, 0.48)
 	_cord([Vector3(1.1, 0.3, -1.93), Vector3(1.1, 0.2, -1.92), Vector3(1.14, 0.05, -1.9), Vector3(1.28, 0.034, -1.88)], 0.007, white)
 	_cord([Vector3(1.45, 0.95, -1.745), Vector3(1.45, 0.84, -1.8), Vector3(1.47, 0.79, -1.955), Vector3(1.47, 0.5, -1.975), Vector3(1.5, 0.1, -1.93), Vector3(1.5, 0.036, -1.88)], 0.007, black)
@@ -4950,6 +4996,7 @@ func _build_power() -> void:
 	# desk speakers to the strip
 	_cord([Vector3(0.96, 0.84, -1.84), Vector3(0.97, 0.80, -1.93), Vector3(1.0, 0.5, -1.985), Vector3(1.2, 0.1, -1.95), Vector3(1.34, 0.036, -1.88)], 0.005, black)
 	_cord([Vector3(1.94, 0.84, -1.84), Vector3(1.93, 0.80, -1.935), Vector3(1.9, 0.5, -1.99), Vector3(1.7, 0.1, -1.95), Vector3(1.66, 0.036, -1.88)], 0.005, black)
+	_into = null
 	# the recliner's wall speaker: down the wall behind the chair to its outlet
 	var rz := RECLINER_POS.z
 	_cord([Vector3(-3.86, 1.64, rz + 0.05), Vector3(-3.887, 1.5, rz + 0.12), Vector3(-3.887, 0.9, rz + 0.3), Vector3(-3.887, 0.45, -0.62), Vector3(-3.84, 0.3, -0.62)], 0.005, black)

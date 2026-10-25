@@ -64,7 +64,7 @@ func _build_figure() -> void:
 	var fig := Node3D.new()
 	fig.position = FIG_POS
 	fig.rotation.y = 0.5                          # turned toward the chair
-	main.room.add_child(fig)
+	main.study_kit.add_child(fig)
 	var grey := StandardMaterial3D.new()
 	grey.albedo_color = Color(0.60, 0.63, 0.65)
 	grey.roughness = 0.35
@@ -151,7 +151,7 @@ func _build_figure() -> void:
 		_fig_head.add_child(e)
 	var hit := Node3D.new()
 	hit.position = FIG_POS + Vector3(0, 0.073, 0)
-	main.room.add_child(hit)
+	main.study_kit.add_child(hit)
 	main.interactables.append({"node": hit, "half": Vector3(0.045, 0.075, 0.045), "guest_ok": true,
 		"label": func() -> String: return "A LITTLE ALIEN" if not active else "A LITTLE ALIEN  (it's waving)", "cb": tap_figure})
 

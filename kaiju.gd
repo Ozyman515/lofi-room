@@ -230,7 +230,7 @@ func _build_toy() -> void:
 	_toy.scale = Vector3.ONE * TOY_SCALE
 	_toy.position = TOY_POS
 	_toy.rotation.y = PI + 0.3                   # facing out into the room, turned a little toward King Gaboon
-	main.room.add_child(_toy)
+	main.study_kit.add_child(_toy)
 	var stand := MeshInstance3D.new()            # a little round display base
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.055
@@ -242,11 +242,11 @@ func _build_toy() -> void:
 	sm.roughness = 0.4
 	stand.material_override = sm
 	stand.position = TOY_POS + Vector3(0, 0.005, 0)
-	main.room.add_child(stand)
+	main.study_kit.add_child(stand)
 	_toy.position.y += 0.01
 	var hit := Node3D.new()
 	hit.position = TOY_POS + Vector3(0, 0.06, 0)
-	main.room.add_child(hit)
+	main.study_kit.add_child(hit)
 	main.interactables.append({"node": hit, "half": Vector3(0.07, 0.07, 0.07), "guest_ok": true,
 		"label": func() -> String: return "A TOY KAIJU" if not active else "A TOY KAIJU  (uh oh)", "cb": play_with_toy})
 

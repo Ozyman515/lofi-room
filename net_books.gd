@@ -146,7 +146,7 @@ func _apply(d: Dictionary, from: int) -> void:
 				bk.transform = d["xf"]
 			else:
 				bk.position = Vector3(0, -5, 0)       # placed by the holder's avatar next frame
-			main.room.add_child(bk)
+			main.add_child(bk)
 			main._add_book(bk)
 			_known[id] = bk
 		"book_take":
