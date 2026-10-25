@@ -213,6 +213,7 @@ func _build_player() -> void:
 	if AudioServer.get_bus_index(bus_name) < 0:
 		AudioServer.add_bus()
 		AudioServer.set_bus_name(AudioServer.bus_count - 1, bus_name)
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")      # (a new bus has nowhere to go otherwise)
 	_holder = SubViewport.new()
 	_holder.size = Vector2i(2, 2)
 	_holder.render_target_update_mode = SubViewport.UPDATE_DISABLED

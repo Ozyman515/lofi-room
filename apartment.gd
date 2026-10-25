@@ -1136,11 +1136,11 @@ func _build_theater() -> void:
 	_box(Vector3(cx, H - 0.15, z1 - 0.1), Vector3(TH_SCREEN.x + 1.0, 0.3, 0.06), velvet_dk, p)                    # valance
 	# two big speakers either side of the screen (they play the TV's sound)
 	for side in [-1.0, 1.0]:
-		main._make_speaker("Theater speaker " + ("L" if side < 0 else "R"), Vector3(cx + side * (TH_SCREEN.x / 2.0 + 0.6), TH_LOW + 0.55, z1 - 0.35),
+		main._make_speaker("Theater speaker " + ("L" if side < 0 else "R"), Vector3(cx + side * (TH_SCREEN.x / 2.0 + 0.15), TH_LOW + 0.55, z1 - 0.35),
 			PI, 0.0, Vector3(0.4, 1.1, 0.4), 0.13, p)
 		main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
 		th_tv.speakers.append(main.bank.speakers.size() - 1)
-		_blockers["theater"].append(Rect2(cx + side * (TH_SCREEN.x / 2.0 + 0.6) - 0.3, z1 - 0.65, 0.6, 0.6))
+		_blockers["theater"].append(Rect2(cx + side * (TH_SCREEN.x / 2.0 + 0.15) - 0.3, z1 - 0.65, 0.6, 0.6))
 	th_tv._route()
 	if main.pc != null:
 		main.pc.refresh_speakers()

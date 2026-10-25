@@ -113,7 +113,16 @@ func _mirror() -> void:
 	mirror_mat.set_shader_parameter("tv_power", (float(pw) if pw != null else 1.0) if vcr.tv_on else 0.0)
 
 
-# its speakers play its own tape, or the game room TV's sound while it's showing that
+# its speakers play its own tape (switching to TV for as long as it plays, whatever they were set to), or the
+# game room TV's sound while it's showing that
+var _saved_modes := {}
+
 func _route() -> void:
 	for i in speakers:
 		main.bank.set_tv_bus(i, bus if showing_own else "TV")
+		if showing_own and main.bank.get_mode(i) != "tv":
+			_saved_modes[i] = main.bank.get_mode(i)
+			main.bank.set_mode(i, "tv")
+		elif not showing_own and _saved_modes.has(i):
+			main.bank.set_mode(i, str(_saved_modes[i]))
+			_saved_modes.erase(i)
