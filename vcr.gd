@@ -1285,7 +1285,32 @@ func _vlc_tick(delta: float) -> void:
 			_vlc_t += delta
 
 
+var _snd_t := 0.0
+
+
+# a line in the log every few seconds while a tape plays: is the sound reaching its bus, and the speakers?
+func _snd_diag(delta: float) -> void:
+	if state != State.PLAYING:
+		_snd_t = 0.0
+		return
+	_snd_t -= delta
+	if _snd_t > 0.0:
+		return
+	_snd_t = 4.0
+	var bi := AudioServer.get_bus_index(bus_name)
+	var peak := AudioServer.get_bus_peak_volume_left_db(bi, 0) if bi >= 0 else -999.0
+	var vplay = _vlc.is_playing() if _use_vlc and _vlc != null else _player.is_playing()
+	var vbus = _vlc.get("bus") if _use_vlc and _vlc != null else _player.bus
+	var spk := ""
+	var m = get_tree().root.get_node_or_null("Main")
+	if m != null and m.get("bank") != null:
+		spk = m.bank.debug_tv(bus_name)
+	print("[VCR %s] playing=%s player_bus=%s tv_on=%s vol=%d bus_peak=%.1fdB bus_vol=%.1fdB send=%s %s" % [bus_name, vplay, vbus, tv_on,
+		tv_volume, peak, AudioServer.get_bus_volume_db(bi) if bi >= 0 else -999.0, AudioServer.get_bus_send(bi) if bi >= 0 else "-", spk])
+
+
 func _process(delta: float) -> void:
+	_snd_diag(delta)
 	# CRT power animation
 	var target := 1.0 if tv_on else 0.0
 	if not is_equal_approx(_power_t, target):

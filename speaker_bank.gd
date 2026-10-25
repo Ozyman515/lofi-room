@@ -379,6 +379,20 @@ func _process(delta: float) -> void:
 			AudioServer.set_bus_volume_db(bi, linear_to_db(g))
 
 
+# for the log: the speakers playing this TV bus, and whether sound reaches them
+func debug_tv(b: String) -> String:
+	var out := "listener=%s" % listener_room
+	for s in speakers:
+		if s["tv_bus"] == b:
+			var p: AudioStreamPlayer3D = s["tv"]
+			var pb := p.get_stream_playback() as AudioStreamGeneratorPlayback
+			out += " | %s mode=%s room=%s playing=%s vol=%.1f gain=%.2f buffered=%d" % [s["name"], s["mode"], s["room"], p.playing,
+				p.volume_db, float(s["gain"]), (int((p.stream as AudioStreamGenerator).buffer_length * (p.stream as AudioStreamGenerator).mix_rate) - pb.get_frames_available()) if pb != null else -1]
+	if _tv_feeds.has(b):
+		out += " | feed targets=%d" % (_tv_feeds[b] as BusFeed).targets.size()
+	return out
+
+
 # ---- the record player: its own music, out of the speakers set to it (its clock runs on the muted bus too)
 
 func _ensure_lp() -> void:
