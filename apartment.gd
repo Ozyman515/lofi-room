@@ -1009,7 +1009,7 @@ func _build_noir_office() -> void:
 		main.noir.office.transform = Transform3D.IDENTITY
 		_blockers["noir"].append(Rect2(1.55, 12.15, 1.7, 0.95))     # desk
 		_blockers["noir"].append(Rect2(0.5, 10.5, 0.65, 0.75))      # filing cabinet
-		_blockers["noir"].append(Rect2(2.2, 11.4, 0.7, 0.7))        # the visitor's chair
+		_blockers["noir"].append(Rect2(2.1, 11.1, 0.9, 0.95))       # the visitor's chair
 		_blockers["noir"].append(Rect2(3.95, 13.0, 0.5, 0.6))       # coat rack
 	# the bookcase door, on the study side
 	var wood := _mat(Color(0.30, 0.12, 0.20), 0.7)

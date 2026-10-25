@@ -278,15 +278,22 @@ func _build_office() -> void:
 	main.seat_nodes.append(dch)
 	main.seat_eye.append(main.SEAT_EYE_HEIGHT)
 	main.seat_swivel.append(true)
+	# the client's chair: a worn leather club chair, its arms where his arms rest
+	var leather := _m(Color(0.20, 0.10, 0.07), 0.45)
+	var leather_dk := _m(Color(0.14, 0.07, 0.05), 0.5)
 	var cch := Node3D.new()
-	cch.position = Vector3(2.55, 0.0, 11.75)
+	cch.position = Vector3(2.55, 0.0, 11.6)
 	o.add_child(cch)
-	main._box(Vector3(0, 0.44, 0), Vector3(0.5, 0.06, 0.48), wood, cch)
-	main._box(Vector3(0, 0.78, -0.22), Vector3(0.5, 0.6, 0.05), wood, cch)
-	for lx in [-0.22, 0.22]:
-		for lz in [-0.2, 0.2]:
-			main._box(Vector3(lx, 0.21, lz), Vector3(0.04, 0.42, 0.04), wood_dk, cch)
-	visitor.position = Vector3(2.55, 0.0, 11.7)
+	main._box(Vector3(0, 0.22, 0.0), Vector3(0.74, 0.32, 0.66), leather_dk, cch)                # base
+	main._box(Vector3(0, 0.43, 0.02), Vector3(0.5, 0.12, 0.6), leather, cch)                    # seat cushion (top at 0.49)
+	main._box(Vector3(0, 0.72, -0.4), Vector3(0.74, 0.86, 0.14), leather_dk, cch)              # back
+	main._box(Vector3(0, 0.66, -0.31), Vector3(0.5, 0.5, 0.05), leather, cch)                   # back cushion
+	for sx in [-1.0, 1.0]:
+		main._box(Vector3(sx * 0.33, 0.5, -0.04), Vector3(0.14, 0.4, 0.74), leather_dk, cch)     # arms (tops at 0.70)
+		main._box(Vector3(sx * 0.33, 0.7, -0.04), Vector3(0.16, 0.03, 0.76), leather, cch)
+		for lz in [-0.28, 0.28]:
+			main._box(Vector3(sx * 0.3, 0.03, lz), Vector3(0.05, 0.06, 0.05), wood_dk, cch)
+	visitor.position = cch.position
 	visitor.rotation.y = 0.0                              # facing the desk (+z)
 	# the props on the desk (laid out for the old desk, moved over)
 	_desk = Node3D.new()
@@ -336,6 +343,20 @@ func _build_office() -> void:
 		var sy := wy1 - 0.04 - k * 0.075
 		var sl: MeshInstance3D = main._box(Vector3((wx0 + wx1) / 2.0, sy, wz - 0.08), Vector3(wx1 - wx0 - 0.04, 0.05, 0.01), slat, o)
 		sl.rotation.x = 0.9                  # tilted open: the light comes through in stripes
+	# heavy curtains either side of the window, on a rod, with a pelmet over the top
+	var drape := _m(Color(0.30, 0.10, 0.10), 0.95)
+	var drape_dk := _m(Color(0.20, 0.06, 0.06), 0.95)
+	var rod_y := wy1 + 0.22
+	main._cyl(Vector3((wx0 + wx1) / 2.0, rod_y, wz - 0.14), 0.015, wx1 - wx0 + 1.1, _m(Color(0.6, 0.48, 0.3), 0.3), o).rotation.z = PI / 2.0
+	main._box(Vector3((wx0 + wx1) / 2.0, rod_y + 0.06, wz - 0.16), Vector3(wx1 - wx0 + 1.0, 0.24, 0.05), drape_dk, o)   # pelmet
+	for side in [-1.0, 1.0]:
+		var edge: float = wx0 if side < 0.0 else wx1
+		for k in 6:                                   # folds: alternating light and dark strips, swaying in and out
+			var fx: float = edge + side * (k * 0.065 - 0.06)
+			var fz: float = wz - 0.12 - (0.025 if k % 2 == 0 else 0.0)
+			var f: MeshInstance3D = main._box(Vector3(fx, (0.1 + rod_y) / 2.0, fz), Vector3(0.07, rod_y - 0.1, 0.03), drape if k % 2 == 0 else drape_dk, o)
+			f.rotation.y = side * (0.35 if k % 2 == 0 else -0.35)
+		main._box(Vector3(edge + side * 0.1, 1.05, wz - 0.17), Vector3(0.36, 0.05, 0.06), _m(Color(0.6, 0.48, 0.3), 0.4), o)   # tie-back
 	# across the street: a dark building, a few lit windows, and the neon sign
 	var street := Node3D.new()
 	street.position = Vector3(2.4, 0.0, Z1 + 5.0)
