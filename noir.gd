@@ -59,6 +59,14 @@ var _rng := RandomNumberGenerator.new()
 var _neon_m: StandardMaterial3D
 var _neon_l: OmniLight3D
 var _neon_t := 0.0
+var _neon_sign: Label3D
+var _neon_halo: Label3D
+var _neon_sign_light: OmniLight3D
+var _folds: Array = []                  # [fold, side, window edge, index]
+var _tiebacks: Array[MeshInstance3D] = []
+var _cur_cx := 0.0
+var _cur_closed := false
+var _cur := 0.0                         # 0 open .. 1 drawn
 var _fan: Node3D
 var _haze: Array[MeshInstance3D] = []
 var _rain_m: ShaderMaterial
@@ -221,14 +229,42 @@ func _office_tick(delta: float) -> void:
 	elif _neon_t < 0.35:
 		on = int(_neon_t * 20.0) % 2 == 0
 	_neon_m.emission_energy_multiplier = 3.2 if on else 0.4
-	_neon_l.light_energy = 0.9 if on else 0.1
+	var lit := 1.0 if on else 0.15
+	_neon_sign.modulate = Color(1.0, 0.75, 0.75) * lit + Color(0.12, 0.03, 0.03) * (1.0 - lit)
+	_neon_sign.outline_modulate.a = lit
+	_neon_halo.outline_modulate.a = 0.35 * lit
+	_neon_sign_light.light_energy = 2.0 * lit
+	# the curtains, drawn or open
+	var was_cur := _cur
+	_cur = move_toward(_cur, 1.0 if _cur_closed else 0.0, delta / 1.2)
+	if _cur != was_cur:
+		_set_curtains(_cur)
+	_neon_l.light_energy = (0.9 if on else 0.1) * (1.0 - 0.85 * _cur)
 	if _fan != null:
 		_fan.rotation.y += delta * 1.1
 	for i in _haze.size():
 		var h := _haze[i]
 		h.position.x = 2.5 + sin(Time.get_ticks_msec() / 1000.0 * 0.05 + i * 2.0) * 0.6
 	for b in _blinds:
-		(b.material_override as StandardMaterial3D).albedo_color.a = 0.10 + 0.14 * maxf(amount, 0.4)
+		(b.material_override as StandardMaterial3D).albedo_color.a = (0.10 + 0.14 * maxf(amount, 0.4)) * (1.0 - 0.85 * _cur)
+
+
+# t: 0 open (bunched at the sides, tied back) .. 1 drawn across the window
+func _set_curtains(t: float) -> void:
+	var e := t * t * (3.0 - 2.0 * t)
+	for fd in _folds:
+		var f: MeshInstance3D = fd[0]
+		var side: float = fd[1]
+		var edge: float = fd[2]
+		var k: int = fd[3]
+		var open_x := edge + side * (k * 0.065 - 0.06)
+		var shut_x := lerpf(_cur_cx + side * 0.03, edge + side * 0.265, k / 5.0)
+		f.position.x = lerpf(open_x, shut_x, e)
+		var gap := lerpf(0.065, absf(edge + side * 0.265 - _cur_cx) / 5.0, e)
+		f.scale.x = gap * 1.25 / 0.065
+		f.rotation.y = side * (0.35 if k % 2 == 0 else -0.35) * lerpf(1.0, 0.6, e)
+	for tb in _tiebacks:
+		tb.visible = e < 0.15
 
 
 # ---- the office
@@ -339,24 +375,33 @@ func _build_office() -> void:
 	glass.rotation.y = PI                    # faces into the office (-z)
 	o.add_child(glass)
 	var slat := _m(Color(0.75, 0.70, 0.60), 0.6)
-	for k in 12:
+	for k in 6:                              # the blind is half raised: slats over the top, the street below
 		var sy := wy1 - 0.04 - k * 0.075
 		var sl: MeshInstance3D = main._box(Vector3((wx0 + wx1) / 2.0, sy, wz - 0.08), Vector3(wx1 - wx0 - 0.04, 0.05, 0.01), slat, o)
 		sl.rotation.x = 0.9                  # tilted open: the light comes through in stripes
+	main._box(Vector3((wx0 + wx1) / 2.0, wy1 - 0.47, wz - 0.08), Vector3(wx1 - wx0 - 0.02, 0.025, 0.04), slat, o)   # bottom rail
 	# heavy curtains either side of the window, on a rod, with a pelmet over the top
 	var drape := _m(Color(0.30, 0.10, 0.10), 0.95)
 	var drape_dk := _m(Color(0.20, 0.06, 0.06), 0.95)
 	var rod_y := wy1 + 0.22
 	main._cyl(Vector3((wx0 + wx1) / 2.0, rod_y, wz - 0.14), 0.015, wx1 - wx0 + 1.1, _m(Color(0.6, 0.48, 0.3), 0.3), o).rotation.z = PI / 2.0
 	main._box(Vector3((wx0 + wx1) / 2.0, rod_y + 0.06, wz - 0.16), Vector3(wx1 - wx0 + 1.0, 0.24, 0.05), drape_dk, o)   # pelmet
+	_cur_cx = (wx0 + wx1) / 2.0
 	for side in [-1.0, 1.0]:
 		var edge: float = wx0 if side < 0.0 else wx1
 		for k in 6:                                   # folds: alternating light and dark strips, swaying in and out
-			var fx: float = edge + side * (k * 0.065 - 0.06)
 			var fz: float = wz - 0.12 - (0.025 if k % 2 == 0 else 0.0)
-			var f: MeshInstance3D = main._box(Vector3(fx, (0.1 + rod_y) / 2.0, fz), Vector3(0.07, rod_y - 0.1, 0.03), drape if k % 2 == 0 else drape_dk, o)
-			f.rotation.y = side * (0.35 if k % 2 == 0 else -0.35)
-		main._box(Vector3(edge + side * 0.1, 1.05, wz - 0.17), Vector3(0.36, 0.05, 0.06), _m(Color(0.6, 0.48, 0.3), 0.4), o)   # tie-back
+			var f: MeshInstance3D = main._box(Vector3(edge, (0.1 + rod_y) / 2.0, fz), Vector3(0.07, rod_y - 0.1, 0.03), drape if k % 2 == 0 else drape_dk, o)
+			_folds.append([f, side, edge, k])
+		var tb: MeshInstance3D = main._box(Vector3(edge + side * 0.1, 1.05, wz - 0.17), Vector3(0.36, 0.05, 0.06), _m(Color(0.6, 0.48, 0.3), 0.4), o)   # tie-back
+		_tiebacks.append(tb)
+	_set_curtains(0.0)
+	var cur_hit := Node3D.new()
+	cur_hit.position = Vector3(_cur_cx, (wy0 + wy1) / 2.0, wz - 0.13)
+	o.add_child(cur_hit)
+	main.interactables.append({"node": cur_hit, "half": Vector3((wx1 - wx0) / 2.0 + 0.25, (wy1 - wy0) / 2.0 + 0.1, 0.06), "guest_ok": true,
+		"label": func() -> String: return "OPEN THE CURTAINS" if _cur_closed else "CLOSE THE CURTAINS",
+		"cb": func() -> void: _cur_closed = not _cur_closed})
 	# across the street: a dark building, a few lit windows, and the neon sign
 	var street := Node3D.new()
 	street.position = Vector3(2.4, 0.0, Z1 + 5.0)
@@ -365,18 +410,45 @@ func _build_office() -> void:
 	var lit := _m(Color(1.0, 0.85, 0.55), 0.6, 1.4)
 	for wk in [[-2.2, 2.6], [1.4, 3.3], [3.0, 1.2], [-3.4, 0.4]]:
 		main._box(Vector3(wk[0], wk[1], -0.26), Vector3(0.6, 0.8, 0.02), lit, street)
+	# the sign: a big HOTEL in red neon on a dark board with a tube border, right across from the window
 	_neon_m = _m(Color(1.0, 0.25, 0.3), 0.4, 3.2)
-	var sign := Label3D.new()
-	sign.text = "HOTEL"
-	sign.font_size = 160
-	sign.pixel_size = 0.006
-	sign.outline_size = 0
-	sign.modulate = Color(1.0, 0.3, 0.35) * 2.0
-	sign.position = Vector3(-0.6, 1.9, -0.3)
-	sign.rotation.y = PI
-	sign.shaded = false
-	street.add_child(sign)
-	main._box(Vector3(-0.6, 1.9, -0.27), Vector3(3.6, 1.2, 0.04), _neon_m, street).visible = false
+	_neon_m.disable_fog = true
+	var sy0 := 1.7
+	main._box(Vector3(0, sy0, -0.32), Vector3(5.2, 2.0, 0.12), _m(Color(0.04, 0.035, 0.04), 0.7), street)   # the board
+	for b in [[Vector3(0, sy0 + 0.92, -0.4), Vector3(5.0, 0.04, 0.04)], [Vector3(0, sy0 - 0.92, -0.4), Vector3(5.0, 0.04, 0.04)],
+			[Vector3(2.5, sy0, -0.4), Vector3(0.04, 1.88, 0.04)], [Vector3(-2.5, sy0, -0.4), Vector3(0.04, 1.88, 0.04)]]:
+		main._box(b[0], b[1], _neon_m, street)
+	for bx in [-1.6, 1.6]:                         # brackets holding it off the wall
+		main._box(Vector3(bx, sy0 + 1.1, -0.3), Vector3(0.06, 0.25, 0.06), _m(Color(0.1, 0.1, 0.1), 0.5), street)
+	_neon_halo = Label3D.new()                     # a soft glow behind the letters
+	_neon_halo.text = "HOTEL"
+	_neon_halo.font_size = 160
+	_neon_halo.pixel_size = 0.0095
+	_neon_halo.outline_size = 48
+	_neon_halo.modulate = Color(1.0, 0.25, 0.3, 0.0)
+	_neon_halo.outline_modulate = Color(1.0, 0.2, 0.25, 0.35)
+	_neon_halo.position = Vector3(0, sy0, -0.41)
+	_neon_halo.rotation.y = PI
+	_neon_halo.shaded = false
+	_neon_halo.fixed_size = false
+	street.add_child(_neon_halo)
+	_neon_sign = Label3D.new()
+	_neon_sign.text = "HOTEL"
+	_neon_sign.font_size = 160
+	_neon_sign.pixel_size = 0.0095
+	_neon_sign.outline_size = 14
+	_neon_sign.modulate = Color(1.0, 0.75, 0.75)
+	_neon_sign.outline_modulate = Color(1.0, 0.2, 0.28)
+	_neon_sign.position = Vector3(0, sy0, -0.43)
+	_neon_sign.rotation.y = PI
+	_neon_sign.shaded = false
+	street.add_child(_neon_sign)
+	_neon_sign_light = OmniLight3D.new()            # the sign lights its own wall
+	_neon_sign_light.position = Vector3(0, sy0, -1.2)
+	_neon_sign_light.light_color = Color(1.0, 0.3, 0.35)
+	_neon_sign_light.light_energy = 2.0
+	_neon_sign_light.omni_range = 4.0
+	street.add_child(_neon_sign_light)
 	_neon_l = OmniLight3D.new()
 	_neon_l.position = Vector3(2.2, 2.0, Z1 - 0.4)
 	_neon_l.light_color = Color(1.0, 0.3, 0.35)
@@ -459,11 +531,11 @@ func _rain_shader() -> Shader:
 	var sh := Shader.new()
 	sh.code = """
 shader_type spatial;
-render_mode unshaded, cull_disabled;
+render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
 float h(float n) { return fract(sin(n * 91.3) * 47453.5); }
 void fragment() {
 	vec2 uv = UV;
-	vec3 col = vec3(0.05, 0.05, 0.08) + vec3(0.25, 0.06, 0.08) * smoothstep(1.0, 0.2, uv.y);   // the neon's glow from below
+	vec3 col = vec3(0.10, 0.10, 0.14) + vec3(0.25, 0.06, 0.08) * smoothstep(1.0, 0.2, uv.y);   // a cold pane, the neon's glow in it
 	float lines = 0.0;
 	for (int i = 0; i < 3; i++) {
 		float cols = 40.0 + float(i) * 23.0;
@@ -474,6 +546,7 @@ void fragment() {
 		lines += smoothstep(0.08, 0.0, abs(x - 0.5)) * smoothstep(0.0, 0.15, y) * smoothstep(0.6, 0.15, y) * 0.35;
 	}
 	ALBEDO = col + vec3(0.55, 0.58, 0.65) * lines;
+	ALPHA = clamp(0.16 + lines * 0.9, 0.0, 0.85);      // see-through, with the rain running down it
 }
 """
 	return sh
@@ -505,7 +578,7 @@ func _build_desk() -> void:
 	main.interactables.append({"node": glass, "half": Vector3(0.05, 0.11, 0.05), "guest_ok": true,
 		"label": func() -> String: return "A SIP OF WHISKEY" if _sips < 3 else "THE GLASS IS EMPTY", "cb": _sip})
 	var bottle := Props.bottle()
-	bottle.position = Vector3(2.25, DESK_Y, -1.42)
+	bottle.position = Vector3(2.1, DESK_Y, -1.72)        # back corner of the desk, clear of the glass
 	_desk.add_child(bottle)
 	_bottle_liquid = bottle.get_node("Liquid")
 	main.interactables.append({"node": bottle, "half": Vector3(0.05, 0.16, 0.05), "guest_ok": true,
