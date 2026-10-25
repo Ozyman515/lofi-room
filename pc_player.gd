@@ -809,7 +809,7 @@ func _build_debug_window() -> void:
 	v.add_child(fb)
 	var fe := HBoxContainer.new()                  # ...or pick how it ends
 	fe.add_theme_constant_override("separation", 6)
-	for spec in [["T-Rex wins", "k"], ["King Gaboon wins", "g"], ["Draw (black kaiju + UFO fleet)", "draw"]]:
+	for spec in [["Banira wins", "k"], ["King Gaboon wins", "g"], ["Draw: Jogari + the UFO fleet", "draw"]]:
 		var eb := Button.new()
 		eb.text = spec[0]
 		eb.custom_minimum_size = Vector2(0, 38)
