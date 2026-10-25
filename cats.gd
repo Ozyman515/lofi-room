@@ -189,9 +189,10 @@ func layout() -> void:
 
 
 func _put(cat: Node3D, pos: Vector3, yaw: float) -> void:
-	if cat.get_parent() != main.room:
+	var home: Node3D = main.apartment.room_node_at(pos.x, pos.z) if main.apartment != null else main.room
+	if cat.get_parent() != home:
 		cat.get_parent().remove_child(cat)
-		main.room.add_child(cat)
+		home.add_child(cat)
 		cat.scale = Vector3.ONE
 	cat.global_position = pos
 	cat.global_rotation = Vector3(0.0, yaw, 0.0)

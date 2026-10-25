@@ -43,12 +43,13 @@ const LOUNGE_BLOCKERS := [
 	Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7),     # CRT TV
 	Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55),  # game console (on the door side of the TV)
 ]
+var _blockers_extra: Array[Rect2] = []    # bedroom furniture added after BLOCKERS was written
+const ARCADE_BLOCK := Rect2(1.4, 1.55, 1.2, 0.8)     # the arcade cabinet, in its kit's coordinates
 const BLOCKERS := [
 	Rect2(-2.6, -2.1, 1.95, 2.4),   # bed
 	Rect2(0.4, -2.1, 2.2, 1.05),    # desk
 	Rect2(2.0, -0.65, 0.6, 1.9),    # bookshelf
 	Rect2(-4.0, -0.45, 0.75, 1.2),  # dresser (moved toward the TV corner)
-	Rect2(1.4, 1.55, 1.2, 0.8),   # arcade cabinet (right wall, by the bookshelf)
 ]
 
 const WARM := Color(1.0, 0.62, 0.30)
@@ -226,13 +227,19 @@ func _ready() -> void:
 	outside = Node3D.new()                    # the city and whatever goes on in it: drawn from every room
 	outside.name = "Outside"
 	add_child(outside)
+	game_kit = Node3D.new()
+	game_kit.name = "GameKit"
+	add_child(game_kit)
+	arcade_kit = Node3D.new()
+	arcade_kit.name = "ArcadeKit"
+	add_child(arcade_kit)
 	_build_environment()
 	_build_shell()
 	_build_window()
 	_build_door()
 	bank = SpeakerBank.new()
 	bank.name = "Speakers"
-	room.add_child(bank)
+	_host().add_child(bank)
 	_build_bed()
 	_build_desk()
 	_build_shelf()
@@ -514,12 +521,20 @@ func _mat(color: Color, rough: float = 0.85, emission: float = 0.0) -> StandardM
 	return m
 
 
+# where new things go while building: the bedroom, or one of the kits that get carried off to another room
+var _into: Node3D = null
+var game_kit: Node3D                     # the TV corner (TV, VCR, console, carts, pads, rug, beanbags, speakers): in the game room
+var arcade_kit: Node3D                   # the arcade cabinet: in the game room
+func _host() -> Node3D:
+	return _into if _into != null else room
+
+
 func _place(mesh: Mesh, pos: Vector3, mat: Material, parent: Node) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
 	mi.position = pos
-	var p: Node = parent if parent != null else room
+	var p: Node = parent if parent != null else _host()
 	p.add_child(mi)
 	return mi
 
@@ -558,7 +573,7 @@ func _light(pos: Vector3, color: Color, energy: float, reach: float) -> OmniLigh
 	l.light_energy = energy
 	l.omni_range = reach
 	l.shadow_enabled = false
-	room.add_child(l)
+	_host().add_child(l)
 	return l
 
 
@@ -703,7 +718,7 @@ func _build_nightstand() -> void:
 	var knob_m := _mat(Color(1.0, 0.8, 0.55), 0.3, 0.8)
 	drawer_node = Node3D.new()
 	drawer_node.position = Vector3(-0.5, 0.32, -1.495)
-	room.add_child(drawer_node)
+	_host().add_child(drawer_node)
 	var face := _box(Vector3.ZERO, Vector3(0.34, 0.16, 0.01), face_m, drawer_node)
 	_sphere(Vector3(0, 0, 0.01), 0.016, knob_m, Vector3.ONE, drawer_node, 12)
 	var tray_m := _mat(Color(0.50, 0.26, 0.40), 0.9)
@@ -719,7 +734,7 @@ func _build_nightstand() -> void:
 	diary.name = "Diary"
 	diary.position = Vector3(-0.42, 0.46, -1.6)
 	diary.rotation.y = -0.2
-	room.add_child(diary)
+	_host().add_child(diary)
 	diary.build(self)
 	screens.append(diary.ui)
 	interactables.append({"node": diary.cover, "half": Vector3(0.1, 0.03, 0.14), "guest_ok": true,
@@ -741,7 +756,7 @@ func _lamp(pos: Vector3, s: float) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.scale = Vector3.ONE * s
-	room.add_child(root)
+	_host().add_child(root)
 	var dark := _mat(Color(0.10, 0.04, 0.12))
 	_cyl(Vector3(0, 0.01, 0), 0.07, 0.02, dark, root)
 	_cyl(Vector3(0, 0.15, 0), 0.012, 0.3, dark, root)
@@ -773,7 +788,7 @@ func _build_desk() -> void:
 	_attach_media(sm, "res://media/monitor")
 	var pc_ui := ScreenUI.new()
 	pc_ui.position = Vector3(1.45, 1.15, -1.70)
-	room.add_child(pc_ui)
+	_host().add_child(pc_ui)
 	pc_ui.setup(sm, Vector2(0.72, 0.4), Vector2i(1024, 576), 0.0)
 	screens.append(pc_ui)
 	monitor_ui = pc_ui
@@ -786,7 +801,7 @@ func _build_desk() -> void:
 		"label": _monitor_label, "egg_lock": true, "cb": _toggle_monitor, "hover": _glow_hover(mb_m), "group": "music"})
 	pc = PCPlayer.new()
 	pc.position = Vector3(1.45, 1.0, -1.7)
-	room.add_child(pc)
+	_host().add_child(pc)
 	pc.setup(pc_ui, bank)
 
 	# keyboard, mug, lamp, plant
@@ -798,7 +813,7 @@ func _build_desk() -> void:
 	# chair
 	chair = Node3D.new()
 	chair.position = Vector3(1.45, 0.0, -0.8)
-	room.add_child(chair)
+	_host().add_child(chair)
 	var chair_m := _mat(Color(0.42, 0.17, 0.45))
 	_box(Vector3(0, 0.46, 0), Vector3(0.46, 0.06, 0.46), chair_m, chair)
 	_box(Vector3(0, 0.74, 0.22), Vector3(0.46, 0.5, 0.05), chair_m, chair)
@@ -814,7 +829,7 @@ func _build_desk() -> void:
 	sit_label.outline_modulate = Color(0.2, 0.05, 0.3)
 	sit_label.position = Vector3(1.45, 1.3, -0.8)
 	sit_label.visible = false
-	room.add_child(sit_label)
+	_host().add_child(sit_label)
 	seat_nodes.append(chair)
 	seat_eye.append(SEAT_EYE_HEIGHT)
 	seat_swivel.append(true)
@@ -824,7 +839,7 @@ func _build_desk() -> void:
 	poster.name = "Poster"
 	poster.position = Vector3(2.5, 1.75, -1.25)
 	poster.rotation.y = -PI / 2.0
-	room.add_child(poster)
+	_host().add_child(poster)
 	poster.build(_mat(Color(0.95, 0.80, 0.86), 0.5))
 	screens.append(poster.ui)
 	interactables.append({"node": poster.frame, "half": Vector3(0.6, 0.55, 0.05), "guest_ok": true,
@@ -853,7 +868,7 @@ func _make_speaker(spk_name: String, pos: Vector3, yaw: float, tilt: float, size
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation = Vector3(tilt, yaw, 0.0)       # local +z is the front of the speaker
-	(parent if parent != null else room).add_child(root)
+	(parent if parent != null else _host()).add_child(root)
 	var body_m := _mat(Color(0.15, 0.10, 0.18), 0.55)
 	var body := _box(Vector3.ZERO, size, body_m, root)
 	var cone_m := _mat(Color(0.07, 0.05, 0.09), 0.9)
@@ -926,6 +941,8 @@ func _set_monitor(on: bool) -> void:
 		_end_focus(true)
 
 
+var kit_speakers: Array[int] = []          # speakers that went with the game kit (their sound has to follow)
+
 func _build_speakers() -> void:
 	# two desk speakers either side of the monitor
 	_make_speaker("Desk speaker L", Vector3(0.96, 0.915, -1.76), 0.15, 0.0, Vector3(0.14, 0.26, 0.16), 0.046)
@@ -934,8 +951,11 @@ func _build_speakers() -> void:
 	# TV (on the left wall and the front wall), both turned a little toward the room
 	var ws := Vector3(0.18, 0.32, 0.16)
 	_make_speaker("Recliner speaker", Vector3(-3.9 + 0.09, 1.8, RECLINER_POS.z), PI / 2.0, 0.25, ws, 0.055)
+	_into = game_kit
 	for sp in _tv_speaker_spots():
 		_make_speaker(str(sp[0]), sp[1], float(sp[2]), 0.06, ws, 0.055)
+		kit_speakers.append(bank.speakers.size() - 1)
+	_into = null
 	pc.refresh_speakers()
 
 
@@ -1093,7 +1113,7 @@ func _fill_shelf() -> void:
 				lb.modulate = Color(0.98, 0.94, 0.9)
 				lb.position = Vector3(2.247, _shelf_boards[i] + 0.015 + h / 2.0, z + w / 2.0)
 				lb.rotation = Vector3(0.0, -PI / 2.0, -PI / 2.0)     # reads top to bottom along the spine, facing the room
-				room.add_child(lb)
+				_host().add_child(lb)
 				_shelf_nodes.append(lb)
 				var it := {"node": bx, "half": Vector3(0.1, h / 2.0, w / 2.0 + 0.002), "guest_ok": true, "shelf": true,
 					"hint_at": _shelf_hint_spot.bind(bx, h),
@@ -1163,7 +1183,7 @@ func _face_out_book(b: Dictionary, pos: Vector3, w: float, h: float) -> Node3D:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation.y = -PI / 2.0 + 0.12            # face into the room, leaning a touch
-	room.add_child(root)
+	_host().add_child(root)
 	var m: Material = _shelf_book_mats[hash(str(b["title"])) % _shelf_book_mats.size()]
 	_box(Vector3(0, 0, -0.012), Vector3(w, h, 0.02), m, root)        # the block of pages
 	var q := QuadMesh.new()
@@ -1274,7 +1294,7 @@ func _open_book(path: String) -> void:
 		bk.free()
 		updater.show_toast(err, 6.0)
 		return
-	room.add_child(bk)
+	_host().add_child(bk)
 	_add_book(bk)
 	_hold_book(bk)
 	if net_books != null:
@@ -1517,6 +1537,7 @@ func _build_decor() -> void:
 	# rug
 	_box(Vector3(0.1, 0.01, 0.75), Vector3(1.8, 0.02, 1.3), _mat(Color(0.35, 0.12, 0.40), 1.0))
 	_box(Vector3(0.1, 0.012, 0.75), Vector3(1.5, 0.02, 1.0), _mat(Color(0.55, 0.22, 0.42), 1.0))
+	_into = game_kit
 	_build_lounge_frame()
 	_build_tv()
 	_build_console()
@@ -1527,6 +1548,8 @@ func _build_decor() -> void:
 	_cyl(Vector3(rug_c.x, 0.01, rug_c.z), 1.3, 0.02, _mat(Color(0.30, 0.10, 0.34), 1.0))
 	_cyl(Vector3(rug_c.x, 0.012, rug_c.z), 1.15, 0.02, _mat(Color(0.42, 0.15, 0.42), 1.0))
 	_build_beanbags()
+	_into = null
+	_build_bedroom_corner()
 	_build_recliner()
 	_build_dresser()
 	# fairy lights: three strands, kept restrained
@@ -1534,6 +1557,25 @@ func _build_decor() -> void:
 	fairy_mat = bulb
 	_fairy(Vector3(-3.86, 2.55, -1.2), Vector3(-3.86, 2.55, FRONT_Z - 0.1), 22, 4, 0.16, bulb)   # left wall
 	_fairy(Vector3(-3.8, 2.6, FRONT_Z - 0.04), Vector3(2.4, 2.6, FRONT_Z - 0.04), 18, 4, 0.18, bulb)        # front wall, above the door
+
+
+# where the TV used to stand (it's in the game room now): a big plant, a floor lamp and a pile of floor cushions
+func _build_bedroom_corner() -> void:
+	_plant(Vector3(-3.55, 0.0, FRONT_Z - 0.35), 2.2)
+	var lamp_m := _mat(Color(0.12, 0.08, 0.14), 0.5)
+	_cyl(Vector3(-3.6, 0.02, 1.75), 0.15, 0.04, lamp_m)
+	_cyl(Vector3(-3.6, 0.78, 1.75), 0.014, 1.5, lamp_m)
+	var shade := _cyl(Vector3(-3.6, 1.58, 1.75), 0.19, 0.28, _mat(Color(1.0, 0.72, 0.55), 0.6, 1.3))
+	shade.scale = Vector3(1.0, 1.0, 1.0)
+	if not Plat.low_power():
+		_light(Vector3(-3.45, 1.5, 1.85), WARM, 0.7, 3.0)
+	var cols := [Color(0.95, 0.55, 0.65), Color(0.55, 0.40, 0.85), Color(1.0, 0.75, 0.45)]
+	var spots := [Vector3(-2.75, 0.07, 2.6), Vector3(-2.35, 0.07, 2.95), Vector3(-2.6, 0.2, 2.82)]
+	for i in 3:
+		var c := _cyl(spots[i], 0.3, 0.14, _mat(cols[i], 0.95))
+		c.rotation = Vector3(0.0 if i < 2 else 0.12, 0.0, 0.0 if i < 2 else -0.1)
+	_blockers_extra.append(Rect2(-3.95, FRONT_Z - 0.75, 0.8, 0.8))
+	_blockers_extra.append(Rect2(-3.85, 1.55, 0.45, 0.4))
 
 
 func _fairy(a: Vector3, b: Vector3, count: int, swags: int, drop: float, mat: Material) -> void:
@@ -1551,7 +1593,7 @@ func _plant(pos: Vector3, s: float) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.scale = Vector3.ONE * s
-	room.add_child(root)
+	_host().add_child(root)
 	_cyl(Vector3(0, 0.1, 0), 0.11, 0.2, _mat(Color(0.75, 0.40, 0.35)), root)
 	var leaf_a := _mat(Color(0.12, 0.32, 0.30), 0.7)
 	var leaf_b := _mat(Color(0.20, 0.38, 0.25), 0.7)
@@ -1641,7 +1683,7 @@ func _build_curtains() -> void:
 	cloth.set_shader_parameter("folds", ceilf(ww * 6.0))
 	curtain_node = Node3D.new()
 	curtain_node.name = "BlackoutCurtain"
-	room.add_child(curtain_node)
+	_host().add_child(curtain_node)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(ww + 0.3, 1.0)
 	quad.material = cloth
@@ -1735,7 +1777,7 @@ func _build_weather() -> void:
 	flash_l.light_energy = 0.0
 	flash_l.omni_range = 9.0
 	flash_l.shadow_enabled = false
-	room.add_child(flash_l)
+	_host().add_child(flash_l)
 	weather = Weather.new()
 	weather.name = "Weather"
 	add_child(weather)
@@ -1849,7 +1891,7 @@ func _setup_player() -> void:
 	hint_label.modulate = Color(1.0, 0.9, 1.0)
 	hint_label.outline_modulate = Color(0.2, 0.05, 0.3)
 	hint_label.visible = false
-	room.add_child(hint_label)
+	_host().add_child(hint_label)
 
 	var xr := XRServer.find_interface("OpenXR")
 	if xr and xr.is_initialized():
@@ -2220,9 +2262,18 @@ func _konami_feed(sym: String) -> bool:
 
 func _walkable(x: float, z: float) -> bool:
 	if x < ROOM_X_MIN or x > ROOM_HALF.x or z < -ROOM_HALF.y or z > FRONT_Z - 0.25:
-		return apartment != null and apartment.walkable(x, z)       # out of the bedroom: the rest of the flat
-	for r in BLOCKERS:
-		if r.has_point(Vector2(x, z)):
+		if apartment == null or not apartment.walkable(x, z):        # out of the bedroom: the rest of the flat
+			return false
+	else:
+		for r in BLOCKERS:
+			if r.has_point(Vector2(x, z)):
+				return false
+		for r in _blockers_extra:
+			if r.has_point(Vector2(x, z)):
+				return false
+	if arcade_kit != null:
+		var ak := arcade_kit.to_local(Vector3(x, 0.0, z))
+		if ARCADE_BLOCK.has_point(Vector2(ak.x, ak.z)):
 			return false
 	if lounge != null:
 		var l := lounge.to_local(Vector3(x, 0.0, z))
@@ -2304,7 +2355,7 @@ var beanbags: Array[Node3D] = []
 func _build_beanbags() -> void:
 	for i in 4:
 		var root := Node3D.new()
-		room.add_child(root)
+		_host().add_child(root)
 		seat_nodes.append(root)
 		seat_eye.append(0.95)
 		seat_swivel.append(false)
@@ -2329,7 +2380,7 @@ func _build_recliner() -> void:
 	recliner = load("res://recliner.gd").new()
 	recliner.name = "Recliner"
 	recliner.position = RECLINER_POS
-	room.add_child(recliner)
+	_host().add_child(recliner)
 	recliner.build()
 	recliner.rotation.y = RECLINER_YAW
 	var cfg := ConfigFile.new()
@@ -2511,7 +2562,7 @@ func _recliner_tick(delta: float) -> void:
 func set_beanbag_count(n: int) -> void:
 	n = clampi(n, 1, beanbags.size())
 	var layout: Array = BEANBAG_LAYOUTS[n - 1]
-	var screen := tv_root.to_global(Vector3(0.0, 0.0, 0.225))
+	var screen: Vector3 = (beanbags[0].get_parent() as Node3D).to_local(tv_root.to_global(Vector3(0.0, 0.0, 0.225)))
 	for i in beanbags.size():
 		beanbags[i].visible = i < n
 		if i < n:
@@ -2905,7 +2956,7 @@ func _try_asset(path: String, center: Vector3, footprint: Vector2, extra_yaw_deg
 	holder.position = center
 	holder.rotation.y = deg_to_rad(yaw)
 	holder.scale = Vector3.ONE * s
-	room.add_child(holder)
+	_host().add_child(holder)
 	holder.add_child(inst)
 	return true
 
@@ -3006,7 +3057,7 @@ func _wrap_row(city: Node3D, mat: Material, rng: RandomNumberGenerator, z: float
 func _build_lounge_frame() -> void:
 	lounge = Node3D.new()
 	lounge.name = "Lounge"
-	room.add_child(lounge)
+	_host().add_child(lounge)
 	var fd := 0.45
 	var bd := 0.40
 	var old_tv := Vector3(-3.9 + fd / 2.0 + bd + 0.01, 0.0, 0.9 + LOUNGE_DZ)
@@ -3514,7 +3565,7 @@ func set_cart_style(wash: bool) -> void:
 
 func _cart_node(bottom: float, depth: float) -> Node3D:
 	var n := Node3D.new()
-	room.add_child(n)
+	_host().add_child(n)
 	n.set_meta("bottom", bottom)
 	n.set_meta("depth", depth)
 	return n
@@ -3667,10 +3718,17 @@ func _rbox(pos: Vector3, size: Vector3, basis: Basis, mat: Material, parent: Nod
 
 
 func _build_arcade() -> void:
+	var was := _into
+	_into = arcade_kit
+	_build_arcade_body()
+	_into = was
+
+
+func _build_arcade_body() -> void:
 	var root := Node3D.new()
 	root.position = CAB_POS
 	root.rotation.y = PI                       # local +x (out from the wall) points along -x, into the room
-	room.add_child(root)
+	_host().add_child(root)
 	cab_root = root
 	var white := _mat(Color(0.88, 0.88, 0.90), 0.45)
 	var green := _mat(Color(0.14, 0.74, 0.30), 0.45)
@@ -4141,8 +4199,8 @@ func _insert_cart(id: String) -> void:
 		_eject_cart()
 	slot_cart = id
 	var n: Node3D = carts[id]["node"]
-	if n.get_parent() != room:
-		n.reparent(room, true)
+	if n.get_parent() != game_kit:
+		n.reparent(game_kit, true)
 	if id == "neo":
 		_fly_cart(id, cab_root.global_transform * Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.776, 0.52, 0.0)))   # upright in the cart bay, label out
 	else:
@@ -4759,7 +4817,7 @@ func _outlet(pos: Vector3, yaw: float) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation.y = yaw
-	room.add_child(root)
+	_host().add_child(root)
 	_box(Vector3(0, 0, 0.006), Vector3(0.075, 0.115, 0.012), _mat(Color(0.92, 0.88, 0.92), 0.5), root)
 	var slot := _mat(Color(0.12, 0.08, 0.14), 0.5)
 	_box(Vector3(0, 0.028, 0.013), Vector3(0.018, 0.03, 0.004), slot, root)
@@ -4770,7 +4828,7 @@ func _plug(pos: Vector3, yaw: float) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation.y = yaw
-	room.add_child(root)
+	_host().add_child(root)
 	_box(Vector3(0, 0, 0.03), Vector3(0.04, 0.055, 0.035), _mat(Color(0.08, 0.06, 0.10), 0.5), root)
 
 
@@ -4778,7 +4836,7 @@ func _power_strip(pos: Vector3, yaw: float, length: float) -> void:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation.y = yaw
-	room.add_child(root)
+	_host().add_child(root)
 	_box(Vector3(0, 0, 0), Vector3(0.07, 0.032, length), _mat(Color(0.90, 0.88, 0.92), 0.5), root)
 	var slot := _mat(Color(0.12, 0.08, 0.14), 0.5)
 	for i in 4:
@@ -4803,16 +4861,25 @@ func _smooth_path(ctrl: Array, steps: int) -> Array:
 
 # Registers a cord; all cords are merged into one mesh in _finish_cords().
 func _cord(ctrl: Array, radius: float = 0.006, col: Color = Color(0.06, 0.04, 0.08)) -> void:
-	cord_paths.append([_smooth_path(ctrl, 6), radius, col])
+	cord_paths.append([_smooth_path(ctrl, 6), radius, col, _host()])
 
 
 func _finish_cords() -> void:
-	if cord_paths.is_empty():
-		return
+	var hosts: Array = []
+	for entry in cord_paths:
+		if not (entry[3] in hosts):
+			hosts.append(entry[3])
+	for h in hosts:
+		_finish_cords_in(h)
+
+
+func _finish_cords_in(host: Node3D) -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var sides := 6
 	for entry in cord_paths:
+		if entry[3] != host:
+			continue
 		var pts: Array = entry[0]
 		var radius: float = entry[1]
 		var col: Color = entry[2]
@@ -4850,7 +4917,7 @@ func _finish_cords() -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = mat
-	room.add_child(mi)
+	host.add_child(mi)
 
 
 func _build_power() -> void:
@@ -4861,13 +4928,15 @@ func _build_power() -> void:
 	_outlet(Vector3(1.1, 0.3, -2.0), 0.0)             # desk power strip
 	_outlet(Vector3(2.2, 0.3, -2.0), 0.0)             # desk lamp
 	_outlet(Vector3(-0.15, 0.3, -2.0), 0.0)           # nightstand lamp
+	_into = game_kit
 	_outlet(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)       # TV + console strip
+	_plug(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)
+	_into = null
 	_outlet(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)        # fairy lights
 	_outlet(Vector3(-3.9, 0.3, -0.62), PI / 2.0)                # the recliner's wall speaker
 	_plug(Vector3(1.1, 0.3, -2.0), 0.0)
 	_plug(Vector3(2.2, 0.3, -2.0), 0.0)
 	_plug(Vector3(-0.15, 0.3, -2.0), 0.0)
-	_plug(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)
 	_plug(Vector3(-3.9, 0.3, FRONT_Z - 0.2), PI / 2.0)
 	_plug(Vector3(-3.9, 0.3, -0.62), PI / 2.0)
 
@@ -4889,6 +4958,7 @@ func _build_power() -> void:
 	_cord([Vector3(-0.5, 0.475, -1.73), Vector3(-0.4, 0.465, -1.88), Vector3(-0.37, 0.44, -1.935), Vector3(-0.3, 0.3, -1.96), Vector3(-0.15, 0.3, -1.95)], 0.005, white)
 
 	# TV + console strip on the floor, against the left wall behind the TV
+	_into = game_kit
 	var dz := LOUNGE_DZ
 	var strip := _lg(Vector3(-3.62, 0.017, -0.05 + dz))
 	_power_strip(Vector3(-3.84, 0.017, strip.z), 0.0, 0.5)
@@ -4924,6 +4994,7 @@ func _build_power() -> void:
 	_cord([tl.call(Vector3(0.3, 1.13, -0.2)), tl.call(Vector3(0.3, 1.02, -0.3)), tl.call(Vector3(0.28, 0.87, -0.5)),
 			tl.call(Vector3(0.26, 0.75, -0.645)), tl.call(Vector3(0.26, 0.6, -0.645))], 0.004, yellow)
 
+	_into = null
 	# fairy lights: chained strands, one plug at the left-front corner
 	var fz := FRONT_Z
 	_cord([Vector3(-3.86, 2.55, fz - 0.1), Vector3(-3.84, 2.58, fz - 0.05), Vector3(-3.8, 2.6, fz - 0.04)], 0.0035, Color(0.10, 0.07, 0.12))

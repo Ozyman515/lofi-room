@@ -38,19 +38,30 @@ const EAST_WIN := Vector2(-1.75, 2.95)       # living room east window (z span)
 const WIN_LO := 0.5
 const WIN_HI := 2.5
 const FRONT_DOOR_Z := 4.4
-const LOCKED := [[-1.6, "GAME ROOM"], [2.4, "STUDY"], [7.0, "THEATER"]]   # hallway south wall: x, name
+const LOCKED := [[2.4, "STUDY"], [7.0, "THEATER"]]   # hallway south wall: x, name (still being done up)
+const GAME_DOOR := -1.6                     # x of the game room door (hallway south wall)
+const GAME_S := 10.35                       # game room south wall line
+const GAME_E := 0.4                         # game room east wall line
+const GAME_WALK := Rect2(-3.65, 5.68, 3.75, 4.37)
+# the TV corner was built in the bedroom's front-left corner: moved down here, the corner lines up with the game
+# room's south-west corner (same west wall line, the bedroom's front wall becomes the game room's south wall)
+const GAME_KIT_SHIFT := Vector3(0.0, 0.0, GAME_S - 3.45)
+# the arcade was built against the bedroom's right wall (x 2.5): here it stands against the game room's east wall
+const ARCADE_KIT_SHIFT := Vector3(GAME_E - 0.05 - 2.5, 0.0, 6.45 - 1.95)
 
 # where people can walk (x, z, w, h), with a margin from the walls
 const HALL_WALK := Rect2(-3.65, 3.72, 12.95, 1.33)
 const LIV_WALK := Rect2(2.88, -1.75, 6.47, 4.85)
 const BAL_WALK_N := Rect2(-3.7, -4.08, 15.25, 1.75)
 const BAL_WALK_E := Rect2(9.95, -4.08, 1.6, 7.15)
-const DOORWAYS := [Rect2(0.55, 3.0, 0.7, 0.9), Rect2(3.75, 2.9, 1.7, 1.0), Rect2(5.15, -2.55, 1.5, 0.95)]
+const DOORWAYS := [Rect2(0.55, 3.0, 0.7, 0.9), Rect2(3.75, 2.9, 1.7, 1.0), Rect2(5.15, -2.55, 1.5, 0.95),
+	Rect2(GAME_DOOR - 0.35, 4.95, 0.7, 0.85)]
 
 var main: Node3D
 var hallway: Node3D
 var living: Node3D
 var balcony: Node3D
+var game: Node3D
 var exterior: Node3D
 var doors_root: Node3D
 var rooms := {}                   # id -> root node ("bedroom" is the main room)
@@ -64,6 +75,7 @@ var _seen := {}                   # what's drawn right now
 const SEES := {
 	"bedroom": ["balcony"],
 	"hallway": ["living"],
+	"game": [],
 	"living": ["hallway", "balcony"],
 	"balcony": ["bedroom", "living"],
 }
@@ -77,16 +89,19 @@ func build(m: Node3D) -> void:
 	hallway = _root("Hallway")
 	living = _root("LivingRoom")
 	balcony = _root("Balcony")
+	game = _root("GameRoom")
 	exterior = _root("Exterior")
 	doors_root = _root("Doors")             # seen from both sides, so always drawn
-	for id in ["hallway", "living", "balcony"]:
+	for id in ["hallway", "living", "balcony", "game"]:
 		_blockers[id] = []
 	rooms["hallway"] = hallway
 	rooms["living"] = living
 	rooms["balcony"] = balcony
+	rooms["game"] = game
 	_build_hallway()
 	_build_living()
 	_build_balcony()
+	_build_game()
 	_build_exterior()
 
 
@@ -218,7 +233,7 @@ func _build_hallway() -> void:
 	_box(Vector3((x0 + x1) / 2.0, H + 0.05, zc), Vector3(x1 - x0, 0.1, zl + 0.1), ceil_m, p)
 	# its own north wall (the bedroom and living room have theirs: this is the hallway's face of it)
 	_wall_x(x0, x1, FRONT_Z + 0.05, FRONT_Z + 0.1, [[BED_DOOR.x, BED_DOOR.y, 0.0, DOOR_TOP], [ARCH.x, ARCH.y, 0.0, ARCH_TOP]], wall, p)
-	_box(Vector3((x0 + x1) / 2.0, H / 2.0, HALL_S + 0.05), Vector3(x1 - x0, H, 0.1), wall, p)          # south
+	_wall_x(x0, x1, HALL_S, HALL_S + 0.1, [[GAME_DOOR - 0.47, GAME_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # south, the game room door
 	_box(Vector3(WEST_X, H / 2.0, zc), Vector3(0.1, H, zl + 0.1), wall, p)                               # west (front door)
 	_box(Vector3(EAST_X, H / 2.0, zc), Vector3(0.1, H, zl + 0.1), wall, p)                               # east end
 	# baseboards
@@ -685,6 +700,106 @@ func _build_balcony() -> void:
 		_blockers["balcony"].append(Rect2(pp2.x - 0.3, pp2.z - 0.3, 0.6, 0.6))
 
 
+# ---------------------------------------------------------------- game room: the CRT corner and the arcade, moved in
+
+func _build_game() -> void:
+	var p := game
+	var wall := _mat(Color(0.16, 0.10, 0.26))
+	var floor_m := _mat(Color(0.10, 0.07, 0.16), 0.9)
+	var ceil_m := _mat(Color(0.12, 0.07, 0.18))
+	var trim := _mat(Color(0.20, 0.07, 0.22), 0.7)
+	var wood := _mat(Color(0.42, 0.17, 0.28), 0.65)
+	var panel := _mat(Color(0.34, 0.12, 0.24), 0.65)
+	var brass := _mat(Color(0.95, 0.75, 0.50), 0.3, 0.6)
+	var x0 := WEST_X
+	var z0 := HALL_S + 0.1
+	var cx := (x0 + GAME_E) / 2.0
+	var cz := (z0 + GAME_S) / 2.0
+	_box(Vector3(cx, -0.05, cz), Vector3(GAME_E - x0 + 0.1, 0.1, GAME_S - z0 + 0.1), floor_m, p)
+	_box(Vector3(cx, H + 0.05, cz), Vector3(GAME_E - x0 + 0.1, 0.1, GAME_S - z0 + 0.1), ceil_m, p)
+	_box(Vector3(x0, H / 2.0, cz), Vector3(0.1, H, GAME_S - z0), wall, p)                                    # west
+	_box(Vector3(GAME_E, H / 2.0, cz), Vector3(0.1, H, GAME_S - z0), wall, p)                                # east
+	_box(Vector3(cx, H / 2.0, GAME_S), Vector3(GAME_E - x0 + 0.1, H, 0.1), wall, p)                          # south
+	_wall_x(x0, GAME_E, z0, z0 + 0.04, [[GAME_DOOR - 0.47, GAME_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)      # north, its face of it
+	# skirting
+	_box(Vector3(cx, 0.05, GAME_S - 0.06), Vector3(GAME_E - x0, 0.1, 0.02), trim, p)
+	# the door: swings into the game room as you walk up
+	_door_frame(hallway, Vector3(GAME_DOOR, 0.0, HALL_S - 0.02), 0.0, 0.94, DOOR_TOP, trim)
+	_door_frame(p, Vector3(GAME_DOOR, 0.0, z0 + 0.03), 0.0, 0.94, DOOR_TOP, trim)
+	var gd := _door_slab(doors_root, Vector3(GAME_DOOR - 0.47, 0.0, HALL_S + 0.05), 0.0, 0.94, wood, panel, brass)
+	_doors.append({"pivot": gd, "at": Vector2(GAME_DOOR, HALL_S + 0.05), "open": 0.0, "sign": -1.0, "links": ["hallway", "game"]})
+	var plate := _mat(Color(0.12, 0.05, 0.16), 0.5)
+	_box(Vector3(GAME_DOOR, 1.72, HALL_S - 0.005), Vector3(0.42, 0.13, 0.01), plate, doors_root)
+	_label("GAME ROOM", Vector3(GAME_DOOR, 1.72, HALL_S - 0.012), PI, 34, Color(0.5, 0.95, 1.0), doors_root)
+	# neon over the arcade: INSERT COIN
+	var neon := Label3D.new()
+	neon.text = "INSERT COIN"
+	neon.font_size = 120
+	neon.pixel_size = 0.0021
+	neon.outline_size = 18
+	neon.modulate = Color(1.0, 0.45, 0.85) * 2.2
+	neon.outline_modulate = Color(0.55, 0.15, 0.6, 0.8)
+	neon.position = Vector3(GAME_E - 0.07, 2.42, 6.45)
+	neon.rotation.y = -PI / 2.0
+	neon.shaded = false
+	p.add_child(neon)
+	# LED strips along the tops of the walls, pink and cyan
+	var led_p := _mat(main.PINK, 0.5, 2.0)
+	var led_c := _mat(Color(0.3, 0.9, 1.0), 0.5, 2.0)
+	_box(Vector3(x0 + 0.07, H - 0.06, cz), Vector3(0.03, 0.03, GAME_S - z0 - 0.2), led_c, p)
+	_box(Vector3(cx, H - 0.06, GAME_S - 0.07), Vector3(GAME_E - x0 - 0.2, 0.03, 0.03), led_p, p)
+	_box(Vector3(GAME_E - 0.07, H - 0.06, cz), Vector3(0.03, 0.03, GAME_S - z0 - 0.2), led_c, p)
+	_box(Vector3(cx, H - 0.06, z0 + 0.07), Vector3(GAME_E - x0 - 0.2, 0.03, 0.03), led_p, p)
+	# a shelf of game boxes on the north wall (left of the door, as you come in it's behind you)
+	var shelf_x := -3.0
+	_box(Vector3(shelf_x, 1.55, z0 + 0.15), Vector3(1.3, 0.03, 0.26), wood, p)
+	_box(Vector3(shelf_x, 1.05, z0 + 0.15), Vector3(1.3, 0.03, 0.26), wood, p)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	for shelf_y in [1.07, 1.57]:
+		var bx := shelf_x - 0.6
+		while bx < shelf_x + 0.58:
+			var bw := rng.randf_range(0.03, 0.05)
+			var bh := rng.randf_range(0.17, 0.24)
+			var col := Color.from_hsv(rng.randf(), rng.randf_range(0.45, 0.8), rng.randf_range(0.55, 0.9))
+			_box(Vector3(bx + bw / 2.0, shelf_y + bh / 2.0, z0 + 0.16), Vector3(bw, bh, 0.17), _mat(col, 0.7), p)
+			bx += bw + 0.006
+	# a mini fridge with a few sodas on top, by the arcade
+	var fridge_m := _mat(Color(0.85, 0.85, 0.9), 0.4)
+	_box(Vector3(GAME_E - 0.3, 0.42, 7.6), Vector3(0.48, 0.84, 0.5), fridge_m, p)
+	_box(Vector3(GAME_E - 0.555, 0.55, 7.6), Vector3(0.01, 0.4, 0.04), _mat(Color(0.3, 0.3, 0.35), 0.4), p)
+	for k in 3:
+		main._cyl(Vector3(GAME_E - 0.42 + k * 0.1, 0.9, 7.55 + (k % 2) * 0.08), 0.033, 0.12,
+			_mat([Color(0.9, 0.2, 0.25), Color(0.2, 0.6, 0.95), Color(0.95, 0.8, 0.2)][k], 0.3), p)
+	_blockers["game"].append(Rect2(GAME_E - 0.6, 7.3, 0.6, 0.6))
+	# posters: a retro one on the west wall and one on the east
+	for pp in [[Vector3(x0 + 0.06, 1.6, 6.6), PI / 2.0, Color(0.3, 0.75, 0.95)], [Vector3(GAME_E - 0.06, 1.6, 8.75), -PI / 2.0, Color(0.95, 0.5, 0.3)]]:
+		var fr := Node3D.new()
+		fr.position = pp[0]
+		fr.rotation.y = float(pp[1])
+		p.add_child(fr)
+		_box(Vector3.ZERO, Vector3(0.62, 0.86, 0.02), _mat(Color(0.08, 0.05, 0.1), 0.5), fr)
+		_box(Vector3(0, 0, 0.012), Vector3(0.56, 0.8, 0.005), _mat(pp[2], 0.8, 0.25), fr)
+		_box(Vector3(0, 0.12, 0.016), Vector3(0.3, 0.3, 0.004), _mat(Color(1.0, 0.95, 0.6), 0.6, 0.6), fr)   # a big pixel sun
+		for j in 4:
+			_box(Vector3(0, -0.12 - j * 0.05, 0.016), Vector3(0.5 - j * 0.06, 0.012, 0.004), _mat(Color(0.2, 0.08, 0.25), 0.7), fr)
+	# lights
+	_light(Vector3(-1.6, 2.5, 7.4), Color(0.75, 0.45, 0.95), 0.6, 5.0, p)
+	if not Plat.low_power():
+		_light(Vector3(GAME_E - 0.5, 2.3, 6.45), Color(1.0, 0.45, 0.85), 0.6, 3.0, p)     # the neon's glow
+	# the TV corner and the arcade, carried over from where they were built
+	main.game_kit.reparent(p, false)
+	main.game_kit.transform = Transform3D(Basis.IDENTITY, GAME_KIT_SHIFT)
+	main.arcade_kit.reparent(p, false)
+	main.arcade_kit.transform = Transform3D(Basis.IDENTITY, ARCADE_KIT_SHIFT)
+	# the TV speakers' sound has to come from where they are now
+	for i in main.kit_speakers:
+		var sp: Dictionary = main.bank.speakers[i]
+		for k in ["player", "tv", "con"]:
+			var n: Node3D = sp[k]
+			n.position += GAME_KIT_SHIFT
+
+
 # ---------------------------------------------------------------- the building around us (floors above and below)
 
 func _build_exterior() -> void:
@@ -726,6 +841,8 @@ func room_at(x: float, z: float) -> String:
 		return "hallway"
 	if z >= NORTH_Z and z <= FRONT_Z and x > MID_X and x <= EAST_X:
 		return "living"
+	if z > HALL_S and z <= GAME_S and x >= WEST_X and x <= GAME_E:
+		return "game"
 	if (z < NORTH_Z and z >= BAL_N - 0.2 and x >= WEST_X - 0.1 and x <= BAL_E + 0.2) \
 			or (x > EAST_X and x <= BAL_E + 0.2 and z >= BAL_N - 0.2 and z <= FRONT_Z + 0.1):
 		return "balcony"
@@ -736,7 +853,7 @@ func room_at(x: float, z: float) -> String:
 func walkable(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
 	var ok := false
-	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E]:
+	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK]:
 		if (r as Rect2).has_point(pt):
 			ok = true
 			break
@@ -755,13 +872,18 @@ func walkable(x: float, z: float) -> bool:
 # any space at all (for walking out of something you ended up inside)
 func in_bounds(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
-	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E]:
+	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK]:
 		if (r as Rect2).has_point(pt):
 			return true
 	for r in DOORWAYS:
 		if (r as Rect2).has_point(pt):
 			return true
 	return false
+
+
+# the node to hang something on that stands at (x, z) (the bedroom if it's nowhere in particular)
+func room_node_at(x: float, z: float) -> Node3D:
+	return rooms.get(room_at(x, z), main.room)
 
 
 # the room a node belongs to ("" = not in any: avatars, the hands...)
