@@ -786,12 +786,15 @@ func _build_debug_window() -> void:
 			_main.ufo.request_visit())
 	v.add_child(ub)
 	var nb := Button.new()
-	nb.text = "Noir Night with the grey visitor"
+	nb.text = "Noir office: find it now (or hide it again)"
 	nb.custom_minimum_size = Vector2(0, 42)
 	nb.pressed.connect(func() -> void:
-		if _main.noir != null and not _main.noir.active:
-			_main.noir.force_visitor = true
-			_main.noir.request_start())
+		if _main.noir != null:
+			if _main.noir.found:
+				_main.noir.set_found(false)
+				_main.updater.show_toast("The red book is back in line. (Type DETECT on the phone to find the office.)", 5.0)
+			else:
+				_main.noir.request_start())
 	v.add_child(nb)
 	for opt in [["Call the tux", "tux"], ["Calico: rug", "rug"], ["Calico: beanbag", "beanbag"], ["Calico: console", "console"], ["No cats", "none"]]:
 		var cb := Button.new()

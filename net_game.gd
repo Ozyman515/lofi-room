@@ -457,6 +457,9 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 						if main.seated:
 							main._toggle_sit()
 							main.updater.show_toast("Somebody just sat there.", 3.0)
+					"noir_pull":
+						if main.apartment != null:
+							main.apartment.secret_pull(false)
 					"tv_voted":
 						if main.tv_rating != null:
 							main.tv_rating.on_voted(d)
@@ -583,6 +586,12 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 			main.recliner_from_guest(d)
 		"seat":
 			_host_seat(from, int(d.get("i", -1)))
+		"noir_pull":
+			if main.apartment != null:
+				main.apartment.secret_pull(false)
+				for id in net.peer_ids():
+					if id != from:
+						net.send_var(id, Net.K_EVENT, d)
 		"tv_tape", "tv_vote":
 			if main.tv_rating != null:
 				main.tv_rating.on_guest_event(from, d)

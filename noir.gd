@@ -1,12 +1,14 @@
 extends Node3D
-## Noir Night (an easter egg). Two ways in: type DETECT on the wall phone's keypad and press JOIN, or turn
-## the TV's channel knob after midnight (12 to 4 am) while the TV is on with nothing playing.
-## The room turns into an old detective film: the colour drains away, the other lights go out and the desk
-## lamp is the only light, striped shadows of blinds fall across the floor and wall, rain pours, the incense
-## fills the room with smoke, and "Lofi Jazz Noir Cinematic Soundtrack - Late Night" by Yulius2Tudio plays instead of the lofi music. On the desk: a typewriter (in
-## place of the keyboard) that types up tonight's case, a revolver, one round, a whiskey (in place of the mug,
-## click it to take a sip) and a lit cigarette, with a fedora, an open case file and a badge.
-## Switch the desk lamp off and it all comes back. In a shared room the host's Noir Night is everybody's.
+## Noir Night (an easter egg), now an office of its own. Find it first: type DETECT on the wall phone's keypad
+## and press JOIN, or turn the game room TV's channel knob after midnight (12 to 4 am) while the TV is on with
+## nothing playing. "Something changed..." From then on a red book sticks out of the bookcase by the study desk:
+## pull it and the bookcase swings open onto a hidden detective's office.
+## Inside it's an old detective film: the colour drains away, the green desk lamp is the light, the slats of
+## the blinds fall across the floor, rain runs down the window, a neon sign across the street blinks, cigarette
+## smoke hangs in the air and "Lofi Jazz Noir Cinematic Soundtrack - Late Night" by Yulius2Tudio plays. The grey
+## visitor sits across the desk telling tonight's case while the typewriter types it up. A revolver, one round,
+## a whiskey (click it to take a sip) and the bottle, a lit cigarette, the fedora, an open case file, a badge.
+## Step back out and the colour comes back. In a shared room the host's discovery is everybody's.
 
 const Props := preload("res://noir_props.gd")
 const Plat := preload("res://platform.gd")
@@ -14,14 +16,22 @@ const Plat := preload("res://platform.gd")
 const MUSIC := "res://noir/yulius2tudio-lofi-jazz-noir-late-night.ogg"
 const POSTER := "res://noir/noir_poster.png"
 const MUSIC_CREDIT := "Now playing:  Lofi Jazz Noir Cinematic Soundtrack - Late Night  by Yulius2Tudio (Youssef Canar)"      # music/CREDITS.txt
-const FADE := 2.5                     # seconds for the colour to drain / come back
+const FADE := 1.6                     # seconds for the colour to drain / come back
 const SAT := 0.06                     # how much colour is left
 const DESK_Y := 0.785
+# the office (room coordinates): behind the study, through the bookcase by the desk
+const X0 := 0.5
+const X1 := 4.55
+const Z0 := 10.45
+const Z1 := 13.6
+const DESK_SHIFT := Vector3(0.95, 0.0, 14.15)   # the desk props were laid out for the old bedroom desk: moved here
 
 var main: Node3D
-var active := false
-var amount := 0.0                     # 0 = normal room, 1 = full noir
-var _remote := false                  # following the host's Noir Night
+var office: Node3D                    # everything in the office (apartment.gd hangs it in the office room)
+var found := false                    # the office has been discovered (saved; in a shared room, the host's)
+var active := false                   # I'm in the office
+var amount := 0.0                     # 0 = normal, 1 = full noir
+var _remote := false
 var _desk: Node3D
 var _typewriter: Node3D
 var _text: Label3D
@@ -37,21 +47,25 @@ var _music: AudioStreamPlayer
 var _clack: AudioStreamPlayer3D
 var _ding: AudioStreamPlayer3D
 var _static: AudioStreamPlayer
-var _saved := {}
-var _lit_incense := false
+var _creak: AudioStreamPlayer
 var _case := ""
 var _typed := 0.0
 var _clack_t := 0.0
 var _sat_base := 1.25
 var _con_base := 1.0
 var _bri_base := 1.0
-var _desk_lamp := -1
+var _base_read := false
 var _rng := RandomNumberGenerator.new()
+var _neon_m: StandardMaterial3D
+var _neon_l: OmniLight3D
+var _neon_t := 0.0
+var _fan: Node3D
+var _haze: Array[MeshInstance3D] = []
+var _rain_m: ShaderMaterial
+var _credit_shown := false
 
-
-const VISITOR_CHANCE := 0.33         # how often the grey visitor is sitting on the bed when Noir Night starts
 var visitor: Node3D
-var force_visitor := false
+var force_visitor := false            # (kept for the debug window; he's always there now)
 var _bubble: Node3D                  # the visitor's speech bubble: he tells you the case as it is typed
 var _bubble_text: Label3D
 const BUBBLE_W := 1.0
@@ -60,208 +74,392 @@ const BUBBLE_H := 0.5
 
 func setup(m: Node3D) -> void:
 	main = m
+	office = Node3D.new()
+	office.name = "NoirOfficeKit"
+	main.add_child(office)
 	visitor = load("res://stressed_alien.gd").new()
 	visitor.name = "NoirVisitor"
-	main.room.add_child(visitor)
-	visitor.build(0.5)                                    # sitting in the recliner
-	visitor.visible = false
+	office.add_child(visitor)
+	visitor.build(0.5)                                    # sitting
 	_build_bubble()
 	_rng.randomize()
 	process_priority = 50             # after the incense, which also sets the colour
-	for gi in main.light_groups.size():
-		if str(main.light_groups[gi]["name"]) == "Desk lamp":
-			_desk_lamp = gi
-	_build_desk()
-	_build_blinds()
+	_build_office()
 	_music = AudioStreamPlayer.new()
 	add_child(_music)
 	_static = AudioStreamPlayer.new()
 	_static.stream = _make_static()
 	add_child(_static)
+	_creak = AudioStreamPlayer.new()
+	_creak.stream = _make_creak()
+	_creak.volume_db = -6.0
+	add_child(_creak)
 	if main.net_phone != null:
 		main.net_phone.secret_cb = func() -> void: request_start()
-	set_process(false)
+	var cfg := ConfigFile.new()
+	if cfg.load(main.SETTINGS_FILE) == OK:
+		found = bool(cfg.get_value("room", "noir_found", false))
+	new_case()
 
 
-# ---- ways in
+# ---- ways to find it
 
 func on_channel_turned() -> void:
 	var h := int(Time.get_datetime_dict_from_system()["hour"])
 	var v = main.vcr
 	var quiet: bool = v.tv_on and not main.console_on and not (v.state == v.State.PLAYING or v.state == v.State.PAUSED)
-	if (h < 4 or OS.get_environment("LOFI_NOIR_ANYTIME") == "1") and quiet and not active:
-		_static.play()                # the dead channel hisses, then the room changes
+	if (h < 4 or OS.get_environment("LOFI_NOIR_ANYTIME") == "1") and quiet:
+		_static.play()                # the dead channel hisses, then something changes
 		await get_tree().create_timer(1.2).timeout
 		request_start()
 
 
+# DETECT on the phone (or the channel trick): the office is found
 func request_start() -> void:
-	if active or main.egg_active:
+	if main.egg_active:
 		return
 	var ng = main.net_game
 	if ng != null and ng.net.is_online() and not ng.net.is_host():
-		ng.net.send_var(1, ng.Net.K_EVENT, {"k": "noir_on"})          # the host's room: ask the host
+		ng.net.send_var(1, ng.Net.K_EVENT, {"k": "noir_on"})          # the host's apartment: ask the host
 		return
-	start()
+	discover()
 
 
-func start() -> void:
-	if active:
+func discover() -> void:
+	if found:
+		main.updater.show_toast("The rain taps on the glass. You already know where to look.", 5.0)
 		return
-	active = true
-	var e: Environment = main.world_env
-	_sat_base = e.adjustment_saturation if amount <= 0.0 else _sat_base
-	_con_base = e.adjustment_contrast if amount <= 0.0 else _con_base
-	_bri_base = e.adjustment_brightness if amount <= 0.0 else _bri_base
-	if main.incense != null and main.incense._base_read:
-		_sat_base = main.incense._sat_base
-	# lights: only the desk lamp
-	_saved["lights"] = []
-	for gi in main.light_groups.size():
-		_saved["lights"].append(main.is_light_on(gi))
-		main.set_light(gi, gi == _desk_lamp)
-	main.weather.begin_noir()
-	# as little electricity as possible: the monitor, the arcade and the TV go off (the console too, unless
-	# somebody is playing on it); they come back on afterwards
+	set_found(true)
+	_creak.play()
+	main.updater.show_toast("Something changed...  somewhere in the apartment, a book isn't where it was.", 7.0)
+
+
+func set_found(on: bool) -> void:
+	found = on
 	if not _remote:
-		_power_down()
-	# smoke: light the incense if it isn't
-	_lit_incense = main.incense != null and not main.incense.lit
-	if _lit_incense:
-		main.incense.toggle()
-	# the music
-	_saved["music_paused"] = main.bank.playing and not main.bank.stream_paused
-	if _saved["music_paused"]:
-		main.bank.stream_paused = true
+		var cfg := ConfigFile.new()
+		cfg.load(main.SETTINGS_FILE)
+		cfg.set_value("room", "noir_found", on)
+		cfg.save(main.SETTINGS_FILE)
+
+
+# (kept so older callers still work: the office is the noir now)
+func start() -> void:
+	discover()
+
+
+func stop() -> void:
+	pass
+
+
+# ---- per frame: the colour drains while I'm in the office
+
+func _process(delta: float) -> void:
+	var inside: bool = main.apartment != null and main.apartment.current == "noir"
+	if inside and not active:
+		_enter()
+	elif not inside and active:
+		active = false
+	var e: Environment = main.world_env
+	if amount <= 0.0 and not active:
+		_sat_base = e.adjustment_saturation
+		_con_base = e.adjustment_contrast
+		_bri_base = e.adjustment_brightness
+		if main.incense != null and main.incense._base_read:
+			_sat_base = main.incense._sat_base
+	var was := amount
+	amount = move_toward(amount, 1.0 if active else 0.0, delta / FADE)
+	if amount > 0.0 or was > 0.0:
+		var inc = main.incense
+		var base := _sat_base
+		if inc != null and inc._base_read:
+			base = lerpf(inc._sat_base, inc._sat_base * 0.86, inc.haze)
+		e.adjustment_saturation = lerpf(base, SAT, amount)
+		e.adjustment_contrast = lerpf(_con_base, _con_base * 1.18, amount)
+		e.ambient_light_energy *= lerpf(1.0, 0.35, amount)     # main.gd sets it fresh each frame: the desk lamp does the lighting
+		e.adjustment_brightness = lerpf(_bri_base, _bri_base * 0.88, amount)
+		if amount <= 0.0:
+			e.adjustment_saturation = base
+			e.adjustment_contrast = _con_base
+			e.adjustment_brightness = _bri_base
+	var mvol: float = main.bank.master if main.bank != null else 0.7
+	_music.volume_db = linear_to_db(maxf(amount * mvol * 0.9, 0.0001))
+	if main.bank != null:
+		main.bank.set_duck(amount)            # the lofi music fades down in here
+	if amount <= 0.0 and not active and _music.playing:
+		_music.stop()
+	# the office keeps living while anyone can see it
+	if office.is_visible_in_tree():
+		_type_tick(delta)
+		_bubble_tick()
+		_office_tick(delta)
+
+
+func _enter() -> void:
+	active = true
 	if _music.stream == null:
 		var s := AudioStreamOggVorbis.load_from_file(MUSIC)
 		if s != null:
 			s.loop = true
 			_music.stream = s
-	_music.volume_db = -80.0
-	if _music.stream != null:
+	if _music.stream != null and not _music.playing:
+		_music.volume_db = -80.0
 		_music.play()
-		main.updater.show_toast(MUSIC_CREDIT, 6.0)
+		if not _credit_shown:
+			_credit_shown = true
+			main.updater.show_toast(MUSIC_CREDIT, 6.0)
+	if _case == "" or int(_typed) >= _case.length():
+		new_case()
+
+
+func _office_tick(delta: float) -> void:
+	# the neon sign across the street: steady, with the odd stutter
+	_neon_t -= delta
+	var on := true
+	if _neon_t < 0.0:
+		_neon_t = _rng.randf_range(2.5, 7.0)
+	elif _neon_t < 0.35:
+		on = int(_neon_t * 20.0) % 2 == 0
+	_neon_m.emission_energy_multiplier = 3.2 if on else 0.4
+	_neon_l.light_energy = 0.9 if on else 0.1
+	if _fan != null:
+		_fan.rotation.y += delta * 1.1
+	for i in _haze.size():
+		var h := _haze[i]
+		h.position.x = 2.5 + sin(Time.get_ticks_msec() / 1000.0 * 0.05 + i * 2.0) * 0.6
+	for b in _blinds:
+		(b.material_override as StandardMaterial3D).albedo_color.a = 0.10 + 0.14 * maxf(amount, 0.4)
+
+
+# ---- the office
+
+func _m(c: Color, rough := 0.8, emit := 0.0) -> StandardMaterial3D:
+	return main._mat(c, rough, emit)
+
+
+func _build_office() -> void:
+	var o := office
+	var wood := _m(Color(0.30, 0.18, 0.14), 0.6)
+	var wood_dk := _m(Color(0.20, 0.11, 0.09), 0.6)
+	var metal := _m(Color(0.25, 0.25, 0.27), 0.4)
+	metal.metallic = 0.6
+	var cx := (X0 + X1) / 2.0
+	# the desk: a big old wooden one, facing the door
+	var dc := Vector3(2.4, 0.0, 12.6)
+	main._box(dc + Vector3(0, 0.76, 0), Vector3(1.6, 0.05, 0.8), wood, o)
+	for sx in [-0.62, 0.62]:
+		main._box(dc + Vector3(sx, 0.37, 0), Vector3(0.36, 0.74, 0.76), wood_dk, o)      # pedestals with drawers
+		for dy in [0.2, 0.42, 0.62]:
+			main._box(dc + Vector3(sx, dy, -0.385), Vector3(0.3, 0.16, 0.01), wood, o)
+			main._sphere(dc + Vector3(sx, dy, -0.395), 0.012, _m(Color(0.8, 0.65, 0.35), 0.3), Vector3.ONE, o, 8)
+	main._box(dc + Vector3(0, 0.45, 0.36), Vector3(0.9, 0.6, 0.02), wood_dk, o)           # modesty panel
+	# green banker's lamp, the one light
+	var lamp := Vector3(1.85, DESK_Y, 12.5)
+	main._box(lamp + Vector3(0, 0.015, 0), Vector3(0.16, 0.03, 0.1), _m(Color(0.75, 0.6, 0.3), 0.3), o)
+	main._cyl(lamp + Vector3(0, 0.2, 0), 0.01, 0.36, _m(Color(0.75, 0.6, 0.3), 0.3), o)
+	var shade: MeshInstance3D = main._cyl(lamp + Vector3(0, 0.38, -0.02), 0.06, 0.32, _m(Color(0.1, 0.45, 0.25), 0.3, 0.6), o)
+	shade.rotation.z = PI / 2.0
+	shade.scale = Vector3(1.0, 1.0, 0.55)
+	var ll := OmniLight3D.new()
+	ll.position = lamp + Vector3(0.0, 0.3, 0.05)
+	ll.light_color = Color(1.0, 0.85, 0.6)
+	ll.light_energy = 1.4
+	ll.omni_range = 3.4
+	o.add_child(ll)
+	# the detective's chair (yours) behind the desk, facing the door; the client's chair in front
+	var chair_m := _m(Color(0.22, 0.10, 0.08), 0.5)
+	var dch := Node3D.new()
+	dch.position = Vector3(2.4, 0.0, 13.15)
+	o.add_child(dch)
+	main._box(Vector3(0, 0.46, 0), Vector3(0.52, 0.08, 0.5), chair_m, dch)
+	main._box(Vector3(0, 0.85, 0.24), Vector3(0.52, 0.72, 0.08), chair_m, dch)
+	main._cyl(Vector3(0, 0.23, 0), 0.03, 0.42, metal, dch)
+	main._cyl(Vector3(0, 0.02, 0), 0.26, 0.03, metal, dch)
+	main.seat_nodes.append(dch)
+	main.seat_eye.append(main.SEAT_EYE_HEIGHT)
+	main.seat_swivel.append(true)
+	var cch := Node3D.new()
+	cch.position = Vector3(2.55, 0.0, 11.75)
+	o.add_child(cch)
+	main._box(Vector3(0, 0.44, 0), Vector3(0.5, 0.06, 0.48), wood, cch)
+	main._box(Vector3(0, 0.78, -0.22), Vector3(0.5, 0.6, 0.05), wood, cch)
+	for lx in [-0.22, 0.22]:
+		for lz in [-0.2, 0.2]:
+			main._box(Vector3(lx, 0.21, lz), Vector3(0.04, 0.42, 0.04), wood_dk, cch)
+	visitor.position = Vector3(2.55, 0.0, 11.7)
+	visitor.rotation.y = 0.0                              # facing the desk (+z)
+	# the props on the desk (laid out for the old desk, moved over)
+	_desk = Node3D.new()
+	_desk.position = DESK_SHIFT
+	o.add_child(_desk)
+	_build_desk()
+	# filing cabinet, coat rack with the trench coat and the fedora, a safe
+	var fc := Vector3(0.85, 0.0, 10.85)
+	main._box(fc + Vector3(0, 0.65, 0), Vector3(0.5, 1.3, 0.6), _m(Color(0.30, 0.32, 0.30), 0.5), o)
+	for dy in [0.25, 0.65, 1.05]:
+		main._box(fc + Vector3(0.255, dy, 0), Vector3(0.01, 0.34, 0.52), _m(Color(0.36, 0.38, 0.36), 0.5), o)
+		main._box(fc + Vector3(0.265, dy + 0.1, 0), Vector3(0.015, 0.03, 0.14), metal, o)
+	var radio := Vector3(0.85, 1.3, 10.85)
+	main._box(radio + Vector3(0, 0.13, 0), Vector3(0.3, 0.26, 0.4), wood, o)                # an old radio up top
+	main._cyl(radio + Vector3(0.152, 0.15, 0), 0.08, 0.01, _m(Color(0.75, 0.65, 0.45), 0.6), o).rotation.z = PI / 2.0
+	var rack := Vector3(4.2, 0.0, 13.25)
+	main._cyl(rack + Vector3(0, 0.9, 0), 0.02, 1.8, wood_dk, o)
+	main._cyl(rack + Vector3(0, 0.02, 0), 0.22, 0.04, wood_dk, o)
+	var coat := _m(Color(0.55, 0.47, 0.35), 0.9)
+	var tc: MeshInstance3D = main._box(rack + Vector3(0.05, 1.15, 0.02), Vector3(0.36, 0.95, 0.16), coat, o)
+	tc.rotation.y = 0.3
+	var hat := Props.fedora()
+	hat.position = rack + Vector3(0, 1.82, 0)
+	hat.rotation = Vector3(0.15, 0.6, 0.1)
+	o.add_child(hat)
+	# the window behind the desk: venetian blinds half down, rain on the glass, a neon sign across the street
+	var wx0 := 1.5
+	var wx1 := 3.3
+	var wy0 := 1.0
+	var wy1 := 2.4
+	var frame := _m(Color(0.18, 0.12, 0.10), 0.6)
+	var wz := Z1 - 0.06
+	main._box(Vector3((wx0 + wx1) / 2.0, wy0 - 0.02, wz), Vector3(wx1 - wx0 + 0.12, 0.05, 0.14), frame, o)
+	main._box(Vector3((wx0 + wx1) / 2.0, (wy0 + wy1) / 2.0, wz), Vector3(0.05, wy1 - wy0, 0.06), frame, o)
+	var q := QuadMesh.new()
+	q.size = Vector2(wx1 - wx0, wy1 - wy0)
+	_rain_m = ShaderMaterial.new()
+	_rain_m.shader = _rain_shader()
+	var glass := MeshInstance3D.new()
+	glass.mesh = q
+	glass.material_override = _rain_m
+	glass.position = Vector3((wx0 + wx1) / 2.0, (wy0 + wy1) / 2.0, wz + 0.01)
+	glass.rotation.y = PI                    # faces into the office (-z)
+	o.add_child(glass)
+	var slat := _m(Color(0.75, 0.70, 0.60), 0.6)
+	for k in 12:
+		var sy := wy1 - 0.04 - k * 0.075
+		var sl: MeshInstance3D = main._box(Vector3((wx0 + wx1) / 2.0, sy, wz - 0.08), Vector3(wx1 - wx0 - 0.04, 0.05, 0.01), slat, o)
+		sl.rotation.x = 0.9                  # tilted open: the light comes through in stripes
+	# across the street: a dark building, a few lit windows, and the neon sign
+	var street := Node3D.new()
+	street.position = Vector3(2.4, 0.0, Z1 + 5.0)
+	o.add_child(street)
+	main._box(Vector3(0, 0.0, 0), Vector3(14.0, 12.0, 0.5), _m(Color(0.08, 0.07, 0.09), 0.9), street)
+	var lit := _m(Color(1.0, 0.85, 0.55), 0.6, 1.4)
+	for wk in [[-2.2, 2.6], [1.4, 3.3], [3.0, 1.2], [-3.4, 0.4]]:
+		main._box(Vector3(wk[0], wk[1], -0.26), Vector3(0.6, 0.8, 0.02), lit, street)
+	_neon_m = _m(Color(1.0, 0.25, 0.3), 0.4, 3.2)
+	var sign := Label3D.new()
+	sign.text = "HOTEL"
+	sign.font_size = 160
+	sign.pixel_size = 0.006
+	sign.outline_size = 0
+	sign.modulate = Color(1.0, 0.3, 0.35) * 2.0
+	sign.position = Vector3(-0.6, 1.9, -0.3)
+	sign.rotation.y = PI
+	sign.shaded = false
+	street.add_child(sign)
+	main._box(Vector3(-0.6, 1.9, -0.27), Vector3(3.6, 1.2, 0.04), _neon_m, street).visible = false
+	_neon_l = OmniLight3D.new()
+	_neon_l.position = Vector3(2.2, 2.0, Z1 - 0.4)
+	_neon_l.light_color = Color(1.0, 0.3, 0.35)
+	_neon_l.light_energy = 0.9
+	_neon_l.omni_range = 4.0
+	o.add_child(_neon_l)
+	# the light through the slats, across the floor and up the north wall
+	_build_blinds()
+	# a ceiling fan, turning slowly
+	_fan = Node3D.new()
+	_fan.position = Vector3(cx, 2.62, 12.0)
+	o.add_child(_fan)
+	main._cyl(Vector3(0, 0.1, 0), 0.015, 0.2, metal, _fan)
+	main._cyl(Vector3(0, -0.02, 0), 0.08, 0.08, metal, _fan)
+	for k in 4:
+		var bl: MeshInstance3D = main._box(Vector3(0, -0.04, 0), Vector3(0.9, 0.012, 0.12), wood_dk, _fan)
+		bl.rotation.y = k * PI / 4.0
+		bl.position = Vector3.ZERO
 	# the poster: a dark-deco city in the rain
-	if main.poster != null:
-		var pimg := Image.load_from_file(POSTER)
-		if pimg != null and not pimg.is_empty():
-			main.poster.show_override(pimg)
-	# sometimes there's somebody on the edge of the bed, having a worse night than you
-	visitor.visible = force_visitor or randf() < VISITOR_CHANCE
-	force_visitor = false
-	if visitor.visible:
-		# he takes the recliner, sitting up, turned round to face the room
-		var rc: Node3D = main.recliner
-		if main.seated and main.cur_seat == main.recliner_seat:
-			main._toggle_sit()                          # (you get up)
-		_saved["rec_yaw"] = rc.rotation.y
-		_saved["rec_back"] = rc.reclined
-		rc.reclined = false
-		rc.rotation.y = PI
-		visitor.global_position = rc.global_position + Vector3(0, 0, 0.1)
-		visitor.rotation.y = 0.0
-	# the desk
-	_sips = 0
-	_glasses = 0
-	_set_whisky()
-	_set_bottle()
-	_desk.visible = true
-	main.keyboard_node.visible = false
-	main.mug_node.visible = false
-	for b in _blinds:
-		b.visible = true
-	new_case()
-	set_process(true)
+	var pimg := Image.load_from_file(POSTER) if FileAccess.file_exists(POSTER) else null
+	if pimg == null:
+		var tex = load(POSTER) if ResourceLoader.exists(POSTER) else null
+		if tex is Texture2D:
+			pimg = (tex as Texture2D).get_image()
+	var pf := Node3D.new()
+	pf.position = Vector3(X0 + 0.04, 1.6, 12.2)
+	pf.rotation.y = PI / 2.0
+	o.add_child(pf)
+	main._box(Vector3.ZERO, Vector3(0.66, 0.92, 0.03), _m(Color(0.08, 0.06, 0.06), 0.5), pf)
+	if pimg != null and not pimg.is_empty():
+		var pm := StandardMaterial3D.new()
+		pm.albedo_texture = ImageTexture.create_from_image(pimg)
+		pm.roughness = 0.8
+		pm.disable_fog = true
+		var pq := QuadMesh.new()
+		pq.size = Vector2(0.6, 0.86)
+		var pmi := MeshInstance3D.new()
+		pmi.mesh = pq
+		pmi.material_override = pm
+		pmi.position.z = 0.017
+		pf.add_child(pmi)
+	# cigarette smoke hanging in the air (a couple of faint, slow sheets; one on the headset)
+	var puff := _soft_tex()
+	for i in (1 if Plat.low_power() else 2):
+		var hm := StandardMaterial3D.new()
+		hm.albedo_texture = puff
+		hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		hm.albedo_color = Color(0.85, 0.85, 0.82, 0.07)
+		hm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+		hm.disable_fog = true
+		hm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var hq := QuadMesh.new()
+		hq.size = Vector2(2.6, 0.9)
+		var hmi := MeshInstance3D.new()
+		hmi.mesh = hq
+		hmi.material_override = hm
+		hmi.position = Vector3(2.5, 1.85 + i * 0.35, 12.0 - i * 0.6)
+		hmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		o.add_child(hmi)
+		_haze.append(hmi)
 
 
-func _power_down() -> void:
-	_saved["monitor"] = main.monitor_on
-	main._set_monitor(false)
-	_saved["arcade"] = main.arcade_on
-	if main.arcade_on and not (main.game_mode and main.held_pad_idx == -1):
-		main.set_arcade_on(false)
-	_saved["tv"] = main.vcr.tv_on
-	_saved["console"] = main.console_on
-	var playing: bool = main.game_mode or (main.net_game != null and main.net_game.guests_playing())
-	if main.console_on and not playing and main.slot_cart != "neo" and main.slot_cart != "egg":
-		main.toggle_console()
-	if main.vcr.tv_on and not main.console_on:
-		main.vcr.toggle_tv()
+func _soft_tex() -> Texture2D:
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 1))
+	g.set_color(1, Color(1, 1, 1, 0))
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(1.0, 0.5)
+	t.width = 64
+	t.height = 64
+	return t
 
 
-func stop() -> void:
-	if not active:
-		return
-	active = false
-	main.weather.end_noir()
-	if visitor.visible and _saved.has("rec_yaw"):
-		main.recliner.rotation.y = float(_saved["rec_yaw"])
-		main.recliner.reclined = bool(_saved["rec_back"])
-	visitor.visible = false
-	_bubble.visible = false
-	if main.poster != null:
-		main.poster.clear_override()
-	if bool(_saved.get("console", false)) and not main.console_on:
-		main.toggle_console()
-	if bool(_saved.get("tv", false)) and not main.vcr.tv_on:
-		main.vcr.toggle_tv()
-	if bool(_saved.get("arcade", false)) and not main.arcade_on:
-		main.set_arcade_on(true)
-	if bool(_saved.get("monitor", false)):
-		main._set_monitor(true)
-	var lights: Array = _saved.get("lights", [])
-	for gi in mini(lights.size(), main.light_groups.size()):
-		main.set_light(gi, bool(lights[gi]))
-	if _lit_incense and main.incense != null and main.incense.lit:
-		main.incense.toggle()
-	_lit_incense = false
-	if bool(_saved.get("music_paused", false)):
-		main.bank.stream_paused = false
-	_saved = {}
+# rain on the window: dark glass with streaks running down it (no texture needed)
+func _rain_shader() -> Shader:
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+float h(float n) { return fract(sin(n * 91.3) * 47453.5); }
+void fragment() {
+	vec2 uv = UV;
+	vec3 col = vec3(0.05, 0.05, 0.08) + vec3(0.25, 0.06, 0.08) * smoothstep(1.0, 0.2, uv.y);   // the neon's glow from below
+	float lines = 0.0;
+	for (int i = 0; i < 3; i++) {
+		float cols = 40.0 + float(i) * 23.0;
+		float c = floor(uv.x * cols);
+		float sp = 0.25 + h(c + float(i) * 7.0) * 0.5;
+		float y = fract(uv.y * (1.0 + float(i)) + TIME * sp + h(c) * 9.0);
+		float x = fract(uv.x * cols);
+		lines += smoothstep(0.08, 0.0, abs(x - 0.5)) * smoothstep(0.0, 0.15, y) * smoothstep(0.6, 0.15, y) * 0.35;
+	}
+	ALBEDO = col + vec3(0.55, 0.58, 0.65) * lines;
+}
+"""
+	return sh
 
-
-func _process(delta: float) -> void:
-	# the desk lamp going off ends it (the host's lamp, in a shared room)
-	if active and not _remote and _desk_lamp >= 0 and not main.is_light_on(_desk_lamp):
-		stop()
-		_broadcast()
-	amount = move_toward(amount, 1.0 if active else 0.0, delta / FADE)
-	var e: Environment = main.world_env
-	var inc = main.incense
-	var base := _sat_base
-	if inc != null and inc._base_read:
-		base = lerpf(inc._sat_base, inc._sat_base * 0.86, inc.haze)
-	e.adjustment_saturation = lerpf(base, SAT, amount)
-	e.adjustment_contrast = lerpf(_con_base, _con_base * 1.18, amount)
-	e.ambient_light_energy *= lerpf(1.0, 0.4, amount)     # main.gd sets it fresh each frame: the desk lamp does the lighting
-	e.adjustment_brightness = lerpf(_bri_base, _bri_base * 0.88, amount)
-	var mvol: float = main.bank.master if main.bank != null else 0.7
-	_music.volume_db = linear_to_db(maxf(amount * mvol * 0.9, 0.0001))
-	for b in _blinds:
-		(b.material_override as StandardMaterial3D).albedo_color.a = 0.22 * amount
-	_type_tick(delta)
-	_bubble_tick()
-	if not active and amount <= 0.0:
-		_music.stop()
-		_desk.visible = false
-		main.keyboard_node.visible = true
-		main.mug_node.visible = true
-		for b in _blinds:
-			b.visible = false
-		e.adjustment_saturation = base
-		e.adjustment_contrast = _con_base
-		e.adjustment_brightness = _bri_base
-		set_process(false)
-
-
-# ---- the desk
 
 func _build_desk() -> void:
-	_desk = Node3D.new()
-	_desk.visible = false
-	main.study_kit.add_child(_desk)
-	# typewriter where the keyboard is, facing the chair
+	# typewriter, facing your chair
 	_typewriter = Props.typewriter()
 	_typewriter.position = Vector3(1.45, DESK_Y, -1.40)
 	_desk.add_child(_typewriter)
@@ -276,30 +474,21 @@ func _build_desk() -> void:
 	_ding.unit_size = 1.5
 	_typewriter.add_child(_ding)
 	main.interactables.append({"node": _typewriter, "half": Vector3(0.19, 0.12, 0.16), "guest_ok": true,
-		"when": func() -> bool: return active,
 		"label": func() -> String: return "THE TYPEWRITER  (a new case)", "cb": func() -> void: new_case()})
-	# the still life by the lamp, where the mug was
+	# the still life: revolver, one round, the whiskey, a lit cigarette in the ashtray
 	var still := Props.build(_desk, Vector3(1.97, DESK_Y, -1.43), -0.35)
 	var glass: Node3D = still.get_node("Tumbler")
 	_whisky = glass.get_node("Whisky")
 	_surface = glass.get_node("Surface")
 	_ice = glass.get_node("Ice")
 	main.interactables.append({"node": glass, "half": Vector3(0.05, 0.11, 0.05), "guest_ok": true,
-		"when": func() -> bool: return active,
 		"label": func() -> String: return "A SIP OF WHISKEY" if _sips < 3 else "THE GLASS IS EMPTY", "cb": _sip})
-	# the bottle, beside the glass: pour another
 	var bottle := Props.bottle()
 	bottle.position = Vector3(2.25, DESK_Y, -1.42)
 	_desk.add_child(bottle)
 	_bottle_liquid = bottle.get_node("Liquid")
 	main.interactables.append({"node": bottle, "half": Vector3(0.05, 0.16, 0.05), "guest_ok": true,
-		"when": func() -> bool: return active,
 		"label": _bottle_label, "cb": _pour})
-	# the detective's things on the other side of the typewriter
-	var hat := Props.fedora()
-	hat.position = Vector3(1.12, 1.375, -1.72)         # hung on the monitor's top left corner
-	hat.rotation = Vector3(0.1, 0.4, 0.28)
-	_desk.add_child(hat)
 	var file := Props.case_file()
 	file.position = Vector3(1.0, DESK_Y, -1.33)
 	file.rotation.y = 0.12
@@ -308,6 +497,8 @@ func _build_desk() -> void:
 	badge.position = Vector3(1.13, DESK_Y + 0.006, -1.25)
 	badge.rotation.y = -0.4
 	_desk.add_child(badge)
+	_set_whisky()
+	_set_bottle()
 
 
 func _sip() -> void:
@@ -355,7 +546,7 @@ func _pass_out() -> void:
 	await get_tree().create_timer(1.5).timeout
 	if not active:
 		return
-	stop()                            # put the lights, music and weather back first, so the new room wakes up normal
+	_glasses = 0
 	main.go_to_sleep("You dozed off at the desk. The rain is still falling...")
 
 
@@ -420,7 +611,7 @@ func _pick(list: Array) -> String:
 
 
 func _type_tick(delta: float) -> void:
-	if _case == "" or int(_typed) >= _case.length() or not active:
+	if _case == "" or int(_typed) >= _case.length():
 		return
 	var before := int(_typed)
 	_typed += delta * 22.0
@@ -442,7 +633,7 @@ func _type_tick(delta: float) -> void:
 func _build_bubble() -> void:
 	_bubble = Node3D.new()
 	_bubble.name = "VisitorBubble"
-	main.room.add_child(_bubble)
+	office.add_child(_bubble)
 	_bubble.visible = false
 	var paper := StandardMaterial3D.new()
 	paper.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -519,7 +710,7 @@ static func _said(typed: String) -> String:
 
 
 func _bubble_tick() -> void:
-	var show := active and visitor.visible and _bubble_text.text != ""
+	var show := visitor.visible and _bubble_text.text != ""
 	_bubble.visible = show
 	if not show:
 		return
@@ -533,7 +724,7 @@ func _bubble_tick() -> void:
 			_bubble.rotation = Vector3(0.0, atan2(to.x, to.z), 0.0)     # turns to face you, stays upright
 
 
-# ---- blinds: the light through the window slats, across the floor and up the right-hand wall
+# ---- the light through the window slats, across the floor and up the north wall
 
 func _build_blinds() -> void:
 	var img := Image.create(64, 256, false, Image.FORMAT_RGBA8)
@@ -546,14 +737,14 @@ func _build_blinds() -> void:
 	img.generate_mipmaps()
 	var tex := ImageTexture.create_from_image(img)
 	for spec in [
-			[Vector3(0.6, 0.012, -0.35), Vector3(-PI / 2.0, 0.55, 0.0), Vector2(1.5, 2.2)],       # the floor, slanting in
-			[Vector3(2.485, 1.15, 0.15), Vector3(0.0, -PI / 2.0, 0.18), Vector2(1.3, 1.6)]]:      # the right wall
+			[Vector3(2.4, 0.012, 11.6), Vector3(-PI / 2.0, PI + 0.3, 0.0), Vector2(1.6, 2.4)],     # the floor, slanting in
+			[Vector3(2.0, 1.25, Z0 + 0.04), Vector3(0.0, 0.0, 0.15), Vector2(1.5, 1.7)]]:          # the north wall, by the bookcase
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = tex
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		m.albedo_color = Color(1, 1, 1, 0.0)
+		m.albedo_color = Color(1, 1, 1, 0.2)
 		m.disable_fog = true
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		var q := QuadMesh.new()
@@ -563,39 +754,32 @@ func _build_blinds() -> void:
 		mi.material_override = m
 		mi.position = spec[0]
 		mi.rotation = spec[1]
-		mi.visible = false
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		main.room.add_child(mi)
+		office.add_child(mi)
 		_blinds.append(mi)
 
 
-# ---- shared rooms
+# ---- shared rooms: the host's discovery
 
 func state() -> bool:
-	return active
+	return found
 
 
 func apply_remote(on: bool) -> void:
 	_remote = true
-	if on and not active:
-		start()
-	elif not on and active:
-		stop()
+	found = on
 
 
 func end_remote() -> void:
-	if _remote and active:
-		stop()
-	_remote = false
+	if _remote:
+		_remote = false
+		var cfg := ConfigFile.new()
+		found = cfg.load(main.SETTINGS_FILE) == OK and bool(cfg.get_value("room", "noir_found", false))
 
 
 func on_guest_event(d: Dictionary) -> void:
 	if str(d.get("k", "")) == "noir_on":
 		request_start()
-
-
-func _broadcast() -> void:
-	pass                              # the host's game state carries "noir"; nothing extra to send
 
 
 # ---- sounds, made here
@@ -650,3 +834,22 @@ static func _wav(data: PackedByteArray, rate: int) -> AudioStreamWAV:
 	w.stereo = false
 	w.data = data
 	return w
+
+
+static func _make_creak() -> AudioStreamWAV:
+	# a wooden creak and a soft click, far off
+	var rate := 22050
+	var n := int(1.3 * rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / rate
+		lp += (rng.randf_range(-1.0, 1.0) - lp) * 0.08
+		var f := 140.0 + 60.0 * sin(t * 3.0)
+		var creak := sin(t * TAU * f + sin(t * TAU * 23.0) * 2.0) * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.7, 1.0, t)) * 0.35
+		var click := lp * exp(-maxf(t - 1.05, 0.0) * 60.0) * (1.0 if t > 1.05 else 0.0) * 2.0
+		data.encode_s16(i * 2, int(clampf((creak + click) * 0.5, -1.0, 1.0) * 32767.0))
+	return _wav(data, rate)

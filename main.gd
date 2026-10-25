@@ -2028,6 +2028,11 @@ func _process(delta: float) -> void:
 					_put_pad()
 				_pad_stick_prev = down
 	_recliner_tick(delta)
+	if not seated and not sleeping and apartment != null:
+		# walking up and down the theater's steps
+		var fy: float = apartment.floor_y(head.global_position.x, head.global_position.z)
+		if absf(origin.global_position.y - fy) > 0.001:
+			origin.global_position.y = move_toward(origin.global_position.y, fy, delta * 1.6)
 	_update_lighting(delta)
 	_update_focus_anim(delta)
 	_update_pointer(delta)
@@ -2452,7 +2457,7 @@ func _build_recliner() -> void:
 
 # Noir Night's grey visitor is sitting in it
 func _recliner_taken() -> bool:
-	return noir != null and noir.visitor != null and noir.visitor.visible
+	return false                                  # (the Noir visitor has an office of his own now)
 
 
 func _on_recliner_turned(dy: float) -> void:
@@ -2917,8 +2922,6 @@ func _nearest_seat() -> int:
 	for i in seat_nodes.size():
 		if not seat_nodes[i].visible:
 			continue
-		if i == recliner_seat and noir != null and noir.visitor != null and noir.visitor.visible:
-			continue                                   # somebody's in it
 		if net_game != null and net_game.seat_taken(i):
 			continue                                   # another player is sitting there
 		if apartment != null and not apartment.can_reach(seat_nodes[i]):
@@ -2952,7 +2955,7 @@ func _toggle_sit() -> void:
 	origin.global_position.x += sp.x - p.x
 	origin.global_position.z += sp.z - p.z
 	# lowers the rig if you're physically standing; if you're really sitting this does ~nothing
-	origin.global_position.y = clampf(seat_eye[idx] - head.position.y, -1.0, 0.2)
+	origin.global_position.y = clampf(seat_eye[idx] - head.position.y, -1.0, 0.2) + seat_nodes[idx].global_position.y   # (theater rows sit lower)
 	seated = true
 	cur_seat = idx
 	if net_game != null:
@@ -4390,7 +4393,7 @@ func _load_prefs() -> void:
 			weather.set_mode(clampi(int(cfg.get_value("room", "weather_mode", 0)), 0, 3))
 			weather.snap()
 		for i in bank.speakers.size():
-			var sv: Variant = g.call("spk_" + String(bank.speakers[i]["name"]), "tv" if String(bank.speakers[i]["name"]).begins_with("Living") else "pc")
+			var sv: Variant = g.call("spk_" + String(bank.speakers[i]["name"]), "tv" if String(bank.speakers[i]["name"]).begins_with("Living") or String(bank.speakers[i]["name"]).begins_with("Theater") else "pc")
 			bank.set_mode(i, ("pc" if sv else "off") if sv is bool else str(sv))     # (older copies saved on/off)
 		for gi in light_groups.size():
 			set_light(gi, bool(g.call("light_" + String(light_groups[gi]["name"]), true)))

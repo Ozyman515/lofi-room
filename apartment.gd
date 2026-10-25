@@ -38,12 +38,23 @@ const EAST_WIN := Vector2(-1.75, 2.95)       # living room east window (z span)
 const WIN_LO := 0.5
 const WIN_HI := 2.5
 const FRONT_DOOR_Z := 4.4
-const LOCKED := [[7.0, "THEATER"]]          # hallway south wall: x, name (still being done up)
+const LOCKED := []                          # hallway south wall: x, name (rooms still being done up)
+const TH_DOOR := 7.0
+const TH_X0 := 4.6                           # theater: west and east wall lines, south wall line
+const TH_X1 := 9.65
+const TH_S := 12.35
+const TH_WALK := Rect2(4.9, 5.68, 4.5, 6.37)
+const TH_LOW := -0.44                        # the front of the theater is sunk below the hallway: the rows step down
+const TH_ROWS := [[7.8, 0.0, [5.65, 6.45, 7.25, 8.05]], [9.0, -0.22, [6.05, 6.85, 7.65, 8.45]], [10.2, -0.44, [5.65, 6.45, 7.25, 8.05]]]   # z, floor, seat x's (staggered)
+const TH_SCREEN := Vector2(4.0, 2.25)
 const STUDY_DOOR := 2.4
 const STUDY_E := 4.6                         # study east wall line
 const STUDY_WALK := Rect2(0.72, 5.68, 3.56, 4.37)
 # the desk and the bookshelf were built in the bedroom's back-right corner; turned round, that corner is the study's
 # front-left: the desk against the study's south wall, the bookshelf against its west wall
+const SECRET := Vector2(3.4, 4.3)            # x span of the bookcase door in the study's south wall
+const NOIR_WALK := Rect2(0.75, 10.65, 3.5, 2.7)
+const NOIR_Z1 := 13.6
 const STUDY_KIT_XF := Transform3D(Basis(Vector3.UP, PI), Vector3(2.95, 0.0, 8.3))
 const GAME_DOOR := -1.6                     # x of the game room door (hallway south wall)
 const GAME_S := 10.35                       # game room south wall line
@@ -61,7 +72,7 @@ const LIV_WALK := Rect2(2.88, -1.75, 6.47, 4.85)
 const BAL_WALK_N := Rect2(-3.7, -4.08, 15.25, 1.75)
 const BAL_WALK_E := Rect2(9.95, -4.08, 1.6, 7.15)
 const DOORWAYS := [Rect2(0.55, 3.0, 0.7, 0.9), Rect2(3.75, 2.9, 1.7, 1.0), Rect2(5.15, -2.55, 1.5, 0.95),
-	Rect2(GAME_DOOR - 0.35, 4.95, 0.7, 0.85), Rect2(STUDY_DOOR - 0.35, 4.95, 0.7, 0.85)]
+	Rect2(GAME_DOOR - 0.35, 4.95, 0.7, 0.85), Rect2(STUDY_DOOR - 0.35, 4.95, 0.7, 0.85), Rect2(TH_DOOR - 0.35, 4.95, 0.7, 0.85)]
 
 var main: Node3D
 var hallway: Node3D
@@ -69,6 +80,11 @@ var living: Node3D
 var balcony: Node3D
 var game: Node3D
 var study: Node3D
+var noir_room: Node3D
+var theater: Node3D
+var th_screen_mat: ShaderMaterial
+var secret_until := 0                       # ms: the bookcase stays open until then (after the red book is pulled)
+var _secret: Dictionary = {}
 var exterior: Node3D
 var doors_root: Node3D
 var rooms := {}                   # id -> root node ("bedroom" is the main room)
@@ -84,6 +100,8 @@ const SEES := {
 	"hallway": ["living"],
 	"game": [],
 	"study": [],
+	"noir": [],
+	"theater": [],
 	"living": ["hallway", "balcony"],
 	"balcony": ["bedroom", "living"],
 }
@@ -99,20 +117,26 @@ func build(m: Node3D) -> void:
 	balcony = _root("Balcony")
 	game = _root("GameRoom")
 	study = _root("Study")
+	noir_room = _root("NoirOffice")
+	theater = _root("Theater")
 	exterior = _root("Exterior")
 	doors_root = _root("Doors")             # seen from both sides, so always drawn
-	for id in ["hallway", "living", "balcony", "game", "study"]:
+	for id in ["hallway", "living", "balcony", "game", "study", "noir", "theater"]:
 		_blockers[id] = []
 	rooms["hallway"] = hallway
 	rooms["living"] = living
 	rooms["balcony"] = balcony
 	rooms["game"] = game
 	rooms["study"] = study
+	rooms["noir"] = noir_room
+	rooms["theater"] = theater
 	_build_hallway()
 	_build_living()
 	_build_balcony()
 	_build_game()
 	_build_study()
+	_build_noir_office()
+	_build_theater()
 	_build_exterior()
 
 
@@ -244,7 +268,8 @@ func _build_hallway() -> void:
 	_box(Vector3((x0 + x1) / 2.0, H + 0.05, zc), Vector3(x1 - x0, 0.1, zl + 0.1), ceil_m, p)
 	# its own north wall (the bedroom and living room have theirs: this is the hallway's face of it)
 	_wall_x(x0, x1, FRONT_Z + 0.05, FRONT_Z + 0.1, [[BED_DOOR.x, BED_DOOR.y, 0.0, DOOR_TOP], [ARCH.x, ARCH.y, 0.0, ARCH_TOP]], wall, p)
-	_wall_x(x0, x1, HALL_S, HALL_S + 0.1, [[GAME_DOOR - 0.47, GAME_DOOR + 0.47, 0.0, DOOR_TOP], [STUDY_DOOR - 0.47, STUDY_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # south: game room, study
+	_wall_x(x0, x1, HALL_S, HALL_S + 0.1, [[GAME_DOOR - 0.47, GAME_DOOR + 0.47, 0.0, DOOR_TOP], [STUDY_DOOR - 0.47, STUDY_DOOR + 0.47, 0.0, DOOR_TOP],
+		[TH_DOOR - 0.47, TH_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # south: game room, study, theater
 	_box(Vector3(WEST_X, H / 2.0, zc), Vector3(0.1, H, zl + 0.1), wall, p)                               # west (front door)
 	_box(Vector3(EAST_X, H / 2.0, zc), Vector3(0.1, H, zl + 0.1), wall, p)                               # east end
 	# baseboards
@@ -606,6 +631,12 @@ func _mirror_tv() -> void:
 	var pw = src.get_shader_parameter("tv_power")
 	liv_tv_mat.set_shader_parameter("tv_power", float(pw if pw != null else 1.0) if liv_tv_on else 0.0)
 	_liv_glow.visible = liv_tv_on and float(pw if pw != null else 1.0) > 0.5
+	if th_screen_mat != null and theater.visible:
+		for n in _liv_params:
+			th_screen_mat.set_shader_parameter(n, src.get_shader_parameter(n))
+		th_screen_mat.set_shader_parameter("crt_mode", 0)
+		th_screen_mat.set_shader_parameter("screen_aspect", TH_SCREEN.x / TH_SCREEN.y)
+		th_screen_mat.set_shader_parameter("tv_power", float(pw if pw != null else 1.0))
 
 
 # ---------------------------------------------------------------- the balcony: round the corner, under the balcony above
@@ -832,7 +863,7 @@ func _build_study() -> void:
 	_box(Vector3(cx, H + 0.05, cz), Vector3(x1 - x0, 0.1, z1 - z0), ceil_m, p)
 	_box(Vector3(x0 + 0.01, H / 2.0, cz), Vector3(0.02, H, z1 - z0), wall, p)                          # west (the game room behind)
 	_box(Vector3(x1 - 0.01, H / 2.0, cz), Vector3(0.02, H, z1 - z0), wall, p)                          # east
-	_box(Vector3(cx, H / 2.0, z1 + 0.04), Vector3(x1 - x0, H, 0.1), wall, p)                           # south
+	_wall_x(x0, x1, z1 - 0.01, z1 + 0.09, [[SECRET.x, SECRET.y, 0.0, DOOR_TOP]], wall, p)                # south (behind the bookcase: a way through)
 	_wall_x(x0, x1, z0, z0 + 0.04, [[STUDY_DOOR - 0.47, STUDY_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)   # north
 	# wood floorboards (long strips, a slightly different shade each)
 	var rng := RandomNumberGenerator.new()
@@ -894,9 +925,9 @@ func _build_study() -> void:
 	# a plant in the corner, and the lights
 	var pot := _mat(Color(0.55, 0.25, 0.20), 0.8)
 	var leaf := _mat(Color(0.18, 0.45, 0.30), 0.8)
-	main._cyl(Vector3(4.25, 0.22, 9.95), 0.2, 0.44, pot, p)
-	main._sphere(Vector3(4.25, 0.75, 9.95), 0.3, leaf, Vector3(1.0, 1.4, 1.0), p, 10)
-	_blockers["study"].append(Rect2(3.95, 9.65, 0.6, 0.6))
+	main._cyl(Vector3(0.85, 0.22, 5.95), 0.2, 0.44, pot, p)
+	main._sphere(Vector3(0.85, 0.75, 5.95), 0.3, leaf, Vector3(1.0, 1.4, 1.0), p, 10)
+	_blockers["study"].append(Rect2(0.55, 5.65, 0.6, 0.6))
 	_light(Vector3(4.05, 1.5, 6.5), main.WARM, 0.9, 4.0, p)
 	if not Plat.low_power():
 		_light(Vector3(2.5, 2.5, 7.8), Color(0.75, 0.45, 0.85), 0.5, 5.0, p)
@@ -910,6 +941,218 @@ func _build_study() -> void:
 			n.position = STUDY_KIT_XF * n.position
 
 
+# ---------------------------------------------------------------- the noir office, behind the bookcase by the study desk
+
+func _build_noir_office() -> void:
+	var p := noir_room
+	var wall := _mat(Color(0.20, 0.17, 0.16), 0.9)
+	var wainscot := _mat(Color(0.22, 0.13, 0.10), 0.6)
+	var floor_m := _mat(Color(0.16, 0.10, 0.08), 0.7)
+	var ceil_m := _mat(Color(0.12, 0.11, 0.11))
+	var x0 := 0.45
+	var x1 := STUDY_E - 0.05
+	var z0 := GAME_S + 0.05
+	var z1 := NOIR_Z1
+	var cx := (x0 + x1) / 2.0
+	var cz := (z0 + z1) / 2.0
+	_box(Vector3(cx, -0.05, cz), Vector3(x1 - x0 + 0.1, 0.1, z1 - z0 + 0.1), floor_m, p)
+	_box(Vector3(cx, H + 0.05, cz), Vector3(x1 - x0 + 0.1, 0.1, z1 - z0 + 0.1), ceil_m, p)
+	_box(Vector3(x0, H / 2.0, cz), Vector3(0.1, H, z1 - z0), wall, p)
+	_box(Vector3(x1, H / 2.0, cz), Vector3(0.1, H, z1 - z0), wall, p)
+	_wall_x(x0, x1, z1, z1 + 0.1, [[1.5, 3.3, 1.0, 2.4]], wall, p)                                        # south: the window
+	_wall_x(x0, x1, z0, z0 + 0.04, [[SECRET.x, SECRET.y, 0.0, DOOR_TOP]], wall, p)                         # north: the way in
+	# dark wood panelling up to the waist, and a picture rail
+	for side in [[Vector3(x0 + 0.06, 0.5, cz), Vector3(0.02, 1.0, z1 - z0)], [Vector3(x1 - 0.06, 0.5, cz), Vector3(0.02, 1.0, z1 - z0)]]:
+		_box(side[0], side[1], wainscot, p)
+	_box(Vector3(cx, 1.0, z1 - 0.01), Vector3(x1 - x0, 0.03, 0.03), wainscot, p)
+	# the floorboards
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var bz := z0
+	while bz < z1 - 0.01:
+		var sh := rng.randf_range(-0.02, 0.02)
+		_box(Vector3(cx, 0.001, bz + 0.07), Vector3(x1 - x0, 0.002, 0.13), _mat(Color(0.17 + sh, 0.10 + sh * 0.5, 0.08), 0.7), p)
+		bz += 0.14
+	# the office's things (noir.gd built them; they live in here)
+	if main.noir != null:
+		main.noir.office.reparent(p, false)
+		main.noir.office.transform = Transform3D.IDENTITY
+		_blockers["noir"].append(Rect2(1.55, 12.15, 1.7, 0.95))     # desk
+		_blockers["noir"].append(Rect2(0.5, 10.5, 0.65, 0.75))      # filing cabinet
+		_blockers["noir"].append(Rect2(2.2, 11.4, 0.7, 0.7))        # the visitor's chair
+		_blockers["noir"].append(Rect2(3.95, 13.0, 0.5, 0.6))       # coat rack
+	# the bookcase door, on the study side
+	var wood := _mat(Color(0.30, 0.12, 0.20), 0.7)
+	var hinge := Vector3(SECRET.x, 0.0, GAME_S - 0.05)
+	var frame := Node3D.new()
+	frame.position = hinge
+	doors_root.add_child(frame)
+	var pivot := Node3D.new()
+	frame.add_child(pivot)
+	var w := SECRET.y - SECRET.x
+	_box(Vector3(w / 2.0, 1.05, -0.15), Vector3(w, 2.1, 0.3), wood, pivot)
+	var book_cols := [Color(0.85, 0.45, 0.55), Color(0.35, 0.55, 0.62), Color(0.75, 0.65, 0.50), Color(0.55, 0.30, 0.65), Color(0.25, 0.25, 0.45)]
+	for k in 4:
+		var sy := 0.25 + k * 0.48
+		_box(Vector3(w / 2.0, sy - 0.015, -0.3), Vector3(w - 0.06, 0.03, 0.02), _mat(Color(0.22, 0.08, 0.15), 0.7), pivot)
+		var bx := 0.06
+		while bx < w - 0.08:
+			var bw := rng.randf_range(0.03, 0.06)
+			var bh := rng.randf_range(0.26, 0.38)
+			_box(Vector3(bx + bw / 2.0, sy + bh / 2.0, -0.31), Vector3(bw, bh, 0.02), _mat(book_cols[rng.randi() % book_cols.size()], 0.8), pivot)
+			bx += bw + 0.004
+	# the red book: sticks out a little once the office has been found
+	var red_m := _mat(Color(0.75, 0.08, 0.10), 0.6)
+	var red := _box(Vector3(w * 0.62, 1.21 + 0.17, -0.33), Vector3(0.045, 0.34, 0.06), red_m, pivot)
+	_secret = {"pivot": pivot, "open": 0.0, "red": red}
+	main.interactables.append({"node": red, "half": Vector3(0.05, 0.18, 0.05), "guest_ok": true,
+		"when": func() -> bool: return main.noir != null and main.noir.found,
+		"label": func() -> String: return "THE BOOKCASE IS OPEN" if float(_secret["open"]) > 0.5 else "PULL THE RED BOOK",
+		"cb": func() -> void: secret_pull(true),
+		"hover": main._glow_hover(red_m)})
+	# lights: the desk lamp is noir.gd's; a dim one so the corners aren't black
+	if not Plat.low_power():
+		_light(Vector3(2.5, 2.4, 11.2), Color(0.6, 0.55, 0.5), 0.25, 3.5, p)
+
+
+# the red book was pulled (here, or by someone else in the room)
+func secret_pull(tell: bool) -> void:
+	secret_until = Time.get_ticks_msec() + 12000
+	if not tell or main.net == null or not main.net.is_online():
+		return
+	if main.net.is_host():
+		for id in main.net.peer_ids():
+			main.net.send_var(id, 3, {"k": "noir_pull"})
+	else:
+		main.net.send_var(1, 3, {"k": "noir_pull"})
+
+
+func secret_open() -> float:
+	return float(_secret.get("open", 0.0))
+
+
+# ---------------------------------------------------------------- the theater: a big screen, three staggered rows stepping down
+
+func _build_theater() -> void:
+	var p := theater
+	var wall := _mat(Color(0.14, 0.06, 0.12))
+	var carpet := _mat(Color(0.30, 0.06, 0.14), 0.95)
+	var ceil_m := _mat(Color(0.08, 0.04, 0.08))
+	var trim := _mat(Color(0.20, 0.07, 0.22), 0.7)
+	var wood := _mat(Color(0.42, 0.17, 0.28), 0.65)
+	var panel := _mat(Color(0.34, 0.12, 0.24), 0.65)
+	var brass := _mat(Color(0.95, 0.75, 0.50), 0.3, 0.6)
+	var velvet := _mat(Color(0.55, 0.05, 0.12), 0.95)
+	var velvet_dk := _mat(Color(0.38, 0.03, 0.09), 0.95)
+	var x0 := TH_X0 + 0.05
+	var x1 := TH_X1 - 0.05
+	var z0 := HALL_S + 0.1
+	var z1 := TH_S
+	var cx := (x0 + x1) / 2.0
+	var lo := TH_LOW - 0.05
+	# floor: the level back, then the steps down to the front
+	var steps := [[z0, 8.4, 0.0], [8.4, 9.6, -0.22], [9.6, z1, TH_LOW]]
+	for st in steps:
+		var y: float = st[2]
+		_box(Vector3(cx, y - 0.05, (st[0] + st[1]) / 2.0), Vector3(x1 - x0, 0.1, st[1] - st[0]), carpet, p)
+		if y < 0.0:                                     # the riser up to the step behind
+			_box(Vector3(cx, y + 0.11, st[0] + 0.005), Vector3(x1 - x0, 0.22, 0.01), _mat(Color(0.22, 0.05, 0.10), 0.9), p)
+			_box(Vector3(cx, y + 0.215, st[0] - 0.01), Vector3(x1 - x0, 0.01, 0.025), _mat(Color(1.0, 0.7, 0.35), 0.5, 1.6), p)   # a light along the step edge
+	_box(Vector3(cx, H + 0.05, (z0 + z1) / 2.0), Vector3(x1 - x0 + 0.1, 0.1, z1 - z0 + 0.1), ceil_m, p)
+	_box(Vector3(x0, (H + lo) / 2.0, (z0 + z1) / 2.0), Vector3(0.1, H - lo, z1 - z0), wall, p)
+	_box(Vector3(x1, (H + lo) / 2.0, (z0 + z1) / 2.0), Vector3(0.1, H - lo, z1 - z0), wall, p)
+	_box(Vector3(cx, (H + lo) / 2.0, z1 + 0.05), Vector3(x1 - x0 + 0.1, H - lo, 0.1), wall, p)
+	_wall_x(x0, x1, z0, z0 + 0.04, [[TH_DOOR - 0.47, TH_DOOR + 0.47, 0.0, DOOR_TOP]], wall, p)
+	# soft panels on the side walls
+	for k in 5:
+		var pz := 6.3 + k * 1.2
+		for side in [x0 + 0.06, x1 - 0.06]:
+			_box(Vector3(side, 1.5, pz), Vector3(0.03, 1.6, 0.9), _mat(Color(0.22, 0.07, 0.16), 0.95), p)
+	# the door
+	_door_frame(hallway, Vector3(TH_DOOR, 0.0, HALL_S - 0.02), 0.0, 0.94, DOOR_TOP, trim)
+	_door_frame(p, Vector3(TH_DOOR, 0.0, z0 + 0.03), 0.0, 0.94, DOOR_TOP, trim)
+	var td := _door_slab(doors_root, Vector3(TH_DOOR - 0.47, 0.0, HALL_S + 0.05), 0.0, 0.94, wood, panel, brass)
+	_doors.append({"pivot": td, "at": Vector2(TH_DOOR, HALL_S + 0.05), "open": 0.0, "sign": -1.0, "links": ["hallway", "theater"]})
+	var plate := _mat(Color(0.12, 0.05, 0.16), 0.5)
+	_box(Vector3(TH_DOOR, 1.72, HALL_S - 0.005), Vector3(0.46, 0.13, 0.01), plate, doors_root)
+	_label("THEATER", Vector3(TH_DOOR, 1.72, HALL_S - 0.012), PI, 34, Color(1.0, 0.6, 0.65), doors_root)
+	# the screen, on the south wall, with curtains either side
+	var sy := TH_LOW + 0.45 + TH_SCREEN.y / 2.0
+	var scr := Node3D.new()
+	scr.position = Vector3(cx, sy, z1 - 0.02)
+	scr.rotation.y = PI                          # faces north, toward the seats
+	p.add_child(scr)
+	_box(Vector3(0, 0, -0.012), Vector3(TH_SCREEN.x + 0.16, TH_SCREEN.y + 0.16, 0.02), _mat(Color(0.02, 0.02, 0.03), 0.9), scr)   # (local -z is toward the wall)
+	var q := QuadMesh.new()
+	q.size = TH_SCREEN
+	th_screen_mat = (main.tv_mat as ShaderMaterial).duplicate()
+	var sm := MeshInstance3D.new()
+	sm.mesh = q
+	sm.material_override = th_screen_mat
+	sm.position = Vector3(0, 0, 0.002)
+	scr.add_child(sm)
+	for side in [-1.0, 1.0]:
+		for k in 5:
+			var cxk: float = side * (TH_SCREEN.x / 2.0 + 0.12 + k * 0.07)
+			var fold := _box(Vector3(cx + cxk, (H + lo) / 2.0, z1 - 0.1 - (k % 2) * 0.03), Vector3(0.08, H - lo, 0.04), velvet if k % 2 == 0 else velvet_dk, p)
+			fold.rotation.y = 0.0
+	_box(Vector3(cx, H - 0.15, z1 - 0.1), Vector3(TH_SCREEN.x + 1.0, 0.3, 0.06), velvet_dk, p)                    # valance
+	# two big speakers either side of the screen (they play the TV's sound)
+	for side in [-1.0, 1.0]:
+		main._make_speaker("Theater speaker " + ("L" if side < 0 else "R"), Vector3(cx + side * (TH_SCREEN.x / 2.0 + 0.6), TH_LOW + 0.55, z1 - 0.35),
+			PI, 0.0, Vector3(0.4, 1.1, 0.4), 0.13, p)
+		main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
+		_blockers["theater"].append(Rect2(cx + side * (TH_SCREEN.x / 2.0 + 0.6) - 0.3, z1 - 0.65, 0.6, 0.6))
+	if main.pc != null:
+		main.pc.refresh_speakers()
+	# the seats: three rows of four, each row shifted half a seat from the one in front so nobody's head is in the way
+	for row in TH_ROWS:
+		var rz: float = row[0]
+		var ry: float = row[1]
+		var xs: Array = row[2]
+		for sx in xs:
+			var s := Node3D.new()
+			s.position = Vector3(sx, ry, rz)
+			s.rotation.y = PI                    # facing the screen (+z)
+			p.add_child(s)
+			_box(Vector3(0, 0.42, 0), Vector3(0.58, 0.12, 0.52), velvet, s)                   # seat cushion
+			_box(Vector3(0, 0.78, 0.26), Vector3(0.58, 0.68, 0.12), velvet, s)                # back
+			_box(Vector3(0, 0.2, 0.05), Vector3(0.5, 0.36, 0.4), velvet_dk, s)               # base
+			for ax in [-0.33, 0.33]:
+				_box(Vector3(ax, 0.62, 0.02), Vector3(0.08, 0.06, 0.5), _mat(Color(0.12, 0.06, 0.08), 0.5), s)   # armrests
+				_box(Vector3(ax, 0.31, 0.02), Vector3(0.06, 0.62, 0.06), _mat(Color(0.12, 0.06, 0.08), 0.5), s)
+			var cup: MeshInstance3D = main._cyl(Vector3(0.33, 0.66, -0.15), 0.035, 0.04, _mat(Color(0.12, 0.06, 0.08), 0.5), s)   # a cup holder
+			cup.position.y = 0.655
+			var seat := Node3D.new()
+			seat.position = Vector3(0, 0, -0.05)
+			s.add_child(seat)
+			main.seat_nodes.append(seat)
+			main.seat_eye.append(1.12)
+			main.seat_swivel.append(false)
+		_blockers["theater"].append(Rect2(5.2, rz - 0.3, 3.7, 0.62))
+	# lights: dim sconces on the side walls, a faint glow off the screen
+	var sconce := _mat(Color(1.0, 0.6, 0.4), 0.5, 0.7)
+	for k in 3:
+		var lz := 6.6 + k * 1.9
+		for side in [x0 + 0.08, x1 - 0.08]:
+			_box(Vector3(side, 2.0, lz), Vector3(0.05, 0.22, 0.14), sconce, p)
+	_light(Vector3(cx, 1.6, 7.2), main.WARM, 0.45, 5.0, p)
+	_light(Vector3(cx, sy, z1 - 1.4), Color(0.6, 0.65, 1.0), 0.6, 5.5, p)
+	if not Plat.low_power():
+		_light(Vector3(cx, 2.3, 10.4), Color(0.8, 0.4, 0.6), 0.35, 4.5, p)
+
+
+# the floor under (x, z): only the theater isn't flat
+func floor_y(x: float, z: float) -> float:
+	if room_at(x, z) != "theater":
+		return 0.0
+	if z < 8.4:
+		return 0.0
+	if z < 9.6:
+		return -0.22
+	return TH_LOW
+
+
 # ---------------------------------------------------------------- the building around us (floors above and below)
 
 func _build_exterior() -> void:
@@ -918,12 +1161,12 @@ func _build_exterior() -> void:
 	var x0 := WEST_X - 0.1
 	var x1 := EAST_X + 0.1
 	var z0 := NORTH_Z - 0.1
-	var z1 := HALL_S + 6.0
+	var z1 := NOIR_Z1 + 0.5
 	var roof := _mat(Color(0.20, 0.13, 0.24), 0.9)
 	_box(Vector3((x0 + x1) / 2.0, H + 0.2, (z0 + z1) / 2.0), Vector3(x1 - x0 + 0.2, 0.3, z1 - z0 + 0.2), roof, p)                   # the roof (top floor)
 	_box(Vector3((x0 + x1) / 2.0, H + 0.5, z0 - 0.05), Vector3(x1 - x0 + 0.2, 0.35, 0.12), roof, p)                               # parapet
 	_box(Vector3(x1 + 0.05, H + 0.5, (z0 + z1) / 2.0), Vector3(0.12, 0.35, z1 - z0 + 0.2), roof, p)
-	_box(Vector3((x0 + x1) / 2.0, (-40.0 - 0.2) / 2.0, (z0 + z1) / 2.0), Vector3(x1 - x0, 40.0 - 0.2, z1 - z0), m, p)          # below
+	_box(Vector3((x0 + x1) / 2.0, (-40.0 - 0.7) / 2.0, (z0 + z1) / 2.0), Vector3(x1 - x0, 40.0 - 0.7, z1 - z0), m, p)          # below (the theater dips into it)
 	var slab := _mat(Color(0.28, 0.20, 0.30), 0.85)
 	var rail_m := _mat(Color(0.10, 0.08, 0.13), 0.4)
 	for fy in [-9.0, -6.0, -3.0]:                             # the neighbours' balconies below
@@ -955,6 +1198,10 @@ func room_at(x: float, z: float) -> String:
 		return "game"
 	if z > HALL_S and z <= GAME_S and x > GAME_E and x <= STUDY_E:
 		return "study"
+	if z > GAME_S and z <= NOIR_Z1 and x >= GAME_E and x <= STUDY_E:
+		return "noir"
+	if z > HALL_S and z <= TH_S and x > TH_X0 and x <= TH_X1:
+		return "theater"
 	if (z < NORTH_Z and z >= BAL_N - 0.2 and x >= WEST_X - 0.1 and x <= BAL_E + 0.2) \
 			or (x > EAST_X and x <= BAL_E + 0.2 and z >= BAL_N - 0.2 and z <= FRONT_Z + 0.1):
 		return "balcony"
@@ -965,7 +1212,7 @@ func room_at(x: float, z: float) -> String:
 func walkable(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
 	var ok := false
-	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK]:
+	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK, NOIR_WALK, TH_WALK]:
 		if (r as Rect2).has_point(pt):
 			ok = true
 			break
@@ -973,8 +1220,14 @@ func walkable(x: float, z: float) -> bool:
 		for r in DOORWAYS:
 			if (r as Rect2).has_point(pt):
 				return true
+		if Rect2(SECRET.x + 0.15, 9.95, SECRET.y - SECRET.x - 0.3, 0.75).has_point(pt):
+			return secret_open() > 0.85                   # through the bookcase, when it's swung open
 		return false
 	var id := room_at(x, z)
+	if id == "study" and Rect2(SECRET.x - 0.05, 9.9, SECRET.y - SECRET.x + 0.1, 0.5).has_point(pt) and secret_open() < 0.85:
+		return false                                      # the bookcase itself
+	if id == "study" and secret_open() > 0.05 and Rect2(SECRET.x - 0.2, 9.3, 0.4, 1.0).has_point(pt):
+		return false                                      # the bookcase, swung out
 	for b in _blockers.get(id, []):
 		if (b as Rect2).has_point(pt):
 			return false
@@ -984,7 +1237,7 @@ func walkable(x: float, z: float) -> bool:
 # any space at all (for walking out of something you ended up inside)
 func in_bounds(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
-	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK]:
+	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK, NOIR_WALK, TH_WALK]:
 		if (r as Rect2).has_point(pt):
 			return true
 	for r in DOORWAYS:
@@ -1051,6 +1304,17 @@ func _process(delta: float) -> void:
 		var o: float = move_toward(float(d["open"]), target, delta / 0.6)
 		d["open"] = o
 		(d["pivot"] as Node3D).rotation.y = float(d["sign"]) * 1.65 * smoothstep(0.0, 1.0, o)
+	# the bookcase: open after the red book is pulled, and while anybody is in the office or the way through
+	if not _secret.is_empty():
+		var want := Time.get_ticks_msec() < secret_until
+		for pp in people:
+			var rid := room_at((pp as Vector2).x, (pp as Vector2).y)
+			if rid == "noir" or Rect2(SECRET.x, 9.9, SECRET.y - SECRET.x, 0.8).has_point(pp):
+				if rid == "noir" or float(_secret["open"]) > 0.5:
+					want = true
+		var so: float = move_toward(float(_secret["open"]), 1.0 if want else 0.0, delta / 1.4)
+		_secret["open"] = so
+		(_secret["pivot"] as Node3D).rotation.y = 1.5 * smoothstep(0.0, 1.0, so)
 	# what's drawn: the room I'm in, what it looks out on, and rooms behind an open door
 	var seen := {current: true}
 	for s in SEES.get(current, []):
@@ -1061,7 +1325,10 @@ func _process(delta: float) -> void:
 			if current in links:
 				for l in links:
 					seen[l] = true
-	if living.visible:
+	if not _secret.is_empty() and float(_secret["open"]) > 0.02 and current in ["study", "noir"]:
+		seen["study"] = true
+		seen["noir"] = true
+	if living.visible or theater.visible:
 		_mirror_tv()
 	if seen != _seen:
 		_seen = seen

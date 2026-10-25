@@ -13,6 +13,7 @@ var speakers: Array = []         # [{"name", "player", "enabled", "mode", "tv", 
 var _tv_feed: BusFeed            # the TV's tapes
 var _con_feed: BusFeed           # the console games shown on the TV
 var master := 0.7
+var duck := 0.0                     # 0..1: the music fades down (in the noir office, which has its own)
 
 # A silent "clock" player runs the song all the time (on a muted bus) so a speaker that was switched
 # off, and so fully stopped, can jump back in at the right point when it is switched on again.
@@ -110,6 +111,14 @@ func seek(t: float) -> void:
 
 func get_playback_position() -> float:
 	return 0.0 if _ref == null else _ref.get_playback_position()
+
+
+func set_duck(v: float) -> void:
+	v = clampf(v, 0.0, 1.0)
+	if absf(v - duck) < 0.02 and not (v == 0.0 and duck != 0.0) and not (v == 1.0 and duck != 1.0):
+		return
+	duck = v
+	_apply()
 
 
 func set_master(v: float) -> void:
@@ -215,7 +224,7 @@ func _apply() -> void:
 	var share_db := -3.0 * log(float(maxi(n, 1))) / log(2.0)
 	for s in speakers:
 		var p: AudioStreamPlayer3D = s["player"]
-		p.volume_db = (linear_to_db(maxf(master, 0.0001)) + share_db) if s["enabled"] else -80.0
+		p.volume_db = (linear_to_db(maxf(master * (1.0 - 0.85 * duck), 0.0001)) + share_db) if s["enabled"] else -80.0
 		for k in ["tv", "con"]:
 			(s[k] as AudioStreamPlayer3D).volume_db = tv_share if s["mode"] == "tv" else -80.0
 		var led: StandardMaterial3D = s["led"]

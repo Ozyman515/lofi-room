@@ -317,13 +317,14 @@ static func typewriter() -> Node3D:
 	for sx in [-1.0, 1.0]:
 		_part(_cyl(0.012, 0.012, 0.012, 16), chrome, Vector3(sx * 0.19, 0.125, -0.09), Vector3(0, 0, PI / 2.0), w)
 	_part(_box(Vector3(0.05, 0.006, 0.012)), chrome, Vector3(-0.21, 0.135, -0.07), Vector3(0, 0, 0.3), w)  # carriage return lever
-	# four rows of round keys stepping up toward the back
+	# four rows of keys stepping up toward the back: each row a single long key bar with thin gaps painted on
+	# (no field of little round keys)
 	for r in 4:
-		for k in 10 - (1 if r == 3 else 0):
-			var x := -0.135 + k * 0.03 + r * 0.007
-			var key := _part(_cyl(0.011, 0.011, 0.006, 14), keycap, Vector3(x, 0.074 + r * 0.008, 0.10 - r * 0.026), Vector3.ZERO, w)
-			key.name = "Key"
-			_part(_cyl(0.0125, 0.0125, 0.004, 14), chrome, Vector3(x, 0.071 + r * 0.008, 0.10 - r * 0.026), Vector3.ZERO, w)
+		var row_w := 0.29 - (0.03 if r == 3 else 0.0)
+		var x0 := -0.135 + r * 0.007 - 0.011
+		var bar := _part(_box(Vector3(row_w, 0.006, 0.02)), keycap, Vector3(x0 + row_w / 2.0, 0.074 + r * 0.008, 0.10 - r * 0.026), Vector3.ZERO, w)
+		bar.name = "Key"
+		_part(_box(Vector3(row_w + 0.006, 0.004, 0.024)), chrome, Vector3(x0 + row_w / 2.0, 0.071 + r * 0.008, 0.10 - r * 0.026), Vector3.ZERO, w)
 	_part(_box(Vector3(0.16, 0.008, 0.02)), keycap, Vector3(0, 0.072, 0.125), Vector3.ZERO, w)            # space bar
 	# the sheet of paper rolling out of the platen, leaning back
 	var sheet := Node3D.new()
