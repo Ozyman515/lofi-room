@@ -132,67 +132,27 @@ func _build_reporter() -> void:
 	_box(_rep, Vector3(0, -(roof_y + 40.0) * 0.5 - 0.3, -1.0), Vector3(8.0, roof_y + 40.0, 6.0), tower)
 	_box(_rep, Vector3(0, 0.4, -3.6), Vector3(8.0, 0.8, 0.3), roofm)
 	_box(_rep, Vector3(2.6, 2.0, -3.4), Vector3(0.08, 4.0, 0.08), dark)
-	var body := Node3D.new()                  # the man (about 1.8 units tall)
-	body.name = "Man"
-	_rep.add_child(body)
-	_cap(body, Vector3(-0.13, 0.45, 0), 0.11, 0.9, suit)                 # legs
-	_cap(body, Vector3(0.13, 0.45, 0), 0.11, 0.9, suit)
-	_box(body, Vector3(-0.13, 0.04, 0.06), Vector3(0.14, 0.08, 0.28), dark)   # shoes
-	_box(body, Vector3(0.13, 0.04, 0.06), Vector3(0.14, 0.08, 0.28), dark)
-	var torso := Node3D.new()
-	torso.position = Vector3(0, 0.95, 0)
-	body.add_child(torso)
-	_ell(torso, Vector3(0, 0.3, 0), Vector3(0.27, 0.36, 0.17), suit)     # jacket
-	var vee := PrismMesh.new()                                            # shirt in the V of the jacket
-	vee.size = Vector3(0.16, 0.26, 0.02)
-	vee.left_to_right = 0.5
-	_put(torso, vee, Vector3(0, 0.43, 0.155), shirt).rotation.z = PI
-	_box(torso, Vector3(0, 0.38, 0.17), Vector3(0.035, 0.3, 0.012), tie)      # thin tie
-	_ell(torso, Vector3(-0.27, 0.56, 0), Vector3(0.1, 0.07, 0.11), suit)  # shoulders
-	_ell(torso, Vector3(0.27, 0.56, 0), Vector3(0.1, 0.07, 0.11), suit)
-	var head := Node3D.new()
-	head.position = Vector3(0, 0.72, 0)
-	torso.add_child(head)
-	_cap(head, Vector3(0, 0.0, 0), 0.055, 0.14, skin)                     # neck
-	_ell(head, Vector3(0, 0.16, 0.01), Vector3(0.1, 0.13, 0.11), skin)    # head
-	_ell(head, Vector3(0, 0.22, -0.01), Vector3(0.105, 0.09, 0.11), hair)  # hair, combed back
-	_ell(head, Vector3(-0.095, 0.17, -0.01), Vector3(0.025, 0.05, 0.06), grey)   # grey temples
-	_ell(head, Vector3(0.095, 0.17, -0.01), Vector3(0.025, 0.05, 0.06), grey)
-	_box(head, Vector3(-0.04, 0.2, 0.1), Vector3(0.05, 0.014, 0.02), hair)        # heavy brows
-	_box(head, Vector3(0.04, 0.2, 0.1), Vector3(0.05, 0.014, 0.02), hair)
-	_ell(head, Vector3(-0.035, 0.175, 0.1), Vector3(0.012, 0.009, 0.006), dark)   # eyes
-	_ell(head, Vector3(0.035, 0.175, 0.1), Vector3(0.012, 0.009, 0.006), dark)
-	_ell(head, Vector3(0, 0.14, 0.115), Vector3(0.018, 0.03, 0.02), skin)         # nose
-	_ell(head, Vector3(-0.1, 0.16, 0.0), Vector3(0.014, 0.03, 0.02), skin)        # ears
-	_ell(head, Vector3(0.1, 0.16, 0.0), Vector3(0.014, 0.03, 0.02), skin)
-	var mouth := _ell(head, Vector3(0, 0.095, 0.1), Vector3(0.03, 0.008, 0.01), dark)
-	# arms: the right one holds the microphone up near his chin, the left one gestures
-	var arm_r := Node3D.new()
-	arm_r.position = Vector3(0.29, 0.52, 0)
-	torso.add_child(arm_r)
-	_cap(arm_r, Vector3(0.02, -0.16, 0.04), 0.06, 0.34, suit)
-	var fore_r := Node3D.new()
-	fore_r.position = Vector3(0.02, -0.32, 0.06)
-	arm_r.add_child(fore_r)
-	var fr := _cap(fore_r, Vector3(-0.06, 0.1, 0.1), 0.05, 0.3, suit)
-	fr.rotation = Vector3(-1.1, 0.0, 0.5)
-	_ell(fore_r, Vector3(-0.13, 0.2, 0.2), Vector3(0.045, 0.05, 0.045), skin)      # hand
+	var p := _person(_rep, {"skin": skin.albedo_color, "legs": suit.albedo_color, "shoes": dark.albedo_color, "jacket": suit.albedo_color,
+		"shirt": shirt.albedo_color, "tie": tie.albedo_color, "hair": hair.albedo_color, "temples": grey.albedo_color,
+		"brows": Color(0.1, 0.09, 0.09), "eyes": Color(0.2, 0.25, 0.3)})
+	(p["man"] as Node3D).name = "Man"
+	# the right hand holds the microphone up under his chin; its cable hangs down
+	(p["arm_r"] as Node3D).rotation = Vector3(-0.3, 0.0, -0.2)
+	(p["fore_r"] as Node3D).rotation = Vector3(-2.45, 0.0, 0.0)
 	var mic := Node3D.new()
-	mic.position = Vector3(-0.15, 0.26, 0.22)
-	fore_r.add_child(mic)
-	_cap(mic, Vector3(0, 0.0, 0), 0.018, 0.16, chrome).rotation.x = -0.4
-	_ell(mic, Vector3(0, 0.1, 0.04), Vector3(0.045, 0.06, 0.04), chrome)           # the round head
-	_box(mic, Vector3(0, 0.1, 0.075), Vector3(0.06, 0.006, 0.006), dark)          # its grille bar
-	_cap(mic, Vector3(0.0, -0.18, -0.05), 0.008, 0.25, dark).rotation.x = 0.3     # the cable
-	var arm_l := Node3D.new()
-	arm_l.position = Vector3(-0.29, 0.52, 0)
-	torso.add_child(arm_l)
-	_cap(arm_l, Vector3(-0.02, -0.17, 0.0), 0.06, 0.34, suit)
-	var fore_l := Node3D.new()
-	fore_l.position = Vector3(-0.03, -0.34, 0.0)
-	arm_l.add_child(fore_l)
-	_cap(fore_l, Vector3(0, -0.13, 0.02), 0.05, 0.28, suit)
-	_ell(fore_l, Vector3(0, -0.29, 0.03), Vector3(0.045, 0.055, 0.04), skin)
+	mic.position = Vector3(-0.01, -0.07, 0.035)
+	(p["hand_r"] as Node3D).add_child(mic)
+	_cap(mic, Vector3(0, -0.05, 0), 0.016, 0.16, chrome)
+	_ell(mic, Vector3(0, -0.15, 0.0), Vector3(0.036, 0.045, 0.036), chrome)                  # the round head
+	_box(mic, Vector3(0, -0.15, 0.03), Vector3(0.05, 0.005, 0.006), dark)                    # its grille bar
+	_cap(mic, Vector3(0.0, 0.1, -0.02), 0.007, 0.2, dark)                                   # the cable
+	var body: Node3D = p["man"]
+	var torso: Node3D = p["torso"]
+	var head: Node3D = p["head"]
+	var mouth: MeshInstance3D = p["mouth"]
+	var arm_l: Node3D = p["arm_l"]
+	var fore_l: Node3D = p["fore_l"]
+	var arm_r: Node3D = p["arm_r"]
 	for n in _rep.find_children("*", "MeshInstance3D", true, false):
 		(n as MeshInstance3D).layers = LAYER
 	_rp = {"man": body, "torso": torso, "head": head, "mouth": mouth, "arm_l": arm_l, "fore_l": fore_l, "arm_r": arm_r}
@@ -621,61 +581,117 @@ func _set_mic(r: Node3D, mouth: Vector3) -> void:
 	var chrome := _mat(Color(0.75, 0.77, 0.8), 0.35)
 	chrome.metallic = 0.5
 	var mic := Node3D.new()
-	mic.position = mouth + Vector3(0.2, -0.06, 0.24)
+	mic.position = mouth + Vector3(0.12, -0.08, 0.16)
+	mic.rotation = Vector3(0.0, 0.6, 0.0)
 	r.add_child(mic)
-	_cap(mic, Vector3(0.08, -0.04, 0.06), 0.017, 0.18, chrome).rotation = Vector3(0.6, 0.0, 1.0)
-	_ell(mic, Vector3.ZERO, Vector3(0.04, 0.05, 0.04), chrome)
+	_cap(mic, Vector3(0.06, -0.04, 0.02), 0.012, 0.13, chrome).rotation = Vector3(0.0, 0.0, 1.0)
+	_ell(mic, Vector3.ZERO, Vector3(0.026, 0.032, 0.026), chrome)
 
 
-# a plain standing figure, the same build as the newsman; faces +z. Returns its moving parts.
+# a standing man, built like a Dreamcast-era character: real proportions (about 7.5 heads tall), a chest that
+# narrows to the waist, hips, knees and elbows, hands with a thumb, and a face with whites to the eyes, brows, a
+# nose, a jaw and a chin. Faces +z, feet on y = 0, about 1.8 tall. Returns its moving parts.
 func _person(parent: Node3D, c: Dictionary) -> Dictionary:
 	var body := Node3D.new()
 	parent.add_child(body)
-	var skin := _mat(c["skin"], 0.6)
-	var dark := _mat(Color(0.05, 0.05, 0.05), 0.5)
-	for sx in [-0.13, 0.13]:
-		_cap(body, Vector3(sx, 0.45, 0), 0.11, 0.9, _mat(c["legs"], 0.8))
-		_box(body, Vector3(sx, 0.04, 0.06), Vector3(0.14, 0.08, 0.28), _mat(c["shoes"], 0.6))
+	var skin := _mat(c["skin"], 0.55)
+	var legs := _mat(c["legs"], 0.8)
+	var shoes := _mat(c["shoes"], 0.4)
+	var jacket := _mat(c["jacket"], 0.8)
+	var shirt := _mat(c["shirt"], 0.7)
+	# legs: thigh and shin, a little apart; shoes with a rounded toe
+	for sx in [-1.0, 1.0]:
+		_cap(body, Vector3(sx * 0.095, 0.7, 0.0), 0.075, 0.48, legs)
+		_cap(body, Vector3(sx * 0.095, 0.29, 0.0), 0.06, 0.5, legs)
+		_box(body, Vector3(sx * 0.095, 0.035, 0.03), Vector3(0.1, 0.07, 0.22), shoes)
+		_ell(body, Vector3(sx * 0.095, 0.04, 0.13), Vector3(0.05, 0.035, 0.06), shoes)
+	var pelvis := _put(body, _taper(0.165, 0.16, 0.16), Vector3(0, 0.92, 0), legs)
+	pelvis.scale = Vector3(1.0, 1.0, 0.66)
 	var torso := Node3D.new()
 	torso.position = Vector3(0, 0.95, 0)
 	body.add_child(torso)
-	var jacket := _mat(c["jacket"], 0.85)
-	_ell(torso, Vector3(0, 0.3, 0), Vector3(0.27, 0.36, 0.17), jacket)
-	var vee := PrismMesh.new()                                            # the shirt in the V of the jacket
-	vee.size = Vector3(0.15, 0.24, 0.02)
+	var chest := _put(torso, _taper(0.19, 0.15, 0.52), Vector3(0, 0.28, 0), jacket)       # broad at the shoulders, in at the waist
+	chest.scale = Vector3(1.0, 1.0, 0.62)
+	var vee := PrismMesh.new()                                                            # the shirt in the V of the jacket
+	vee.size = Vector3(0.13, 0.24, 0.02)
 	vee.left_to_right = 0.5
-	_put(torso, vee, Vector3(0, 0.44, 0.155), _mat(c["shirt"], 0.7)).rotation.z = PI
-	_ell(torso, Vector3(-0.27, 0.56, 0), Vector3(0.1, 0.07, 0.11), jacket)
-	_ell(torso, Vector3(0.27, 0.56, 0), Vector3(0.1, 0.07, 0.11), jacket)
+	_put(torso, vee, Vector3(0, 0.42, 0.105), shirt).rotation.z = PI
+	if c.has("tie"):
+		_box(torso, Vector3(0, 0.39, 0.112), Vector3(0.032, 0.2, 0.01), _mat(c["tie"], 0.6))
+	for sx in [-1.0, 1.0]:
+		_ell(torso, Vector3(sx * 0.2, 0.48, 0.0), Vector3(0.075, 0.06, 0.08), jacket)      # shoulders
+		var lap := _box(torso, Vector3(sx * 0.06, 0.4, 0.108), Vector3(0.05, 0.22, 0.012), jacket)   # lapels
+		lap.rotation.z = sx * 0.3
+	_put(torso, _taper(0.05, 0.052, 0.1), Vector3(0, 0.57, 0), skin)                     # neck
+	_put(torso, _taper(0.062, 0.066, 0.035), Vector3(0, 0.535, 0), shirt)                 # collar
 	var head := Node3D.new()
-	head.position = Vector3(0, 0.72, 0)
+	head.position = Vector3(0, 0.6, 0)
 	torso.add_child(head)
-	_cap(head, Vector3(0, 0.0, 0), 0.055, 0.14, skin)
-	_ell(head, Vector3(0, 0.16, 0.01), Vector3(0.1, 0.13, 0.11), skin)
-	if c.has("hair"):
-		_ell(head, Vector3(0, 0.21, -0.02), Vector3(0.105, 0.09, 0.1), _mat(c["hair"], 0.6))
-	_ell(head, Vector3(-0.035, 0.175, 0.1), Vector3(0.012, 0.009, 0.006), dark)
-	_ell(head, Vector3(0.035, 0.175, 0.1), Vector3(0.012, 0.009, 0.006), dark)
-	_box(head, Vector3(-0.04, 0.197, 0.1), Vector3(0.045, 0.012, 0.02), _mat(c.get("brows", Color(0.2, 0.18, 0.17)), 0.6))
-	_box(head, Vector3(0.04, 0.197, 0.1), Vector3(0.045, 0.012, 0.02), _mat(c.get("brows", Color(0.2, 0.18, 0.17)), 0.6))
-	_ell(head, Vector3(0, 0.14, 0.115), Vector3(0.018, 0.03, 0.02), skin)
-	_ell(head, Vector3(-0.1, 0.16, 0.0), Vector3(0.014, 0.03, 0.02), skin)
-	_ell(head, Vector3(0.1, 0.16, 0.0), Vector3(0.014, 0.03, 0.02), skin)
-	var mouth := _ell(head, Vector3(0, 0.095, 0.1), Vector3(0.03, 0.008, 0.01), dark)
+	var mouth := _face(head, c, skin)
 	var parts := {"man": body, "torso": torso, "head": head, "mouth": mouth}
+	# arms: upper arm, a bend at the elbow, forearm, a shirt cuff, a hand with a thumb
 	for side in [-1.0, 1.0]:
 		var arm := Node3D.new()
-		arm.position = Vector3(side * 0.29, 0.52, 0)
+		arm.position = Vector3(side * 0.22, 0.47, 0)
 		torso.add_child(arm)
-		_cap(arm, Vector3(side * 0.02, -0.17, 0.0), 0.06, 0.34, jacket)
+		_cap(arm, Vector3(0, -0.145, 0), 0.05, 0.31, jacket)
 		var fore := Node3D.new()
-		fore.position = Vector3(side * 0.03, -0.34, 0.0)
+		fore.position = Vector3(0, -0.29, 0)
 		arm.add_child(fore)
-		_cap(fore, Vector3(0, -0.13, 0.02), 0.05, 0.28, jacket)
-		_ell(fore, Vector3(0, -0.29, 0.03), Vector3(0.045, 0.055, 0.04), skin)
+		_cap(fore, Vector3(0, -0.12, 0), 0.044, 0.27, jacket)
+		_put(fore, _taper(0.042, 0.042, 0.03), Vector3(0, -0.245, 0), shirt)
+		var hand := Node3D.new()
+		hand.position = Vector3(0, -0.27, 0)
+		fore.add_child(hand)
+		_box(hand, Vector3(0, -0.04, 0.0), Vector3(0.028, 0.08, 0.07), skin)              # palm
+		_box(hand, Vector3(side * -0.004, -0.105, 0.004), Vector3(0.024, 0.06, 0.064), skin).rotation.x = 0.25   # fingers, curled a little
+		_cap(hand, Vector3(side * -0.012, -0.045, 0.04), 0.012, 0.055, skin).rotation.x = -0.5                 # thumb
 		parts["arm_r" if side > 0 else "arm_l"] = arm
 		parts["fore_r" if side > 0 else "fore_l"] = fore
+		parts["hand_r" if side > 0 else "hand_l"] = hand
 	return parts
+
+
+# the head: skull, cheeks and jaw, a chin, ears, a nose, eyes with whites, brows, lips; hair if he has it.
+# Returns the mouth (it opens and closes as he talks).
+func _face(head: Node3D, c: Dictionary, skin: Material) -> MeshInstance3D:
+	_ell(head, Vector3(0, 0.155, -0.005), Vector3(0.088, 0.105, 0.1), skin)              # skull
+	_ell(head, Vector3(0, 0.09, 0.012), Vector3(0.076, 0.07, 0.085), skin)               # cheeks and jaw
+	_ell(head, Vector3(0, 0.05, 0.05), Vector3(0.036, 0.03, 0.036), skin)                # chin
+	for sx in [-1.0, 1.0]:
+		_ell(head, Vector3(sx * 0.088, 0.135, -0.005), Vector3(0.012, 0.027, 0.019), skin)   # ears
+	_ell(head, Vector3(0, 0.125, 0.093), Vector3(0.014, 0.032, 0.02), skin)               # nose
+	_ell(head, Vector3(0, 0.1, 0.1), Vector3(0.02, 0.012, 0.014), skin)                   # its tip
+	var white := _mat(Color(0.95, 0.94, 0.9), 0.3)
+	var iris := _mat(c.get("eyes", Color(0.25, 0.17, 0.1)), 0.3)
+	var brow := _mat(c.get("brows", Color(0.2, 0.18, 0.17)), 0.6)
+	for sx in [-1.0, 1.0]:
+		_ell(head, Vector3(sx * 0.032, 0.15, 0.078), Vector3(0.017, 0.01, 0.01), white)
+		_ell(head, Vector3(sx * 0.032, 0.15, 0.086), Vector3(0.007, 0.0085, 0.004), iris)
+		_ell(head, Vector3(sx * 0.032, 0.158, 0.082), Vector3(0.019, 0.006, 0.01), skin)     # upper lid
+		var b := _box(head, Vector3(sx * 0.035, 0.172, 0.088), Vector3(0.042, 0.01, 0.014), brow)
+		b.rotation.z = sx * -0.12
+	var lips := _mat(Color(c["skin"]).darkened(0.25), 0.5)
+	_ell(head, Vector3(0, 0.064, 0.08), Vector3(0.024, 0.007, 0.01), lips)                # lower lip
+	var mouth := _ell(head, Vector3(0, 0.072, 0.083), Vector3(0.022, 0.004, 0.006), _mat(Color(0.12, 0.04, 0.04), 0.6))
+	if c.has("hair"):
+		var hair := _mat(c["hair"], 0.55)
+		var cap := _ell(head, Vector3(0, 0.19, -0.015), Vector3(0.094, 0.08, 0.1), hair)      # swept back off the forehead
+		cap.rotation.x = -0.25
+		_ell(head, Vector3(0, 0.14, -0.045), Vector3(0.09, 0.09, 0.075), hair)                 # the back
+		for sx in [-1.0, 1.0]:
+			_box(head, Vector3(sx * 0.086, 0.125, 0.02), Vector3(0.01, 0.04, 0.03), _mat(c.get("temples", c["hair"]), 0.6))   # sideburns
+	return mouth
+
+
+static func _taper(r_top: float, r_bot: float, h: float) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = r_top
+	m.bottom_radius = r_bot
+	m.height = h
+	m.radial_segments = 14
+	m.rings = 1
+	return m
 
 
 # the ice cream vendor at his cart in Old Town: white jacket and paper cap, a striped awning behind him
@@ -685,13 +701,13 @@ func _build_vendor(at: Vector3) -> Dictionary:
 	var p := _person(r, {"skin": Color(0.86, 0.7, 0.56), "legs": Color(0.25, 0.25, 0.3), "shoes": Color(0.1, 0.08, 0.07),
 		"jacket": white, "shirt": white, "hair": Color(0.45, 0.44, 0.43), "brows": Color(0.4, 0.39, 0.38)})
 	var head: Node3D = p["head"]
-	_box(head, Vector3(0, 0.275, 0.0), Vector3(0.2, 0.06, 0.18), _mat(white, 0.7)).rotation.z = 0.12     # paper cap
-	_box(head, Vector3(0, 0.247, 0.0), Vector3(0.21, 0.015, 0.19), _mat(Color(0.85, 0.3, 0.35), 0.6)).rotation.z = 0.12
-	_box(p["torso"], Vector3(0, 0.12, 0.16), Vector3(0.36, 0.48, 0.02), _mat(Color(0.98, 0.98, 0.96), 0.8))   # apron
-	_box(p["torso"], Vector3(0, 0.6, 0.16), Vector3(0.07, 0.03, 0.02), _mat(Color(0.8, 0.15, 0.2), 0.6))    # bow tie
+	_box(head, Vector3(0, 0.248, -0.01), Vector3(0.18, 0.05, 0.2), _mat(white, 0.7)).rotation.z = 0.08     # paper cap
+	_box(head, Vector3(0, 0.226, -0.01), Vector3(0.185, 0.012, 0.205), _mat(Color(0.85, 0.3, 0.35), 0.6)).rotation.z = 0.08
+	_box(p["torso"], Vector3(0, 0.08, 0.1), Vector3(0.3, 0.5, 0.012), _mat(Color(0.98, 0.98, 0.96), 0.8)).rotation.x = -0.05   # apron
+	_box(p["torso"], Vector3(0, 0.515, 0.11), Vector3(0.07, 0.028, 0.02), _mat(Color(0.8, 0.15, 0.2), 0.6))   # bow tie
 	var scoop := _mat(Color(0.75, 0.77, 0.8), 0.2)
 	scoop.metallic = 0.8
-	_cap(p["fore_r"], Vector3(0, -0.36, 0.05), 0.012, 0.12, scoop)                                          # the scoop in his hand
+	_cap(p["hand_r"], Vector3(0, -0.1, 0.05), 0.011, 0.12, scoop)                                            # the scoop in his hand
 	# the cart: three tubs under the lid, a parasol over it, a sign on the front
 	var cart := _mat(Color(0.95, 0.9, 0.82), 0.6)
 	_box(r, Vector3(0.8, 0.42, 0.25), Vector3(0.75, 0.8, 0.45), cart)
@@ -719,7 +735,7 @@ func _build_vendor(at: Vector3) -> Dictionary:
 		var aw: MeshInstance3D = _box(r, Vector3(-2.0 + k * 0.3, 2.2, -1.0), Vector3(0.3, 0.05, 0.7),
 			_mat(Color(0.85, 0.2, 0.25) if k % 2 == 0 else Color(0.95, 0.93, 0.9), 0.7))
 		aw.rotation.x = 0.35
-	_set_mic(r, Vector3(0, 1.76, 0.1))
+	_set_mic(r, Vector3(0, 1.63, 0.1))
 	return {"root": r, "p": p, "cam": [Vector3(0.55, 1.62, 2.3), Vector3(0.35, 1.4, 0.0)], "style": "wave"}
 
 
@@ -731,24 +747,24 @@ func _build_hunter(at: Vector3) -> Dictionary:
 		"jacket": khaki, "shirt": Color(0.88, 0.84, 0.72), "brows": Color(0.75, 0.72, 0.68)})
 	var head: Node3D = p["head"]
 	var helmet := _mat(Color(0.88, 0.84, 0.68), 0.7)
-	_ell(head, Vector3(0, 0.24, -0.005), Vector3(0.135, 0.1, 0.15), helmet)
-	_put(head, _cyl_mesh(0.2, 0.012), Vector3(0, 0.21, 0.0), helmet).scale = Vector3(1.0, 1.0, 1.15)
-	_put(head, _cyl_mesh(0.137, 0.022), Vector3(0, 0.228, -0.005), _mat(Color(0.35, 0.28, 0.2), 0.6)).scale = Vector3(1.0, 1.0, 1.1)   # hat band
+	_ell(head, Vector3(0, 0.22, -0.005), Vector3(0.12, 0.1, 0.135), helmet)
+	_put(head, _cyl_mesh(0.18, 0.012), Vector3(0, 0.2, 0.0), helmet).scale = Vector3(1.0, 1.0, 1.15)
+	_put(head, _cyl_mesh(0.122, 0.022), Vector3(0, 0.215, -0.005), _mat(Color(0.35, 0.28, 0.2), 0.6)).scale = Vector3(1.0, 1.0, 1.1)   # hat band
 	var tache := _mat(Color(0.82, 0.8, 0.76), 0.7)                                                          # a grand white moustache
 	for sx in [-1.0, 1.0]:
-		_ell(head, Vector3(sx * 0.035, 0.112, 0.108), Vector3(0.04, 0.014, 0.016), tache).rotation.z = sx * -0.35
+		_ell(head, Vector3(sx * 0.03, 0.084, 0.092), Vector3(0.036, 0.012, 0.014), tache).rotation.z = sx * -0.35
 	var blk := _mat(Color(0.06, 0.06, 0.06), 0.4)
 	for sx in [-1.0, 1.0]:
-		_put(p["torso"], _cyl_mesh(0.026, 0.11), Vector3(sx * 0.03, 0.3, 0.2), blk)          # binoculars, hanging
+		_put(p["torso"], _cyl_mesh(0.024, 0.1), Vector3(sx * 0.028, 0.3, 0.135), blk)        # binoculars, hanging
 	for sx in [-1.0, 1.0]:
-		_box(p["torso"], Vector3(sx * 0.08, 0.45, 0.17), Vector3(0.012, 0.3, 0.012), blk).rotation.z = sx * 0.35   # the strap
+		_box(p["torso"], Vector3(sx * 0.055, 0.43, 0.12), Vector3(0.01, 0.26, 0.01), blk).rotation.z = sx * 0.3   # the strap
 	# the docks: stacked crates, a bollard, a lamp
 	var crate := _mat(Color(0.45, 0.32, 0.2), 0.85)
 	_box(r, Vector3(-1.2, 0.35, -0.6), Vector3(0.7, 0.7, 0.7), crate)
 	_box(r, Vector3(-1.1, 1.0, -0.65), Vector3(0.6, 0.6, 0.6), crate)
 	_box(r, Vector3(1.4, 0.3, -0.5), Vector3(0.8, 0.6, 0.7), crate)
 	_put(r, _cyl_mesh(0.14, 0.5), Vector3(0.95, 0.25, 0.6), _mat(Color(0.15, 0.15, 0.17), 0.5))
-	_set_mic(r, Vector3(0, 1.76, 0.1))
+	_set_mic(r, Vector3(0, 1.63, 0.1))
 	return {"root": r, "p": p, "cam": [Vector3(0.5, 1.65, 2.2), Vector3(0.1, 1.45, 0.0)], "style": "point"}
 
 
