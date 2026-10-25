@@ -50,7 +50,7 @@ func build(m: Node3D, parent: Node3D, bus_name: String, screen_xf: Transform3D, 
 	ui = ScreenUI.new()
 	ui.position = Vector3(0, 0, 0.002)
 	holder.add_child(ui)
-	ui.setup(own_mat, screen_size, Vector2i(1024, int(1024.0 * screen_size.y / screen_size.x)), curve)
+	ui.setup(own_mat, screen_size, Vector2i(int(768.0 * screen_size.x / screen_size.y), 768), curve)   # (the same text size as the old TV's)
 	main.screens.append(ui)
 	vcr = VCR.new()
 	vcr.bus_name = bus_name

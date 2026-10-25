@@ -96,7 +96,36 @@ func setup(tv_mat: ShaderMaterial, tv_ui: ScreenUI) -> void:
 	_build_model()
 	_build_player()
 	_build_ui()
+	_fit_ui()
 	_show_idle_status()
+
+
+# the menus were laid out for the old TV's 1024 x 768 screen: on a wider screen they stretch to fit it
+func _fit_ui() -> void:
+	var sz: Vector2 = Vector2(_ui.vp.size) if _ui.vp != null else Vector2(1024, 768)
+	if sz.is_equal_approx(Vector2(1024, 768)):
+		return
+	for c in [_menu, _opts]:
+		var ctl := c as Control
+		if ctl == null:
+			continue
+		ctl.anchor_left = 0.0
+		ctl.anchor_top = 0.0
+		ctl.anchor_right = 1.0
+		ctl.anchor_bottom = 1.0
+		ctl.offset_left = 60.0
+		ctl.offset_top = 50.0
+		ctl.offset_right = -60.0
+		ctl.offset_bottom = -50.0
+	if _status_panel != null:
+		_status_panel.anchor_left = 0.5
+		_status_panel.anchor_right = 0.5
+		_status_panel.anchor_top = 1.0
+		_status_panel.anchor_bottom = 1.0
+		_status_panel.offset_left = -400.0
+		_status_panel.offset_right = 400.0
+		_status_panel.offset_top = -208.0
+		_status_panel.offset_bottom = -48.0
 
 
 func _exit_tree() -> void:
