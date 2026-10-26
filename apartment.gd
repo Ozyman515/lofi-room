@@ -215,6 +215,23 @@ func _build_snow_cover() -> void:
 		_snow_layer(exterior, Vector3((w0 + BAL_E) / 2.0, fy, (BAL_N + NORTH_Z) / 2.0), Vector2(BAL_E - w0, NORTH_Z - BAL_N), 0.9)
 		_snow_layer(exterior, Vector3((EAST_X + BAL_E) / 2.0, fy, (NORTH_Z + FRONT_Z) / 2.0), Vector2(BAL_E - EAST_X, FRONT_Z - NORTH_Z), 0.9)
 	_snow_layer(exterior, Vector3(2.0, GROUND + 0.03, -20.0), Vector2(200.0, 200.0), 1.2)                     # the street (the kerbs show through a thin layer)
+	# the potted plants: a copy of the bush's shape that rises out of it as the snow gets deeper, so a white cap
+	# shows on top, thickest at the crown and thinning out toward its sides (and on the pot's rim)
+	for pp in _bal_plants:
+		var cap := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.26                                 # (the same mesh as the bush, a hair narrower: no flicker at its sides)
+		sm.height = 0.52
+		sm.radial_segments = 10
+		sm.rings = 5
+		cap.mesh = sm
+		cap.scale = Vector3(0.96, 1.3, 0.96)
+		cap.material_override = _snow_mat
+		cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		cap.position = pp + Vector3(0, 0.62, 0)
+		balcony.add_child(cap)
+		_snow_parts.append([cap, 0.62, 0.7, "rise"])
+		_snow_layer(balcony, pp + Vector3(0, 0.4, 0), Vector2(0.36, 0.36), 0.5, true)                      # the pot's rim
 	_set_snow(0.0)
 
 
@@ -244,6 +261,9 @@ func _set_snow(d: float) -> void:
 		var mi: MeshInstance3D = sp[0]
 		var h: float = d * float(sp[2])
 		mi.visible = h > 0.002
+		if sp.size() > 3:                                # (a shape that rises out of what it covers)
+			mi.position.y = float(sp[1]) + h
+			continue
 		mi.scale.y = maxf(h, 0.001)
 		mi.position.y = float(sp[1]) + h / 2.0
 
@@ -593,6 +613,7 @@ var _th_glow: Array = []                     # [material, glow]
 var _th_rocker: MeshInstance3D
 var _liv_glow: SpotLight3D
 var _liv_lights := -1
+var _bal_plants: Array[Vector3] = []          # where the balcony's potted plants stand (the snow settles on them)
 var _bal_lights := -1
 var _liv_led: StandardMaterial3D
 
@@ -991,6 +1012,7 @@ func _build_balcony() -> void:
 	var pot := _mat(Color(0.55, 0.25, 0.20), 0.8)
 	var leaf := _mat(Color(0.18, 0.45, 0.30), 0.8)
 	for pp2 in [Vector3(-3.5, 0, -2.4), Vector3(4.6, 0, -2.4), Vector3(11.4, 0, 2.9), Vector3(7.4, 0, -2.4)]:
+		_bal_plants.append(pp2)
 		main._cyl(pp2 + Vector3(0, 0.2, 0), 0.18, 0.4, pot, p)
 		main._sphere(pp2 + Vector3(0, 0.62, 0), 0.26, leaf, Vector3(1.0, 1.3, 1.0), p, 10)
 		_blockers["balcony"].append(Rect2(pp2.x - 0.3, pp2.z - 0.3, 0.6, 0.6))
