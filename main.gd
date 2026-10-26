@@ -2973,7 +2973,7 @@ func _relaunch() -> bool:
 	return true
 
 
-# the PowerShell command line for the restart (from update 122; no --path from 124): wait for this copy to close (up to 2 minutes), start the room
+# the PowerShell command line for the restart (from update 122; started like a double-click from 124): wait for this copy to close (up to 2 minutes), start the room
 # from its own folder, and note in relaunch.log if the new copy closes within 20 s (with its exit code)
 func _windows_relaunch_helper(args: PackedStringArray) -> PackedStringArray:
 	var q := func(t: String) -> String: return "'" + t.replace("'", "''") + "'"
