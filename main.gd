@@ -1904,8 +1904,8 @@ func _update_lighting(delta: float) -> void:
 		var snd := 1.0 - curtain_amt * curtain_amt      # a half-closed curtain still lets most of the weather sound through
 		match where:
 			"balcony": snd = 1.0
-			"living": snd = 0.9
-			"hallway": snd = 0.45
+			"living": snd = lerpf(0.9, 0.3, apartment.bal_shut if apartment != null else 0.0)     # the balcony door shut: quieter
+			"hallway": snd = lerpf(0.45, 0.2, apartment.bal_shut if apartment != null else 0.0)
 		weather.sound_open = snd
 
 

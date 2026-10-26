@@ -76,6 +76,10 @@ const DOORWAYS := [Rect2(0.55, 3.0, 0.7, 0.9), Rect2(3.75, 2.9, 1.7, 1.0), Rect2
 	Rect2(GAME_DOOR - 0.35, 4.95, 0.7, 0.85), Rect2(STUDY_DOOR - 0.35, 4.95, 0.7, 0.85), Rect2(TH_DOOR - 0.35, 4.95, 0.7, 0.85)]
 
 var main: Node3D
+var _bal_leaves: Array[Node3D] = []
+var _bal_closed := false
+var bal_shut := 0.0                    # 0 open .. 1 the balcony door closed
+var _bal_gw := 0.9
 var hallway: Node3D
 var living: Node3D
 var balcony: Node3D
@@ -175,6 +179,15 @@ func _place_toys() -> void:
 			tw.tween_property(jt, "rotation:z", 0.2, 0.1)
 			tw.tween_property(jt, "rotation:z", -0.2, 0.15)
 			tw.tween_property(jt, "rotation:z", 0.0, 0.1)})
+
+
+# t: 0 open (both leaves stacked to the right of the doorway) .. 1 closed (meeting across it)
+func _bal_place(t: float) -> void:
+	var e := t * t * (3.0 - 2.0 * t)
+	for k in _bal_leaves.size():
+		var open_x := BAL_DOOR.y + _bal_gw / 2.0 - 0.1
+		var shut_x := BAL_DOOR.x + _bal_gw / 2.0 - 0.02 + k * (_bal_gw - 0.04)
+		_bal_leaves[k].position = Vector3(lerpf(open_x, shut_x, e), 0.0, NORTH_Z + 0.07 + k * 0.05)
 
 
 func _root(n: String) -> Node3D:
@@ -452,11 +465,25 @@ func _build_living() -> void:
 	var glass := _mat(Color(0.6, 0.7, 0.95), 0.1)
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass.albedo_color.a = 0.18
-	var gw := (BAL_DOOR.y - BAL_DOOR.x) / 2.0
-	_box(Vector3(BAL_DOOR.y + gw / 2.0 - 0.1, BAL_DOOR_TOP / 2.0, NORTH_Z + 0.09), Vector3(gw, BAL_DOOR_TOP - 0.04, 0.02), glass, p)
-	_box(Vector3(BAL_DOOR.y + gw / 2.0 - 0.1, BAL_DOOR_TOP - 0.02, NORTH_Z + 0.09), Vector3(gw, 0.04, 0.04), trim, p)
-	_box(Vector3(BAL_DOOR.y + gw / 2.0 - 0.1, 0.02, NORTH_Z + 0.09), Vector3(gw, 0.04, 0.04), trim, p)
-	_box(Vector3(BAL_DOOR.y + 0.03, BAL_DOOR_TOP / 2.0, NORTH_Z + 0.09), Vector3(0.04, BAL_DOOR_TOP, 0.04), trim, p)
+	# two sliding glass leaves on their own tracks: open, they stack beside the doorway; closed, they meet across it
+	# (and the weather and the street go quiet, like drawing the bedroom curtains)
+	var gw := (BAL_DOOR.y - BAL_DOOR.x) / 2.0 + 0.04
+	_box(Vector3((BAL_DOOR.x + BAL_DOOR.y) / 2.0 + 0.5, BAL_DOOR_TOP + 0.02, NORTH_Z + 0.11), Vector3(BAL_DOOR.y - BAL_DOOR.x + 1.2, 0.03, 0.1), trim, p)   # track
+	for k in 2:
+		var leaf := Node3D.new()
+		p.add_child(leaf)
+		_box(Vector3(0, BAL_DOOR_TOP / 2.0, 0), Vector3(gw, BAL_DOOR_TOP - 0.04, 0.02), glass, leaf)
+		_box(Vector3(0, BAL_DOOR_TOP - 0.02, 0), Vector3(gw, 0.04, 0.04), trim, leaf)
+		_box(Vector3(0, 0.02, 0), Vector3(gw, 0.04, 0.04), trim, leaf)
+		for sx in [-1.0, 1.0]:
+			_box(Vector3(sx * (gw / 2.0 - 0.02), BAL_DOOR_TOP / 2.0, 0), Vector3(0.04, BAL_DOOR_TOP, 0.04), trim, leaf)
+		var handle := _box(Vector3(-gw / 2.0 + 0.08, 1.0, 0.035), Vector3(0.025, 0.25, 0.025), _mat(Color(0.75, 0.7, 0.6), 0.3, 0.0), leaf)
+		_bal_leaves.append(leaf)
+		main.interactables.append({"node": handle, "half": Vector3(0.08, 0.2, 0.08), "guest_ok": true,
+			"label": func() -> String: return "OPEN THE BALCONY DOOR" if _bal_closed else "CLOSE THE BALCONY DOOR",
+			"cb": func() -> void: _bal_closed = not _bal_closed})
+	_bal_gw = gw
+	_bal_place(0.0)
 	_furnish_living(p)
 
 
@@ -1458,6 +1485,8 @@ func room_at(x: float, z: float) -> String:
 # outside the bedroom: may I stand here?
 func walkable(x: float, z: float) -> bool:
 	var pt := Vector2(x, z)
+	if bal_shut > 0.6 and Rect2(BAL_DOOR.x, NORTH_Z - 0.14, BAL_DOOR.y - BAL_DOOR.x, 0.28).has_point(pt):
+		return false                                      # the balcony door is shut
 	var ok := false
 	for r in [HALL_WALK, LIV_WALK, BAL_WALK_N, BAL_WALK_E, GAME_WALK, STUDY_WALK, NOIR_WALK, TH_WALK]:
 		if (r as Rect2).has_point(pt):
@@ -1552,6 +1581,11 @@ func _process(delta: float) -> void:
 		var o: float = move_toward(float(d["open"]), target, delta / 0.6)
 		d["open"] = o
 		(d["pivot"] as Node3D).rotation.y = float(d["sign"]) * 1.65 * smoothstep(0.0, 1.0, o)
+	# the balcony door slides
+	var bw := move_toward(bal_shut, 1.0 if _bal_closed else 0.0, delta / 1.0)
+	if bw != bal_shut:
+		bal_shut = bw
+		_bal_place(bw)
 	# the bookcase: open after the red book is pulled, and while anybody is in the office or the way through
 	if living.visible:
 		_lp_tick(delta)
