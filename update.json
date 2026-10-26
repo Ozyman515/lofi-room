@@ -1,5 +1,5 @@
 {
- "version": 123,
+ "version": 124,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "e11e10430d792886ba19a57be538912e9bea9b86c61a71a8fe3a76297f9933bf",
-   "size": 90332
+   "sha": "684efdff45f47bb308cafbb5007c6b58d81575dd33aaf22eaebda6eda99fac40",
+   "size": 91481
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -410,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "8b6bb43c602fba5188e999d87841ce1c62e09abf3baccaced385e78554ca0a7b",
-   "size": 228677
+   "sha": "36002fb04705b67e1b092a3971fe6335473cd1c8d322b879685371852b9f156f",
+   "size": 229170
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -662,7 +662,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b",
+   "sha": "ca2ebdf97d7469496b1f4b78958f9dc8447efdcb623953fee7b6996b762f6fff",
    "size": 4
   },
   "weather.gd": {
