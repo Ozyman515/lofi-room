@@ -1,5 +1,5 @@
 {
- "version": 120,
+ "version": 121,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "4fada32d99605b28fe094f05d5682d1f2c7fa6efb2806189817f0308af8444e2",
-   "size": 82300
+   "sha": "9a76769123451b4a6004c9e2f95fe4e0ee5faec1cd49ee6fbc02801b08204735",
+   "size": 90250
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -174,8 +174,8 @@
    "size": 9311
   },
   "cats.gd": {
-   "sha": "87d4f9203756a8d5360a5cbb344962e1d0c15fbb30bffc500a372ee9d557c173",
-   "size": 19766
+   "sha": "85612ca9caa0015e998112967a3da3fbca1396f3df5adfe3be40e2e8c533b504",
+   "size": 19775
   },
   "comic_book.gd": {
    "sha": "3c56eaa52825af602b3d797a674894ee5eca8669d0401c2f339c97e227a06a29",
@@ -410,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "a5d353a785c1f94c2f5eeefa3da540927fe945d243d02a8a0da1b3b8a1b583ca",
-   "size": 219408
+   "sha": "436a18b457fdea75c7acae4710eef17b5e0bf51193f6b1520d892ea76d811aae",
+   "size": 226778
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -466,8 +466,8 @@
    "size": 2098
   },
   "net_game.gd": {
-   "sha": "1624a42622b8d0666e52c6677e4fcf32e3702b3be759563ed542f3bfca8566fe",
-   "size": 25212
+   "sha": "e08d07a15aecbbe757da8cd2e1ea7b9e208d3edea78e773d0b3e54dbf540969d",
+   "size": 26642
   },
   "net_phone.gd": {
    "sha": "d4c57de6984774beb3a69b0730e35a6302da0ce4b25c530eb99a229a409e2ad8",
@@ -482,16 +482,16 @@
    "size": 17064
   },
   "net_voice.gd": {
-   "sha": "b5f4a93b7563e0df244b4483bf950e95429a0681b974dc0a1fd3acdc7a5f0040",
-   "size": 9088
+   "sha": "45cd9dc5ff3c2456b3a82fb6fb192f8d7bdf23312d0c6f147cc2643bd863de9f",
+   "size": 9218
   },
   "news.gd": {
    "sha": "32297e80d4e2e8d136174acbf905ca6a097d8332bdc14314a3365d72a9bb3149",
    "size": 49414
   },
   "noir.gd": {
-   "sha": "faeebd3360f2ad558905f54335351754d7d756506047f2bb80bc3748b202c1d1",
-   "size": 42374
+   "sha": "5b82b4b63568706af904d88aa5c5ee824dd7841b59c69332b7de0bfaaadb96fc",
+   "size": 42418
   },
   "noir/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -558,8 +558,8 @@
    "size": 853
   },
   "poster.gd": {
-   "sha": "f3f66f2976a41ee339b6b978d8e162123f47795775875f322715aab2f6ce0f71",
-   "size": 10914
+   "sha": "a39590e229498d50656df170ed0775080ab31cb95226e640d7e82e694bbb6a19",
+   "size": 11966
   },
   "posters/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -586,8 +586,8 @@
    "size": 952
   },
   "room_tv.gd": {
-   "sha": "7015aca12406afd4ee953b084c34874246f493de8024a709de9ceb470f48f189",
-   "size": 2669
+   "sha": "970f159633ef6b50cffb3cbde2067d1ae79cfe8f7fca934af412fe454be8bfc5",
+   "size": 2661
   },
   "safe_image.gd": {
    "sha": "426f22db0b2cfcf43730cc465542ec332356e80ad13e8cf11d36acd3226e8356",
@@ -626,8 +626,8 @@
    "size": 3020
   },
   "speaker_bank.gd": {
-   "sha": "1324f9ebab219a76efb558ee0e7d3d63dee27aca0a56ba5452a8ab64731e50c1",
-   "size": 14350
+   "sha": "5c82d227a0c3f461392d46f0efd63df8cf6e272ea56fb72c7be15c88447b7bb2",
+   "size": 16290
   },
   "stressed_alien.gd": {
    "sha": "bc25affb1750bf500f2eb2cd61698fa35de4af07bff591628335317e6e974951",
@@ -646,7 +646,7 @@
    "size": 10601
   },
   "ufo.gd": {
-   "sha": "f4a0ae8547a35a6a2097cf070fa61155bfe0d6443b3b64a69c42c42843e50720",
+   "sha": "f798e39b05559d4a9892a544f1a29e62912bb52b4cb7e54919e60da7e31a7c1a",
    "size": 13889
   },
   "ufo_model.gd": {
@@ -662,7 +662,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "97b912eb4a61df5f806ca6239dde3e1a4f51ad20aced1642cbb83dc510a5fa6b",
+   "sha": "0b05feae0bc8448241c8a68d18d0a0e0a97bf00c6126b04c61f23529ab862426",
    "size": 4
   },
   "weather.gd": {
