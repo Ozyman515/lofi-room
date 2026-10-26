@@ -482,9 +482,11 @@ func _build_office() -> void:
 	var cur_hit := Node3D.new()
 	cur_hit.position = Vector3(_cur_cx, (wy0 + wy1) / 2.0, wz - 0.13)
 	o.add_child(cur_hit)
-	main.interactables.append({"node": cur_hit, "half": Vector3((wx1 - wx0) / 2.0 + 0.25, (wy1 - wy0) / 2.0 + 0.1, 0.06), "guest_ok": true,
+	main.interactables.append({"node": cur_hit, "half": Vector3((wx1 - wx0) / 2.0 + 0.25, (wy1 - wy0) / 2.0 + 0.1, 0.06), "group": "lights",
 		"label": func() -> String: return "OPEN THE CURTAINS" if _cur_closed else "CLOSE THE CURTAINS",
-		"cb": func() -> void: _cur_closed = not _cur_closed})
+		"cb": func() -> void:
+			_cur_closed = not _cur_closed
+			main.shade_sync("ncur", _cur_closed)})
 	# across the street: a building a floor lower than ours, rows of windows (some lit, people passing behind them
 	# now and then), the HOTEL sign up on its roof, and taller blocks behind it against the sky
 	var street := Node3D.new()

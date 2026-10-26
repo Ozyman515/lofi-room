@@ -479,9 +479,11 @@ func _build_living() -> void:
 			_box(Vector3(sx * (gw / 2.0 - 0.02), BAL_DOOR_TOP / 2.0, 0), Vector3(0.04, BAL_DOOR_TOP, 0.04), trim, leaf)
 		var handle := _box(Vector3(-gw / 2.0 + 0.08, 1.0, 0.035), Vector3(0.025, 0.25, 0.025), _mat(Color(0.75, 0.7, 0.6), 0.3, 0.0), leaf)
 		_bal_leaves.append(leaf)
-		main.interactables.append({"node": handle, "half": Vector3(0.08, 0.2, 0.08), "guest_ok": true,
+		main.interactables.append({"node": handle, "half": Vector3(0.08, 0.2, 0.08), "group": "lights",
 			"label": func() -> String: return "OPEN THE BALCONY DOOR" if _bal_closed else "CLOSE THE BALCONY DOOR",
-			"cb": func() -> void: _bal_closed = not _bal_closed})
+			"cb": func() -> void:
+				_bal_closed = not _bal_closed
+				main.shade_sync("bdoor", _bal_closed)})
 	_bal_gw = gw
 	_bal_place(0.0)
 	_furnish_living(p)

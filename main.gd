@@ -1797,6 +1797,7 @@ func toggle_curtains() -> void:
 	else:
 		curtain_target = 0.0 if curtain_last_down else 1.0    # stopped part-way: head back the way it didn't just go
 	curtain_last_down = curtain_target > curtain_amt
+	shade_sync("curt", curtain_target)
 
 
 func set_curtain(v: float) -> void:
@@ -1804,6 +1805,17 @@ func set_curtain(v: float) -> void:
 		return
 	curtain_target = clampf(v, 0.0, 1.0)
 	curtain_last_down = curtain_target > curtain_amt
+	shade_sync("curt", curtain_target)
+
+
+# curtains and the balcony door are the same for everyone in a room: a guest's change goes to the host (whose
+# copy decides, if guests may use "lights and curtains"), and the host's state brings everyone into line
+var shade_local_ms := 0
+
+func shade_sync(what: String, v) -> void:
+	if _is_guest() and net_game != null:
+		shade_local_ms = Time.get_ticks_msec()
+		net.send_var(1, net_game.Net.K_EVENT, {"k": "shade", "w": what, "v": v})
 
 
 func _update_curtain_mesh() -> void:

@@ -180,7 +180,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "rtv": main.net_room_tvs.state() if main.net_room_tvs != null else [], "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "rtv": main.net_room_tvs.state() if main.net_room_tvs != null else [], "shades": [snappedf(main.curtain_target, 0.01), main.apartment._bal_closed if main.apartment != null else false, main.noir._cur_closed if main.noir != null else false], "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -566,8 +566,34 @@ func _guest_poster_part(d: Dictionary) -> void:
 		main.poster.show_remote(img, str(net.roster.get(1, {}).get("name", "The host")))
 
 
+# the curtains and the balcony door, as the host has them (a guest's own change waits a moment for the host's)
+func _apply_shades(a) -> void:
+	if not (a is Array) or a.size() < 3 or Time.get_ticks_msec() - main.shade_local_ms < 1500:
+		return
+	var cu := clampf(float(a[0]), 0.0, 1.0)
+	if absf(cu - main.curtain_target) > 0.005 and not main.egg_active:
+		main.curtain_target = cu
+		main.curtain_last_down = cu > main.curtain_amt
+	if main.apartment != null:
+		main.apartment._bal_closed = bool(a[1])
+	if main.noir != null:
+		main.noir._cur_closed = bool(a[2])
+
+
 func _host_tv_event(from: int, d: Dictionary) -> void:
 	var allowed := bool(main.guest_allow.get("tv", false))
+	if str(d.get("k", "")) == "shade":
+		if bool(main.guest_allow.get("lights", false)):
+			match str(d.get("w", "")):
+				"curt":
+					main.set_curtain(float(d.get("v", 0.0)))
+				"bdoor":
+					if main.apartment != null:
+						main.apartment._bal_closed = bool(d.get("v", false))
+				"ncur":
+					if main.noir != null:
+						main.noir._cur_closed = bool(d.get("v", false))
+		return
 	match str(d.get("k", "")):
 		"tv_take":
 			if allowed:
@@ -645,6 +671,7 @@ func _apply_state(d: Dictionary) -> void:
 	tv_live = bool(d.get("tv_live", false))
 	if main.net_room_tvs != null:
 		main.net_room_tvs.apply_state(d.get("rtv", []))
+	_apply_shades(d.get("shades", []))
 	if main.tv_rating != null:
 		main.tv_rating.apply_state(d.get("tv_rate", []))
 	main.recliner_from_host(d.get("rec", []))
