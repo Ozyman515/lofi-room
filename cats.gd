@@ -31,9 +31,9 @@ const SPOTS := {
 }
 const WANDER_MIN := 180.0                 # seconds between a cat's naps in different places
 const WANDER_MAX := 420.0
-const BED_SOLO := Vector2(-1.40, -0.02)  # x, z on the bed near the foot
-const BED_TUX := Vector2(-1.50, -0.12)   # together: the tux on the left...
-const BED_CAL := Vector2(-1.25, -0.06)   # ...the calico snuggled against its tail, both faces toward the room
+const BED_SOLO := Vector2(-0.95, -0.02)  # x, z on the bed near the foot
+const BED_TUX := Vector2(-1.05, -0.12)   # together: the tux on the left...
+const BED_CAL := Vector2(-0.80, -0.06)   # ...the calico snuggled against its tail, both faces toward the room
 const RUG := Vector3(-0.98, 0.0, 0.34)   # on the floor just past the foot of the bed (the icon's cat)
 const FACE_ROOM := 1.43                   # a cat's yaw that turns its face toward the middle of the room
 
@@ -94,7 +94,7 @@ func setup(m: Node3D) -> void:
 		main.interactables.append(it)
 	# while carrying the calico: the whole bed top says "put it here"
 	var bed_hit := Node3D.new()
-	bed_hit.position = Vector3(-1.65, 0.62, -0.9)
+	bed_hit.position = Vector3(main.BED_POS.x, 0.62, -0.9)
 	main.room.add_child(bed_hit)
 	main.interactables.append({"node": bed_hit, "half": Vector3(0.84, 0.16, 1.06), "guest_ok": true,
 		"when": func() -> bool: return carrying,

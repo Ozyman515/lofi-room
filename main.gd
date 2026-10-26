@@ -47,7 +47,7 @@ var _blockers_extra: Array[Rect2] = []    # bedroom furniture added after BLOCKE
 const ARCADE_BLOCK := Rect2(1.4, 1.55, 1.2, 0.8)     # the arcade cabinet, in its kit's coordinates
 const STUDY_BLOCKS := [Rect2(0.4, -2.1, 2.2, 1.05), Rect2(2.0, -0.65, 0.6, 1.9)]   # the desk and the bookshelf, in the study kit's
 const BLOCKERS := [
-	Rect2(-2.6, -2.1, 1.95, 2.4),   # bed
+	Rect2(-2.15, -2.1, 1.95, 2.4),  # bed (and the nightstand)
 	Rect2(-4.0, -0.45, 0.75, 1.2),  # dresser (moved toward the TV corner)
 ]
 
@@ -678,7 +678,8 @@ const Book := preload("res://book.gd")
 const ComicBook := preload("res://comic_book.gd")
 const Incense := preload("res://incense.gd")
 var incense: Node3D
-const BED_POS := Vector3(-1.65, 0.0, -0.9)
+const BED_POS := Vector3(-1.2, 0.0, -0.9)      # (moved 45 cm toward the window seat, to give the recliner room)
+const NIGHT_X := -0.05                            # the nightstand, on the bed's right
 var updated_this_session := false      # an update was installed and the player has not napped yet: the easter egg stays locked
 var bed_made := true                   # false after sleeping: the next morning the bed is a mess
 var bed_node: Node3D
@@ -711,7 +712,7 @@ func _make_bed() -> void:
 func _build_bed() -> void:
 	_bed_sleep_spot()
 	# if you drop a bed model at BED_ASSET it replaces the built-in bed (auto-scaled to fit)
-	if _try_asset(BED_ASSET, Vector3(-1.65, 0.0, -0.9), Vector2(1.68, 2.12), BED_EXTRA_YAW):
+	if _try_asset(BED_ASSET, BED_POS, Vector2(1.68, 2.12), BED_EXTRA_YAW):
 		_build_nightstand()
 		return
 	_rebuild_bed()
@@ -722,12 +723,12 @@ func _build_bed() -> void:
 func _build_nightstand() -> void:
 	var wood := _mat(Color(0.30, 0.12, 0.18), 0.6)
 	var padded := _mat(Color(0.52, 0.22, 0.42), 0.9)
-	_box(Vector3(-0.5, 0.23, -1.7), Vector3(0.4, 0.46, 0.4), wood)
+	_box(Vector3(NIGHT_X, 0.23, -1.7), Vector3(0.4, 0.46, 0.4), wood)
 	# the drawer slides out; it is where the secret cart is kept
 	var face_m := _mat(Color(0.52, 0.22, 0.42), 0.9)
 	var knob_m := _mat(Color(1.0, 0.8, 0.55), 0.3, 0.8)
 	drawer_node = Node3D.new()
-	drawer_node.position = Vector3(-0.5, 0.32, -1.495)
+	drawer_node.position = Vector3(NIGHT_X, 0.32, -1.495)
 	_host().add_child(drawer_node)
 	var face := _box(Vector3.ZERO, Vector3(0.34, 0.16, 0.01), face_m, drawer_node)
 	_sphere(Vector3(0, 0, 0.01), 0.016, knob_m, Vector3.ONE, drawer_node, 12)
@@ -738,11 +739,11 @@ func _build_nightstand() -> void:
 	_box(Vector3(0, -0.035, -0.315), Vector3(0.31, 0.07, 0.012), tray_m, drawer_node)
 	interactables.append({"node": face, "half": Vector3(0.18, 0.09, 0.04), "cb": _toggle_drawer, "hover": _glow_hover(face_m), "group": "games",
 		"label": func() -> String: return "CLOSE DRAWER" if drawer_open else "OPEN DRAWER"})
-	_lamp(Vector3(-0.5, 0.46, -1.7), 1.0)
+	_lamp(Vector3(NIGHT_X, 0.46, -1.7), 1.0)
 	# the diary, lying beside the lamp
 	diary = load("res://diary_book.gd").new()
 	diary.name = "Diary"
-	diary.position = Vector3(-0.42, 0.46, -1.6)
+	diary.position = Vector3(NIGHT_X + 0.08, 0.46, -1.6)
 	diary.rotation.y = -0.2
 	_host().add_child(diary)
 	diary.build(self)
@@ -1656,7 +1657,7 @@ func _plant(pos: Vector3, s: float) -> void:
 
 func _build_lights() -> void:
 	window_light = _light(Vector3((WIN_X0 + WIN_X1) / 2.0, 1.7, -1.6), PINK, 2.4, 6.5)      # window glow
-	var l_night := _light(Vector3(-0.5, 0.95, -1.7), WARM, 1.0, 2.5)                     # nightstand lamp
+	var l_night := _light(Vector3(NIGHT_X, 0.95, -1.7), WARM, 1.0, 2.5)                     # nightstand lamp
 	_into = study_kit
 	var l_desk := _light(Vector3(2.2, 1.15, -1.7), WARM, 1.0, 2.5)                      # desk lamp
 	_into = null
@@ -2442,8 +2443,8 @@ func _build_beanbags() -> void:
 
 # ---- the recliner on the rug: swivels in 45 degree steps, leans back, starts facing the window
 
-const RECLINER_POS := Vector3(-3.2, 0.0, -1.12)    # in the corner by the window, where the dresser used to be
-const RECLINER_YAW := 0.0                           # facing the window
+const RECLINER_POS := Vector3(-3.2, 0.0, -1.45)    # in the corner by the window, where the dresser used to be
+const RECLINER_YAW := -PI / 4.0                     # turned to look out of the window from the side
 var recliner: Node3D
 var recliner_seat := -1
 var _rec_base_y := 0.0
@@ -2458,7 +2459,7 @@ func _build_recliner() -> void:
 	recliner.build()
 	recliner.rotation.y = RECLINER_YAW
 	var cfg := ConfigFile.new()
-	if cfg.load(SETTINGS_FILE) == OK:
+	if cfg.load(SETTINGS_FILE) == OK and int(cfg.get_value("room", "recliner_v", 1)) >= 2:   # (it moved: start in the new spot once)
 		recliner.rotation.y = float(cfg.get_value("room", "recliner_yaw", RECLINER_YAW))
 		recliner.reclined = bool(cfg.get_value("room", "recliner_back", false))
 	recliner_seat = seat_nodes.size()
@@ -2614,6 +2615,7 @@ func _save_recliner() -> void:
 	cfg.load(SETTINGS_FILE)
 	cfg.set_value("room", "recliner_yaw", wrapf(recliner.rotation.y, -PI, PI))
 	cfg.set_value("room", "recliner_back", recliner.reclined)
+	cfg.set_value("room", "recliner_v", 2)
 	cfg.save(SETTINGS_FILE)
 
 
@@ -2703,13 +2705,13 @@ var _sleep_text: Label3D
 
 func _bed_sleep_spot() -> void:
 	# the Sleep prompt sits up by the pillows ...
-	var slab := _box(Vector3(-1.65, 0.63, -1.55), Vector3(1.5, 0.16, 0.7), _mat(Color.WHITE), null)
+	var slab := _box(Vector3(BED_POS.x, 0.63, -1.55), Vector3(1.5, 0.16, 0.7), _mat(Color.WHITE), null)
 	slab.visible = false
 	interactables.append({"node": slab, "half": Vector3(0.75, 0.08, 0.35), "egg_lock": true,
 		"when": func() -> bool: return not sleeping and not egg_active and updater != null and not updater.busy(),
 		"label": "Nap", "cb": _go_to_sleep})
 	# ... and the make-the-bed prompt down by the foot, only while the bed is a mess
-	var foot := _box(Vector3(-1.65, 0.63, -0.45), Vector3(1.5, 0.16, 0.9), _mat(Color.WHITE), null)
+	var foot := _box(Vector3(BED_POS.x, 0.63, -0.45), Vector3(1.5, 0.16, 0.9), _mat(Color.WHITE), null)
 	foot.visible = false
 	interactables.append({"node": foot, "half": Vector3(0.75, 0.08, 0.45),         # never locked, not even during the easter egg
 		"when": func() -> bool: return not bed_made and not sleeping,
@@ -4983,7 +4985,7 @@ func _build_power() -> void:
 	_plug(Vector3(1.1, 0.3, -2.0), 0.0)
 	_plug(Vector3(2.2, 0.3, -2.0), 0.0)
 	_into = null
-	_outlet(Vector3(-0.15, 0.3, -2.0), 0.0)           # nightstand lamp
+	_outlet(Vector3(NIGHT_X + 0.35, 0.3, -2.0), 0.0)  # nightstand lamp
 	_into = game_kit
 	_outlet(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)       # TV + console strip
 	_plug(Vector3(-3.9, 0.3, _lg(Vector3(-3.62, 0.0, -0.2 + LOUNGE_DZ)).z), PI / 2.0)
@@ -5011,7 +5013,7 @@ func _build_power() -> void:
 	_cord([Vector3(-3.86, 1.64, rz + 0.05), Vector3(-3.887, 1.5, rz + 0.12), Vector3(-3.887, 0.9, rz + 0.3), Vector3(-3.887, 0.45, -0.62), Vector3(-3.84, 0.3, -0.62)], 0.005, black)
 
 	# nightstand lamp
-	_cord([Vector3(-0.5, 0.475, -1.73), Vector3(-0.4, 0.465, -1.88), Vector3(-0.37, 0.44, -1.935), Vector3(-0.3, 0.3, -1.96), Vector3(-0.15, 0.3, -1.95)], 0.005, white)
+	_cord([Vector3(NIGHT_X, 0.475, -1.73), Vector3(NIGHT_X + 0.1, 0.465, -1.88), Vector3(NIGHT_X + 0.13, 0.44, -1.935), Vector3(NIGHT_X + 0.2, 0.3, -1.96), Vector3(NIGHT_X + 0.35, 0.3, -1.95)], 0.005, white)
 
 	# TV + console strip on the floor, against the left wall behind the TV
 	_into = game_kit

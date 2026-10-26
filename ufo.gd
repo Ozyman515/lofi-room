@@ -53,7 +53,7 @@ func setup(m: Node3D) -> void:
 
 # ---- the little alien figure on the desk: a bobblehead. Tap its head ten times and the real one visits.
 
-const FIG_POS := Vector3(-0.64, 0.46, -1.57)       # on the bedroom nightstand, in front of the lamp
+const FIG_POS := Vector3(-0.19, 0.46, -1.57)       # on the bedroom nightstand, in front of the lamp
 const FIG_TAPS := 10
 var _fig_head: Node3D
 var _fig_taps := 0
