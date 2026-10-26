@@ -809,6 +809,7 @@ func _furnish_living(p: Node3D) -> void:
 		ll.append(_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p))
 		ll.append(_light(Vector3(5.0, 2.5, 2.4), Color(0.6, 0.3, 0.75), 0.5, 5.0, p))   # soft fill
 	_liv_lights = main.add_light_group("Living room lights", ll, [lamp_shade], lamp_node, Vector3(0.22, 0.17, 0.22))
+	main.light_click(_liv_lights, lamp_node, Vector3(0.0, -0.85, 0.0), Vector3(0.12, 0.85, 0.12))   # (the pole too)
 	# ---- two speakers either side of the TV (they play the TV's sound unless you set them otherwise)
 	main._make_speaker("Living room speaker L", Vector3(MID_X + 0.15, 1.45, LIV_TV.z - LIV_TV_SIZE.x / 2.0 - 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
 	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.45, LIV_TV.z + LIV_TV_SIZE.x / 2.0 + 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)

@@ -1596,16 +1596,21 @@ func _build_decor() -> void:
 	_fairy(Vector3(-3.8, 2.6, FRONT_Z - 0.04), Vector3(2.4, 2.6, FRONT_Z - 0.04), 18, 4, 0.18, bulb)        # front wall, above the door
 
 
+var _corner_lamp: Array = []           # [lights, shade material, shade] of the bedroom's floor lamp (switched in _build_lights)
+
+
 # where the TV used to stand (it's in the game room now): a big plant, a floor lamp and a pile of floor cushions
 func _build_bedroom_corner() -> void:
 	_plant(Vector3(-3.55, 0.0, FRONT_Z - 0.35), 2.2)
 	var lamp_m := _mat(Color(0.12, 0.08, 0.14), 0.5)
 	_cyl(Vector3(-3.6, 0.02, 1.75), 0.15, 0.04, lamp_m)
 	_cyl(Vector3(-3.6, 0.78, 1.75), 0.014, 1.5, lamp_m)
-	var shade := _cyl(Vector3(-3.6, 1.58, 1.75), 0.19, 0.28, _mat(Color(1.0, 0.72, 0.55), 0.6, 1.3))
-	shade.scale = Vector3(1.0, 1.0, 1.0)
+	var shade_m := _mat(Color(1.0, 0.72, 0.55), 0.6, 1.3)
+	var shade := _cyl(Vector3(-3.6, 1.58, 1.75), 0.19, 0.28, shade_m)
+	var omnis: Array = []
 	if not Plat.low_power():
-		_light(Vector3(-3.45, 1.5, 1.85), WARM, 0.7, 3.0)
+		omnis.append(_light(Vector3(-3.45, 1.5, 1.85), WARM, 0.7, 3.0))
+	_corner_lamp = [omnis, shade_m, shade]
 	var cols := [Color(0.95, 0.55, 0.65), Color(0.55, 0.40, 0.85), Color(1.0, 0.75, 0.45)]
 	var spots := [Vector3(-2.75, 0.07, 2.6), Vector3(-2.35, 0.07, 2.95), Vector3(-2.6, 0.2, 2.82)]
 	for i in 3:
@@ -1679,9 +1684,11 @@ func _build_lights() -> void:
 	_light_group("Nightstand lamp", [l_night], [lamp_shades[0]["mat"]], lamp_shades[0]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Desk lamp", [l_desk], [lamp_shades[1]["mat"]], lamp_shades[1]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Paper lantern", [l_lantern], [lantern_mat], lantern_node, Vector3(0.2, 0.2, 0.2))
+	var g_floor := _light_group("Floor lamp", _corner_lamp[0], [_corner_lamp[1]], _corner_lamp[2], Vector3(0.21, 0.16, 0.21))
+	light_click(g_floor, _corner_lamp[2], Vector3(0.0, -0.8, 0.0), Vector3(0.12, 0.8, 0.12))   # (the pole too)
 	var g_fairy := _light_group("Fairy lights", [], [fairy_mat], null, Vector3.ZERO)
 	var g_strip := _light_group("Ceiling strip", [], [strip_mat], null, Vector3.ZERO)
-	var g_lantern := light_groups.size() - 3
+	var g_lantern := 2
 	wall_switch(Vector3(1.62, 1.2, 3.35), PI, [g_strip, g_fairy, g_lantern], _host())     # inside the bedroom door
 
 
@@ -1695,6 +1702,15 @@ func _light_group(gname: String, omnis: Array, mats: Array, click_node: Node3D, 
 		interactables.append({"node": click_node, "half": half,
 			"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _noop_hover, "group": "lights"})
 	return gi
+
+
+# one more place to click a lamp on (its pole, say): a box offset from node
+func light_click(gi: int, node: Node3D, offset: Vector3, half: Vector3) -> void:
+	var spot := Node3D.new()
+	spot.position = offset
+	node.add_child(spot)
+	interactables.append({"node": spot, "half": half,
+		"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _noop_hover, "group": "lights"})
 
 
 # the rooms' own lights (apartment.gd); they show up in the PC's Lights window too
