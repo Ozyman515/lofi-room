@@ -2937,11 +2937,11 @@ func _relaunch() -> bool:
 		return true
 	var args := PackedStringArray()
 	if FileAccess.file_exists("res://project.godot"):
-		args.append_array(["--path", ProjectSettings.globalize_path("res://")])
+		args.append_array(["--path", ProjectSettings.globalize_path("res://").trim_suffix("/")])
 	var drv := ""
 	if RenderingServer.has_method("get_current_rendering_driver_name"):          # newer Godot versions only
 		drv = str(RenderingServer.call("get_current_rendering_driver_name"))
-	if drv != "":
+	if drv != "" and drv != "vulkan":
 		args.append_array(["--rendering-driver", drv])                # the same graphics driver this run is using (Godot hides its own start-up flags from scripts)
 	var wm := DisplayServer.window_get_mode()
 	if wm == DisplayServer.WINDOW_MODE_FULLSCREEN or wm == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
@@ -2949,16 +2949,44 @@ func _relaunch() -> bool:
 	args.append_array(relaunch_extra)
 	var token := "%d_%d" % [OS.get_process_id(), Time.get_ticks_msec()]
 	args.append_array(["--", "lofi_relaunch=" + token])
+	if OS.get_name() == "Windows":
+		var helper := _windows_relaunch_helper(args)
+		if dry_relaunch:
+			print("RELAUNCH powershell.exe ", helper)
+			return false
+		# Windows: a small PowerShell helper waits until this copy has completely gone, then starts the room
+		# the way a double-click does. Started by the room itself (while open, or by Godot on the way out) the
+		# new copy closed again at once, every time (relaunch.log), so the room never came back by itself.
+		_relaunch_log("restarting via helper: %s %s" % [OS.get_executable_path(), " ".join(args)])
+		var pid := OS.create_process("powershell.exe", helper, false)
+		if pid > 0:
+			get_tree().quit()
+			return true
+		_relaunch_log("the helper wouldn't start; restarting on exit instead")
 	if dry_relaunch:
 		print("RELAUNCH ", OS.get_executable_path(), " ", args)
 		return false
-	# The new copy starts once this one has fully closed (Godot does it on the way out). Starting it while this
-	# copy was still open made it close again within 0.3 s on Windows, every time (relaunch.log), so the room
-	# never came back by itself after an update.
 	_relaunch_log("restarting on exit: %s %s" % [OS.get_executable_path(), " ".join(args)])
 	OS.set_restart_on_exit(true, args)
 	get_tree().quit()
 	return true
+
+
+# the PowerShell command line for the restart: wait for this copy to close (up to 2 minutes), start the room
+# from its own folder, and note in relaunch.log if the new copy closes within 20 s (with its exit code)
+func _windows_relaunch_helper(args: PackedStringArray) -> PackedStringArray:
+	var q := func(t: String) -> String: return "'" + t.replace("'", "''") + "'"
+	var exe := OS.get_executable_path()
+	var quoted := PackedStringArray()
+	for a in args:
+		quoted.append(q.call(a))
+	var logp := ProjectSettings.globalize_path("user://relaunch.log")
+	var cmd := "$ErrorActionPreference='SilentlyContinue'; Wait-Process -Id %d -Timeout 120; " % OS.get_process_id()
+	cmd += "Start-Sleep -Milliseconds 500; "
+	cmd += "$p = Start-Process -FilePath %s -ArgumentList @(%s) -WorkingDirectory %s -PassThru; " % [q.call(exe), ",".join(quoted), q.call(exe.get_base_dir())]
+	cmd += "if ($p -eq $null) { Add-Content -Path %s -Value ((Get-Date -Format s) + '  the helper could not start the room') } " % q.call(logp)
+	cmd += "else { $null = $p.Handle; Start-Sleep -Seconds 20; if ($p.HasExited) { Add-Content -Path %s -Value ((Get-Date -Format s) + '  the new copy closed by itself (exit code ' + $p.ExitCode + ')') } }" % q.call(logp)
+	return PackedStringArray(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", cmd])
 
 
 func _relaunch_log(line: String) -> void:

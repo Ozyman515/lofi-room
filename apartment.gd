@@ -1070,14 +1070,14 @@ func _build_game() -> void:
 	_blockers["game"].append(Rect2(GAME_E - 0.6, 7.3, 0.6, 0.6))
 	# posters: a retro one on the west wall and one on the east
 	# (point at one to hang a picture of your own there)
-	for pp in [[Vector3(x0 + 0.06, 1.6, 6.6), PI / 2.0, Color(0.3, 0.75, 0.95), "poster_game_w"], [Vector3(GAME_E - 0.06, 1.6, 8.75), -PI / 2.0, Color(0.95, 0.5, 0.3), "poster_game_e"]]:
+	for pp in [[Vector3(x0 + 0.06, 1.6, 6.6), PI / 2.0, Color(0.3, 0.75, 0.95), "poster_game_w", 0.86, 0.9], [Vector3(GAME_E - 0.06, 1.6, 8.75), -PI / 2.0, Color(0.95, 0.5, 0.3), "poster_game_e", 1.1, 1.9]]:
 		var fr := Node3D.new()
 		_box(Vector3.ZERO, Vector3(0.62, 0.86, 0.02), _mat(Color(0.08, 0.05, 0.1), 0.5), fr)
 		_box(Vector3(0, 0, 0.012), Vector3(0.56, 0.8, 0.005), _mat(pp[2], 0.8, 0.25), fr)
 		_box(Vector3(0, 0.12, 0.016), Vector3(0.3, 0.3, 0.004), _mat(Color(1.0, 0.95, 0.6), 0.6, 0.6), fr)   # a big pixel sun
 		for j in 4:
 			_box(Vector3(0, -0.12 - j * 0.05, 0.016), Vector3(0.5 - j * 0.06, 0.012, 0.004), _mat(Color(0.2, 0.08, 0.25), 0.7), fr)
-		main.make_poster(p, pp[0], float(pp[1]), pp[3], fr, Vector2(0.62, 0.86), 0.86, 0.9)
+		main.make_poster(p, pp[0], float(pp[1]), pp[3], fr, Vector2(0.62, 0.86), float(pp[4]), float(pp[5]))   # (the east one, by the fridge, goes big)
 	# lights
 	var gl := [_light(Vector3(-1.6, 2.5, 7.4), Color(0.75, 0.45, 0.95), 0.6, 5.0, p)]
 	if not Plat.low_power():
