@@ -2093,6 +2093,10 @@ func _aim_at_playing_tv() -> bool:
 		return false
 	if arcade_focus != null and _arcade_playing() and _aim_hits(arcade_focus):
 		return true                 # a game is running on the arcade monitor: no dot over it
+	if apartment != null:
+		for rt in [apartment.liv_tv, apartment.th_tv]:  # the Big TV and the Theater Screen: no dot over the picture
+			if rt != null and rt.ui != null and rt.is_on() and apartment.can_reach(rt.ui) and _aim_hits(rt.ui):
+				return true
 	if tv_screen_ui == null or not vcr.tv_on:
 		return false
 	var playing := false
