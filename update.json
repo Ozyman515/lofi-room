@@ -1,5 +1,5 @@
 {
- "version": 126,
+ "version": 127,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "684efdff45f47bb308cafbb5007c6b58d81575dd33aaf22eaebda6eda99fac40",
-   "size": 91481
+   "sha": "d18cf406e6d701d0190992425249ade95fa784f0cade657cefd59d3f0f4765b4",
+   "size": 92374
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -174,8 +174,8 @@
    "size": 9311
   },
   "cats.gd": {
-   "sha": "85612ca9caa0015e998112967a3da3fbca1396f3df5adfe3be40e2e8c533b504",
-   "size": 19775
+   "sha": "b07520998796a08a6f21412fd127fdbdefdd989a42686c22daaa9b580476a5cd",
+   "size": 19798
   },
   "comic_book.gd": {
    "sha": "3c56eaa52825af602b3d797a674894ee5eca8669d0401c2f339c97e227a06a29",
@@ -410,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "9952d27afa552f857ba37bb4189807fa06486aab182e78ca3025598a5b77ef1e",
-   "size": 229208
+   "sha": "4ce678bfd525a24f40c5202e6d5f82452f8192755eaa1ddd55c9692b4a430af1",
+   "size": 229216
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -526,8 +526,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "563148aff0aa3ed1b74d12e69247eb007327a0db960addeb8969ddfcfb6282b9",
-   "size": 53952
+   "sha": "27a07856d4019a8c9fb020f3ac3871374c936db651bee6f05306410dfc69c0ec",
+   "size": 54222
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -662,7 +662,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "703d2c10fa601276a4dd96193faed68902a642a44eb5b01b40d6fc8499e12822",
+   "sha": "743c7850cccfba5e53a9002663ec1ddd1079315a98bdbfdde10e6044f56abefe",
    "size": 4
   },
   "weather.gd": {
