@@ -34,7 +34,7 @@ const WANDER_MAX := 420.0
 const BED_SOLO := Vector2(-0.95, -0.02)  # x, z on the bed near the foot
 const BED_TUX := Vector2(-1.05, -0.12)   # together: the tux on the left...
 const BED_CAL := Vector2(-0.80, -0.06)   # ...the calico snuggled against its tail, both faces toward the room
-const RUG := Vector3(-0.98, 0.0, 0.34)   # on the floor just past the foot of the bed (the icon's cat)
+const RUG := Vector3(-0.42, 0.02, 0.62)   # on the rug, just past the foot of the bed (the icon's cat); it moved with the bed
 const FACE_ROOM := 1.43                   # a cat's yaw that turns its face toward the middle of the room
 
 var main: Node3D

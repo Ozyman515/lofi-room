@@ -57,7 +57,7 @@ var _ct_swap_ab: Button
 var _ct_swap_xy: Button
 var _ct_btns := {}
 var _ct_note: Label
-var _lt_rows: VBoxContainer
+var _lt_rows: GridContainer
 var _wx_window: PanelContainer
 var _wx_buttons: Array[Button] = []
 var _wx_cur_btn: Button
@@ -1123,10 +1123,10 @@ func _build_lights_window() -> void:
 	_bar_row.add_child(btn)
 	_bar_row.move_child(btn, 3)
 	_lt_window = PanelContainer.new()
-	_lt_window.offset_left = 150.0
+	_lt_window.offset_left = 20.0
 	_lt_window.offset_top = 40.0
-	_lt_window.offset_right = 874.0
-	_lt_window.offset_bottom = 500.0
+	_lt_window.offset_right = 1004.0
+	_lt_window.offset_bottom = 520.0
 	_lt_window.visible = false
 	ui.root.add_child(_lt_window)
 	var v := VBoxContainer.new()
@@ -1143,7 +1143,7 @@ func _build_lights_window() -> void:
 	close.pressed.connect(_toggle_lights)
 	head.add_child(close)
 	var hint := Label.new()
-	hint.text = "Switch the room's lights (you can also click the lamps in the room). The TV and monitor have their own power buttons."
+	hint.text = "Every light in the apartment (the lamps click on and off in the room too, and each room has a switch by its door)."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
 	var allrow := HBoxContainer.new()
@@ -1162,8 +1162,10 @@ func _build_lights_window() -> void:
 	all_off.pressed.connect(_main.set_all_lights.bind(false))
 	allrow.add_child(all_off)
 	v.add_child(HSeparator.new())
-	_lt_rows = VBoxContainer.new()
-	_lt_rows.add_theme_constant_override("separation", 8)
+	_lt_rows = GridContainer.new()                  # (three across: there's a light in every room now)
+	_lt_rows.columns = 3
+	_lt_rows.add_theme_constant_override("h_separation", 8)
+	_lt_rows.add_theme_constant_override("v_separation", 8)
 	v.add_child(_lt_rows)
 	_main.lights_changed.connect(_lt_refresh)
 	_lt_refresh()
@@ -1178,8 +1180,11 @@ func _lt_refresh() -> void:
 	for gi in _main.light_groups.size():
 		var on: bool = _main.is_light_on(gi)
 		var b := Button.new()
-		b.text = "%s:  %s" % [_main.light_groups[gi]["name"], "ON" if on else "OFF"]
+		b.text = "%s  %s" % [_main.light_groups[gi]["name"], "ON" if on else "off"]
 		b.custom_minimum_size = Vector2(0, 48)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.clip_text = true
+		b.add_theme_font_size_override("font_size", 17)
 		b.pressed.connect(_main.toggle_light.bind(gi))
 		_lt_rows.add_child(b)
 

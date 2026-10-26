@@ -1684,7 +1684,7 @@ func _build_lights() -> void:
 	_light_group("Nightstand lamp", [l_night], [lamp_shades[0]["mat"]], lamp_shades[0]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Desk lamp", [l_desk], [lamp_shades[1]["mat"]], lamp_shades[1]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Paper lantern", [l_lantern], [lantern_mat], lantern_node, Vector3(0.2, 0.2, 0.2))
-	var g_floor := _light_group("Floor lamp", _corner_lamp[0], [_corner_lamp[1]], _corner_lamp[2], Vector3(0.21, 0.16, 0.21))
+	var g_floor := _light_group("Bedroom floor lamp", _corner_lamp[0], [_corner_lamp[1]], _corner_lamp[2], Vector3(0.21, 0.16, 0.21))
 	light_click(g_floor, _corner_lamp[2], Vector3(0.0, -0.8, 0.0), Vector3(0.12, 0.8, 0.12))   # (the pole too)
 	var g_fairy := _light_group("Fairy lights", [], [fairy_mat], null, Vector3.ZERO)
 	var g_strip := _light_group("Ceiling strip", [], [strip_mat], null, Vector3.ZERO)

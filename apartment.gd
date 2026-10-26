@@ -137,8 +137,8 @@ func build(m: Node3D) -> void:
 	_build_hallway()
 	_build_living()
 	_build_balcony()
-	# the living room's switch, just inside the arch: its lamps and the balcony's string lights
-	main.wall_switch(Vector3(ARCH.y + 0.3, 1.2, FRONT_Z - 0.05), PI, [_liv_lights, _bal_lights], rooms["living"])
+	# the living room's switch, just inside the arch: the room's light, its two lamps and the balcony's string lights
+	main.wall_switch(Vector3(ARCH.y + 0.35, 1.2, FRONT_Z - 0.05), PI, [_liv_lights, _liv_floor, _liv_table, _bal_lights], rooms["living"])
 	_build_game()
 	_build_study()
 	_build_noir_office()
@@ -613,6 +613,10 @@ var _th_glow: Array = []                     # [material, glow]
 var _th_rocker: MeshInstance3D
 var _liv_glow: SpotLight3D
 var _liv_lights := -1
+var _liv_floor := -1
+var _liv_table := -1
+var _table_shade: StandardMaterial3D
+var _table_lamp: MeshInstance3D
 var _bal_plants: Array[Vector3] = []          # where the balcony's potted plants stand (the snow settles on them)
 var _bal_lights := -1
 var _liv_led: StandardMaterial3D
@@ -746,7 +750,8 @@ func _furnish_living(p: Node3D) -> void:
 	# a side table with a lamp beside it
 	_box(Vector3(8.75, 0.28, 0.0), Vector3(0.4, 0.56, 0.4), wood, p)
 	main._cyl(Vector3(8.75, 0.62, 0.0), 0.05, 0.12, metal, p)
-	main._cyl(Vector3(8.75, 0.78, 0.0), 0.13, 0.18, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4), p)
+	_table_shade = _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4)
+	_table_lamp = main._cyl(Vector3(8.75, 0.78, 0.0), 0.13, 0.18, _table_shade, p)
 	_blockers["living"].append(Rect2(8.5, -0.25, 0.5, 0.5))
 	# ---- a record shelf against the south wall, with a turntable on top
 	var rx := 7.4
@@ -824,13 +829,19 @@ func _furnish_living(p: Node3D) -> void:
 	_box(Vector3(0, -0.17, 0.036), Vector3(1.1, 0.26, 0.005), _mat(Color(0.45, 0.20, 0.50), 0.8), print_art)                     # hills
 	main.make_poster(p, Vector3(7.4, 1.75, FRONT_Z - 0.05), PI, "poster_living", print_art, Vector2(1.2, 0.7), 0.8, 1.3)
 	# ---- lights
-	var ll := [_light(Vector3(9.1, 1.6, 2.75), main.WARM, 1.0, 5.5, p)]
+	var floor_l := [_light(Vector3(9.1, 1.6, 2.75), main.WARM, 1.0, 5.5, p)]
 	_light(Vector3(6.0, 2.2, -1.2), main.PINK, 0.7, 5.0, p)          # the city's glow through the glass
+	var table_l := []
+	var ll := []
 	if not lp:                                                        # (the headset gets fewer lights)
-		ll.append(_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p))
+		table_l.append(_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p))
 		ll.append(_light(Vector3(5.0, 2.5, 2.4), Color(0.6, 0.3, 0.75), 0.5, 5.0, p))   # soft fill
-	_liv_lights = main.add_light_group("Living room lights", ll, [lamp_shade], lamp_node, Vector3(0.22, 0.17, 0.22))
-	main.light_click(_liv_lights, lamp_node, Vector3(0.0, -0.85, 0.0), Vector3(0.12, 0.85, 0.12))   # (the pole too)
+	# the room's light on the wall switch; each lamp clicks on and off by itself (shade or stand)
+	_liv_lights = main.add_light_group("Living room lights", ll, [])
+	_liv_floor = main.add_light_group("Living room floor lamp", floor_l, [lamp_shade], lamp_node, Vector3(0.22, 0.17, 0.22))
+	main.light_click(_liv_floor, lamp_node, Vector3(0.0, -0.85, 0.0), Vector3(0.12, 0.85, 0.12))
+	_liv_table = main.add_light_group("Living room table lamp", table_l, [_table_shade], _table_lamp, Vector3(0.15, 0.11, 0.15))
+	main.light_click(_liv_table, _table_lamp, Vector3(0.0, -0.16, 0.0), Vector3(0.07, 0.08, 0.07))
 	# ---- two speakers either side of the TV (they play the TV's sound unless you set them otherwise)
 	main._make_speaker("Living room speaker L", Vector3(MID_X + 0.15, 1.45, LIV_TV.z - LIV_TV_SIZE.x / 2.0 - 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
 	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.45, LIV_TV.z + LIV_TV_SIZE.x / 2.0 + 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
@@ -1188,7 +1199,8 @@ func _build_study() -> void:
 	var lamp_m := _mat(Color(0.12, 0.08, 0.14), 0.5)
 	main._cyl(Vector3(4.2, 0.02, 6.35), 0.15, 0.04, lamp_m, p)
 	main._cyl(Vector3(4.2, 0.78, 6.35), 0.014, 1.5, lamp_m, p)
-	main._cyl(Vector3(4.2, 1.58, 6.35), 0.19, 0.28, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.3), p)
+	var st_shade := _mat(Color(1.0, 0.75, 0.55), 0.6, 1.3)
+	var st_lamp: MeshInstance3D = main._cyl(Vector3(4.2, 1.58, 6.35), 0.19, 0.28, st_shade, p)
 	_blockers["study"].append(Rect2(4.0, 6.15, 0.4, 0.4))
 	var cork := _mat(Color(0.72, 0.52, 0.34), 0.95)
 	_box(Vector3(1.45 + 0.0, 1.8, z1 - 0.02), Vector3(1.1, 0.7, 0.03), _mat(Color(0.25, 0.12, 0.10), 0.6), p)
@@ -1204,10 +1216,12 @@ func _build_study() -> void:
 	main._cyl(Vector3(0.85, 0.22, 5.95), 0.2, 0.44, pot, p)
 	main._sphere(Vector3(0.85, 0.75, 5.95), 0.3, leaf, Vector3(1.0, 1.4, 1.0), p, 10)
 	_blockers["study"].append(Rect2(0.55, 5.65, 0.6, 0.6))
-	var sl := [_light(Vector3(4.05, 1.5, 6.5), main.WARM, 0.9, 4.0, p)]
+	var g_sf: int = main.add_light_group("Study floor lamp", [_light(Vector3(4.05, 1.5, 6.5), main.WARM, 0.9, 4.0, p)], [st_shade], st_lamp, Vector3(0.21, 0.16, 0.21))
+	main.light_click(g_sf, st_lamp, Vector3(0.0, -0.8, 0.0), Vector3(0.12, 0.8, 0.12))      # (its pole too)
+	var sl := []
 	if not Plat.low_power():
 		sl.append(_light(Vector3(2.5, 2.5, 7.8), Color(0.75, 0.45, 0.85), 0.5, 5.0, p))
-	main.wall_switch(Vector3(STUDY_DOOR - 0.6, 1.2, HALL_S + 0.15), 0.0, [main.add_light_group("Study lights", sl, [])], p)
+	main.wall_switch(Vector3(STUDY_DOOR - 0.6, 1.2, HALL_S + 0.15), 0.0, [main.add_light_group("Study lights", sl, []), g_sf], p)
 	# the desk, the PC, the shelf, carried over
 	main.study_kit.reparent(p, false)
 	main.study_kit.transform = STUDY_KIT_XF
