@@ -1729,6 +1729,24 @@ func wall_switch(pos: Vector3, yaw: float, groups: Array, parent: Node3D) -> voi
 			"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _glow_hover(rm), "group": "lights"})
 
 
+# Another poster you can put your own picture on (apartment.gd): pos is the wall's surface, yaw turns its front
+# (local +z) into the room, art is what hangs there until you pick something (built in the poster's local frame).
+func make_poster(parent: Node3D, pos: Vector3, yaw: float, key: String, art: Node3D, art_size: Vector2, mh: float, mw: float) -> Node3D:
+	var pst: Node3D = load("res://poster.gd").new()
+	pst.name = "Poster_" + key
+	pst.position = pos
+	pst.rotation.y = yaw
+	parent.add_child(pst)
+	pst.add_child(art)
+	pst.build_other(_mat(Color(0.10, 0.06, 0.12), 0.5), key, art, art_size, mh, mw)
+	screens.append(pst.ui)
+	interactables.append({"node": pst, "half": Vector3(0.5, 0.5, 0.05), "guest_ok": true,
+		"half_fn": func() -> Vector3: return pst.frame.mesh.size * 0.5 + Vector3(0, 0, 0.04),
+		"hint_at": func() -> Vector3: return pst.hint_spot(),
+		"label": func() -> String: return pst.label(), "cb": func() -> void: pst.toggle_picker()})
+	return pst
+
+
 func _noop_hover(_on: bool) -> void:
 	pass
 

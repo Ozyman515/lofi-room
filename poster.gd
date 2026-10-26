@@ -32,6 +32,22 @@ var current_image: Image                      # what's hanging now (for sharing 
 var revision := 0                             # goes up every time the picture changes
 var remote_from := ""                         # the host's name while their poster is shown here
 var _own: Array = []                          # [texture, size, image] of my own choice, while a host's is shown
+# the other posters round the apartment use this too: each keeps its choice under its own key, and until you
+# pick something (or after "Original art") its own built art hangs there instead of a room poster
+var cfg_key := "poster"
+var art: Node3D = null
+var art_size := Vector2.ZERO
+var max_h := MAX_H
+var max_w := MAX_W
+
+
+func build_other(frame_mat: Material, key: String, art_node: Node3D, size_of_art: Vector2, mh: float, mw: float) -> void:
+	cfg_key = key
+	art = art_node
+	art_size = size_of_art
+	max_h = mh
+	max_w = mw
+	build(frame_mat)
 
 
 func build(frame_mat: Material) -> void:
@@ -56,7 +72,7 @@ func build(frame_mat: Material) -> void:
 	var cf := ConfigFile.new()
 	var saved := ""
 	if cf.load(CFG) == OK:
-		saved = str(cf.get_value("poster", "path", ""))
+		saved = str(cf.get_value(cfg_key, "path", ""))
 	if saved == "" or not _apply_file(saved, false):
 		_apply_default()
 
@@ -77,6 +93,15 @@ static func room_posters() -> Array[String]:
 
 
 func _apply_default() -> void:
+	if art != null:                                  # its own art, the way it was built
+		art.visible = true
+		picture.visible = false
+		frame.visible = false
+		_frame_mesh.size = Vector3(art_size.x, art_size.y, 0.03)     # (for pointing at it)
+		current_path = ""
+		current_image = null
+		revision += 1
+		return
 	var list := room_posters()
 	list.shuffle()
 	for path in list:
@@ -115,13 +140,17 @@ func _show_image(img: Image) -> void:
 	if img.get_format() != Image.FORMAT_RGBA8 and img.get_format() != Image.FORMAT_RGB8:
 		img.convert(Image.FORMAT_RGBA8)
 	current_image = img.duplicate()
+	if art != null:
+		art.visible = false
+		picture.visible = true
+		frame.visible = true
 	var shown := img.duplicate() as Image
 	shown.generate_mipmaps()
 	var aspect := float(img.get_width()) / float(img.get_height())
 	if remote_from != "":
-		_own = [ImageTexture.create_from_image(shown), fit_size(aspect), current_image]
+		_own = [ImageTexture.create_from_image(shown), _fit(aspect), current_image]
 		return                                   # a host's poster is up: mine changes underneath it
-	_set_texture(ImageTexture.create_from_image(shown), fit_size(aspect))
+	_set_texture(ImageTexture.create_from_image(shown), _fit(aspect))
 	revision += 1
 
 
@@ -135,7 +164,7 @@ func show_remote(img: Image, host_name: String) -> void:
 	if shown.get_format() != Image.FORMAT_RGBA8 and shown.get_format() != Image.FORMAT_RGB8:
 		shown.convert(Image.FORMAT_RGBA8)
 	shown.generate_mipmaps()
-	_set_texture(ImageTexture.create_from_image(shown), fit_size(float(img.get_width()) / float(img.get_height())))
+	_set_texture(ImageTexture.create_from_image(shown), _fit(float(img.get_width()) / float(img.get_height())))
 	close_picker()
 
 
@@ -164,13 +193,17 @@ func shared_jpeg() -> PackedByteArray:
 
 
 # the picture's size on the wall for a width / height ratio
-static func fit_size(aspect: float) -> Vector2:
-	var h := MAX_H
+static func fit_size(aspect: float, mh := MAX_H, mw := MAX_W) -> Vector2:
+	var h := mh
 	var w := h * aspect
-	if w > MAX_W:
-		w = MAX_W
+	if w > mw:
+		w = mw
 		h = w / aspect
 	return Vector2(w, h)
+
+
+func _fit(aspect: float) -> Vector2:
+	return fit_size(aspect, max_h, max_w)
 
 
 # ---- a poster that takes over for a while (Noir Night's), with whatever was there kept underneath
@@ -187,7 +220,7 @@ func show_override(img: Image) -> void:
 	if shown.get_format() != Image.FORMAT_RGBA8 and shown.get_format() != Image.FORMAT_RGB8:
 		shown.convert(Image.FORMAT_RGBA8)
 	shown.generate_mipmaps()
-	_apply_tex(ImageTexture.create_from_image(shown), fit_size(float(img.get_width()) / float(img.get_height())))
+	_apply_tex(ImageTexture.create_from_image(shown), _fit(float(img.get_width()) / float(img.get_height())))
 	close_picker()
 
 
@@ -220,7 +253,7 @@ func _apply_tex(tex: Texture2D, size: Vector2) -> void:
 func _remember(path: String) -> void:
 	var cf := ConfigFile.new()
 	cf.load(CFG)
-	cf.set_value("poster", "path", path)
+	cf.set_value(cfg_key, "path", path)
 	cf.save(CFG)
 
 
@@ -268,7 +301,7 @@ func _build_picker() -> void:
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
 	var orig := Button.new()
-	orig.text = "Room posters (a random one)"
+	orig.text = "Original art" if art != null else "Room posters (a random one)"
 	orig.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	orig.pressed.connect(use_original)
 	row.add_child(orig)

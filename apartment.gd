@@ -793,12 +793,15 @@ func _furnish_living(p: Node3D) -> void:
 	var lamp_node: MeshInstance3D = main._cyl(Vector3(9.2, 1.62, 2.95), 0.2, 0.3, lamp_shade, p)
 	_blockers["living"].append(Rect2(8.95, 2.7, 0.5, 0.5))
 	# ---- a big print on the south wall, over the records
+	# (point at it to hang a picture of your own there, like the bedroom poster)
+	var print_art := Node3D.new()
 	var frame_m := _mat(Color(0.10, 0.06, 0.12), 0.5)
-	_box(Vector3(7.4, 1.75, FRONT_Z - 0.04), Vector3(1.2, 0.7, 0.03), frame_m, p)
+	_box(Vector3(0, 0, 0.01), Vector3(1.2, 0.7, 0.03), frame_m, print_art)
 	var art := _mat(Color(0.95, 0.55, 0.45), 0.8, 0.3)
-	_box(Vector3(7.4, 1.75, FRONT_Z - 0.058), Vector3(1.1, 0.6, 0.01), art, p)
-	main._sphere(Vector3(7.25, 1.82, FRONT_Z - 0.065), 0.16, _mat(Color(1.0, 0.85, 0.45), 0.6, 0.8), Vector3(1, 1, 0.05), p, 16)   # a sun
-	_box(Vector3(7.4, 1.58, FRONT_Z - 0.066), Vector3(1.1, 0.26, 0.005), _mat(Color(0.45, 0.20, 0.50), 0.8), p)                     # hills
+	_box(Vector3(0, 0, 0.028), Vector3(1.1, 0.6, 0.01), art, print_art)
+	main._sphere(Vector3(0.15, 0.07, 0.035), 0.16, _mat(Color(1.0, 0.85, 0.45), 0.6, 0.8), Vector3(1, 1, 0.05), print_art, 16)   # a sun
+	_box(Vector3(0, -0.17, 0.036), Vector3(1.1, 0.26, 0.005), _mat(Color(0.45, 0.20, 0.50), 0.8), print_art)                     # hills
+	main.make_poster(p, Vector3(7.4, 1.75, FRONT_Z - 0.05), PI, "poster_living", print_art, Vector2(1.2, 0.7), 0.8, 1.3)
 	# ---- lights
 	var ll := [_light(Vector3(9.1, 1.6, 2.75), main.WARM, 1.0, 5.5, p)]
 	_light(Vector3(6.0, 2.2, -1.2), main.PINK, 0.7, 5.0, p)          # the city's glow through the glass
@@ -1065,16 +1068,15 @@ func _build_game() -> void:
 			_mat([Color(0.9, 0.2, 0.25), Color(0.2, 0.6, 0.95), Color(0.95, 0.8, 0.2)][k], 0.3), p)
 	_blockers["game"].append(Rect2(GAME_E - 0.6, 7.3, 0.6, 0.6))
 	# posters: a retro one on the west wall and one on the east
-	for pp in [[Vector3(x0 + 0.06, 1.6, 6.6), PI / 2.0, Color(0.3, 0.75, 0.95)], [Vector3(GAME_E - 0.06, 1.6, 8.75), -PI / 2.0, Color(0.95, 0.5, 0.3)]]:
+	# (point at one to hang a picture of your own there)
+	for pp in [[Vector3(x0 + 0.06, 1.6, 6.6), PI / 2.0, Color(0.3, 0.75, 0.95), "poster_game_w"], [Vector3(GAME_E - 0.06, 1.6, 8.75), -PI / 2.0, Color(0.95, 0.5, 0.3), "poster_game_e"]]:
 		var fr := Node3D.new()
-		fr.position = pp[0]
-		fr.rotation.y = float(pp[1])
-		p.add_child(fr)
 		_box(Vector3.ZERO, Vector3(0.62, 0.86, 0.02), _mat(Color(0.08, 0.05, 0.1), 0.5), fr)
 		_box(Vector3(0, 0, 0.012), Vector3(0.56, 0.8, 0.005), _mat(pp[2], 0.8, 0.25), fr)
 		_box(Vector3(0, 0.12, 0.016), Vector3(0.3, 0.3, 0.004), _mat(Color(1.0, 0.95, 0.6), 0.6, 0.6), fr)   # a big pixel sun
 		for j in 4:
 			_box(Vector3(0, -0.12 - j * 0.05, 0.016), Vector3(0.5 - j * 0.06, 0.012, 0.004), _mat(Color(0.2, 0.08, 0.25), 0.7), fr)
+		main.make_poster(p, pp[0], float(pp[1]), pp[3], fr, Vector2(0.62, 0.86), 0.86, 0.9)
 	# lights
 	var gl := [_light(Vector3(-1.6, 2.5, 7.4), Color(0.75, 0.45, 0.95), 0.6, 5.0, p)]
 	if not Plat.low_power():
