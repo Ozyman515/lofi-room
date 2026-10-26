@@ -142,6 +142,7 @@ func build(m: Node3D) -> void:
 	_build_noir_office()
 	_build_theater()
 	_build_exterior()
+	_build_snow_cover()
 	_place_toys()
 	main.bank.lp_finished.connect(_lp_next)
 	# (deferred: the kits' speakers have to be in their rooms first)
@@ -179,6 +180,93 @@ func _place_toys() -> void:
 			tw.tween_property(jt, "rotation:z", 0.2, 0.1)
 			tw.tween_property(jt, "rotation:z", -0.2, 0.15)
 			tw.tween_property(jt, "rotation:z", 0.0, 0.1)})
+
+
+# ---- snow settling outside: on the balcony floor, the railing, the table and chairs, the neighbours' balconies
+# below and the street. It builds up while it snows: deeper the harder it snows (a whiteout fills it up in about
+# a minute), and melts away slowly once it stops (faster in the rain).
+
+var _snow_parts: Array = []            # [MeshInstance3D, base y, how much of the depth settles there]
+var _snow_mat: StandardMaterial3D
+var snow_depth := 0.0                  # metres on open ground
+var _snow_shown := 0.0
+
+
+func _build_snow_cover() -> void:
+	_snow_mat = StandardMaterial3D.new()
+	_snow_mat.albedo_color = Color(0.93, 0.95, 1.0)
+	_snow_mat.roughness = 0.9
+	_snow_mat.emission_enabled = true                    # so it still reads as snow at night
+	_snow_mat.emission = Color(0.55, 0.6, 0.75)
+	_snow_mat.emission_energy_multiplier = 0.25
+	var w0 := WEST_X - 0.05
+	_snow_layer(balcony, Vector3((w0 + BAL_E) / 2.0, 0.0, (BAL_N + NORTH_Z) / 2.0), Vector2(BAL_E - w0 - 0.1, NORTH_Z - BAL_N - 0.1), 1.0)
+	_snow_layer(balcony, Vector3((EAST_X + BAL_E) / 2.0, 0.0, (NORTH_Z + FRONT_Z) / 2.0), Vector2(BAL_E - EAST_X - 0.1, FRONT_Z - NORTH_Z), 1.0)
+	_snow_layer(balcony, Vector3((w0 + BAL_E) / 2.0, 1.075, BAL_N), Vector2(BAL_E - w0, 0.06), 0.45)          # on the top rail
+	_snow_layer(balcony, Vector3(BAL_E, 1.075, (BAL_N + FRONT_Z) / 2.0), Vector2(0.06, FRONT_Z - BAL_N), 0.45)
+	_snow_layer(balcony, Vector3(11.1, 0.74, -3.75), Vector2(0.56, 0.56), 0.8, true)                          # the table
+	for cs in [[Vector3(10.35, 0.0, -3.85), -PI * 0.25 - 0.35], [Vector3(11.15, 0.0, -2.95), -PI * 0.25 + 0.35]]:
+		var mi := _snow_layer(balcony, Vector3(cs[0].x, 0.515, cs[0].z), Vector2(0.4, 0.4), 0.8)             # the chairs
+		mi.rotation.y = float(cs[1])
+	for k in 6:                                                                                               # the balconies below
+		var fy := -3.0 - k * 3.0 + 0.08
+		_snow_layer(exterior, Vector3((w0 + BAL_E) / 2.0, fy, (BAL_N + NORTH_Z) / 2.0), Vector2(BAL_E - w0, NORTH_Z - BAL_N), 0.9)
+		_snow_layer(exterior, Vector3((EAST_X + BAL_E) / 2.0, fy, (NORTH_Z + FRONT_Z) / 2.0), Vector2(BAL_E - EAST_X, FRONT_Z - NORTH_Z), 0.9)
+	_snow_layer(exterior, Vector3(2.0, GROUND + 0.03, -20.0), Vector2(200.0, 200.0), 1.2)                     # the street (the kerbs show through a thin layer)
+	_set_snow(0.0)
+
+
+func _snow_layer(parent: Node3D, top: Vector3, size: Vector2, share: float, round := false) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	if round:
+		var cm := CylinderMesh.new()
+		cm.top_radius = size.x / 2.0
+		cm.bottom_radius = size.x / 2.0
+		cm.height = 1.0
+		cm.radial_segments = 20
+		mi.mesh = cm
+	else:
+		var bm := BoxMesh.new()
+		bm.size = Vector3(size.x, 1.0, size.y)
+		mi.mesh = bm
+	mi.material_override = _snow_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = top
+	parent.add_child(mi)
+	_snow_parts.append([mi, top.y, share])
+	return mi
+
+
+func _set_snow(d: float) -> void:
+	for sp in _snow_parts:
+		var mi: MeshInstance3D = sp[0]
+		var h: float = d * float(sp[2])
+		mi.visible = h > 0.002
+		mi.scale.y = maxf(h, 0.001)
+		mi.position.y = float(sp[1]) + h / 2.0
+
+
+func _snow_tick(delta: float) -> void:
+	var w = main.weather
+	if w == null:
+		return
+	var d := snow_depth
+	var snowing: bool = w.mode == w.Mode.SNOW and w._snow_amt > 0.05
+	if snowing:
+		var lv: float = clampf(float(w.levels[w.Mode.SNOW]), 0.0, 1.0)
+		var deep := lerpf(0.04, 0.16, lv)                   # flurries leave a dusting, a whiteout a thick blanket
+		var fill := lerpf(300.0, 60.0, lv)                  # seconds to settle that deep
+		if d < deep:
+			d = minf(deep, d + deep / fill * delta)
+		else:
+			d = maxf(deep, d - 0.16 / 240.0 * delta)
+	elif d > 0.0:
+		var rain: bool = w.mode == w.Mode.RAIN or w.mode == w.Mode.STORM
+		d = maxf(0.0, d - 0.16 / (80.0 if rain else 240.0) * delta)
+	snow_depth = d
+	if absf(d - _snow_shown) > 0.0005 or (d == 0.0 and _snow_shown != 0.0):
+		_snow_shown = d
+		_set_snow(d)
 
 
 # t: 0 open (both leaves stacked to the right of the doorway) .. 1 closed (meeting across it)
@@ -1583,6 +1671,7 @@ func _process(delta: float) -> void:
 		var o: float = move_toward(float(d["open"]), target, delta / 0.6)
 		d["open"] = o
 		(d["pivot"] as Node3D).rotation.y = float(d["sign"]) * 1.65 * smoothstep(0.0, 1.0, o)
+	_snow_tick(delta)
 	# the balcony door slides
 	var bw := move_toward(bal_shut, 1.0 if _bal_closed else 0.0, delta / 1.0)
 	if bw != bal_shut:
