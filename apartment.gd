@@ -507,7 +507,11 @@ func _furnish_living(p: Node3D) -> void:
 	var pw := _box(Vector3(stand_x + 0.17, 0.505, LIV_TV.z + 0.8), Vector3(0.07, 0.015, 0.05), pw_m, p)
 	main.interactables.append({"node": pw, "half": Vector3(0.05, 0.03, 0.04), "guest_ok": true,
 		"label": func() -> String: return "BIG TV  [%s]" % ("ON" if liv_tv.is_on() else "OFF"),
-		"cb": func() -> void: set_liv_tv(not liv_tv.is_on()),
+		"cb": func() -> void:
+			if main._is_guest():
+				main.net_room_tvs.request_power(0)          # the host's Big TV: the host switches it
+			else:
+				set_liv_tv(not liv_tv.is_on()),
 		"hover": main._glow_hover(pw_m)})
 	_label("TV", Vector3(stand_x + 0.178, 0.514, LIV_TV.z + 0.8), PI / 2.0, 24, Color(0.85, 0.8, 0.9), p).rotation.x = -PI / 2.0
 	_liv_glow = _light(Vector3(LIV_TV.x + 0.8, LIV_TV.y - 0.2, LIV_TV.z), Color(0.45, 0.6, 1.0), 1.1, 5.0, p)

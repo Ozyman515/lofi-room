@@ -110,6 +110,7 @@ var net: Node                            # NetSession (null when the WebRTC plug
 var net_avatars: Node3D
 var net_phone: Node3D
 var net_game: Node
+var net_room_tvs: Node
 var net_books: Node
 var net_voice: Node
 var _net_toast_t := 0
@@ -303,6 +304,10 @@ func _build_multiplayer() -> void:
 	net_game.name = "NetGame"
 	add_child(net_game)
 	net_game.setup(net, self, emu)
+	net_room_tvs = load("res://net_room_tvs.gd").new()      # the Big TV and the Theater Screen, shared like the CRT
+	net_room_tvs.name = "NetRoomTVs"
+	add_child(net_room_tvs)
+	net_room_tvs.setup(net, self)
 	net_books = load("res://net_books.gd").new()
 	net_books.name = "NetBooks"
 	add_child(net_books)

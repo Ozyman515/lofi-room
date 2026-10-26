@@ -253,6 +253,8 @@ func _guest_tick() -> void:
 func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 	if kind != Net.K_SOUND or payload.size() < 2:
 		return
+	if main.net_room_tvs != null and main.net_room_tvs.on_sound(from, payload):
+		return                                  # the Big TV's or the Theater Screen's sound
 	var ng = main.net_game
 	if net.is_host():
 		# only a guest whose tape is on the TV sends TV sound: play it here and pass it on

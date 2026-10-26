@@ -122,6 +122,8 @@ func _on_roster() -> void:
 			if id == tv_source:
 				tv_source = 1
 				tv_live = my_tv_active()
+			if main.net_room_tvs != null:
+				main.net_room_tvs.on_roster_left(id)
 			_state_known.erase(id)
 			if id == p2_id:
 				p2_id = 0
@@ -154,6 +156,11 @@ func _process(delta: float) -> void:
 
 # ---- host -> guests
 
+# something changed that guests should see now (it goes out with the next state, within 0.2 s)
+func push_state_soon() -> void:
+	_state_known.clear()
+
+
 func _current_state() -> Dictionary:
 	var pads := {}
 	if main.game_mode:
@@ -173,7 +180,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "rtv": main.net_room_tvs.state() if main.net_room_tvs != null else [], "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -413,9 +420,14 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 					guest_pad_idx[from] = clampi(int(d.get("idx", -1)), -1, 7)
 				elif d is Dictionary and d.get("k", "") == "slap":
 					_host_slap(from, int(d.get("target", 0)))
+				elif d is Dictionary and d.get("k", "") == "rtv":
+					if main.net_room_tvs != null:
+						main.net_room_tvs.on_event(from, d)
 				elif d is Dictionary:
 					_host_tv_event(from, d)
 			Net.K_VIDEO:
+				if main.net_room_tvs != null and main.net_room_tvs.on_video(from, payload):
+					return
 				# a guest's tape: show it here and pass it on to the others
 				if from == tv_source and payload.size() >= 2 and payload.size() <= 2 * 1024 * 1024 and payload[0] == 1:
 					var img := SafeImage.jpeg(payload.slice(1), 2048)
@@ -468,9 +480,14 @@ func _on_packet(from: int, kind: int, payload: PackedByteArray) -> void:
 					"vcr":
 						if tv_source == net.my_id:
 							_apply_vcr_button(int(d.get("b", -1)))
+					"rtv":
+						if main.net_room_tvs != null:
+							main.net_room_tvs.on_event(1, d)
 		Net.K_VIDEO:
 			if payload.size() > 2 * 1024 * 1024 or payload.size() < 2:
 				return                                  # no honest frame is that big
+			if main.net_room_tvs != null and main.net_room_tvs.on_video(from, payload):
+				return
 			var img := SafeImage.jpeg(payload.slice(1), 2048)
 			if img != null:
 				if payload[0] == 1:
@@ -626,6 +643,8 @@ func _apply_state(d: Dictionary) -> void:
 	slap_minutes_seen = int(d.get("slap", 30))
 	tv_source = int(d.get("tv_src", 1))
 	tv_live = bool(d.get("tv_live", false))
+	if main.net_room_tvs != null:
+		main.net_room_tvs.apply_state(d.get("rtv", []))
 	if main.tv_rating != null:
 		main.tv_rating.apply_state(d.get("tv_rate", []))
 	main.recliner_from_host(d.get("rec", []))
