@@ -2936,8 +2936,9 @@ func _relaunch() -> bool:
 		get_tree().reload_current_scene.call_deferred()
 		return true
 	var args := PackedStringArray()
-	if FileAccess.file_exists("res://project.godot"):
-		args.append_array(["--path", ProjectSettings.globalize_path("res://").trim_suffix("/")])
+	var proj := ProjectSettings.globalize_path("res://").trim_suffix("/")
+	if FileAccess.file_exists("res://project.godot") and not (OS.get_name() == "Windows" and proj.to_lower() == OS.get_executable_path().get_base_dir().to_lower()):
+		args.append_array(["--path", proj])         # (on Windows, from its own folder it starts like a double-click: no --path)
 	var drv := ""
 	if RenderingServer.has_method("get_current_rendering_driver_name"):          # newer Godot versions only
 		drv = str(RenderingServer.call("get_current_rendering_driver_name"))
@@ -2983,9 +2984,11 @@ func _windows_relaunch_helper(args: PackedStringArray) -> PackedStringArray:
 	var logp := ProjectSettings.globalize_path("user://relaunch.log")
 	var cmd := "$ErrorActionPreference='SilentlyContinue'; Wait-Process -Id %d -Timeout 120; " % OS.get_process_id()
 	cmd += "Start-Sleep -Milliseconds 500; "
-	cmd += "$p = Start-Process -FilePath %s -ArgumentList @(%s) -WorkingDirectory %s -PassThru; " % [q.call(exe), ",".join(quoted), q.call(exe.get_base_dir())]
+	var outp := ProjectSettings.globalize_path("user://relaunch_out.txt")
+	var errp := ProjectSettings.globalize_path("user://relaunch_err.txt")
+	cmd += "$p = Start-Process -FilePath %s -ArgumentList @(%s) -WorkingDirectory %s -RedirectStandardOutput %s -RedirectStandardError %s -PassThru; " % [q.call(exe), ",".join(quoted), q.call(exe.get_base_dir()), q.call(outp), q.call(errp)]
 	cmd += "if ($p -eq $null) { Add-Content -Path %s -Value ((Get-Date -Format s) + '  the helper could not start the room') } " % q.call(logp)
-	cmd += "else { $null = $p.Handle; Start-Sleep -Seconds 20; if ($p.HasExited) { Add-Content -Path %s -Value ((Get-Date -Format s) + '  the new copy closed by itself (exit code ' + $p.ExitCode + ')') } }" % q.call(logp)
+	cmd += "else { $null = $p.Handle; Start-Sleep -Seconds 20; if ($p.HasExited) { Add-Content -Path %s -Value ((Get-Date -Format s) + '  the new copy closed by itself (exit code ' + $p.ExitCode + '); what it said is in relaunch_out.txt / relaunch_err.txt') } }" % q.call(logp)
 	return PackedStringArray(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", cmd])
 
 
