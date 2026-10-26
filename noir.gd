@@ -65,6 +65,7 @@ var _neon_sign_light: OmniLight3D
 var _folds: Array = []                  # [fold, side, window edge, index]
 var _tiebacks: Array[MeshInstance3D] = []
 var _cur_cx := 0.0
+var _dchair: Node3D
 var _cur_closed := false
 var _cur := 0.0                         # 0 open .. 1 drawn
 var _win: Array = []                    # the windows across the street: {m, on, x (the walker), v, stop}
@@ -238,6 +239,9 @@ func _office_tick(delta: float) -> void:
 	_neon_halo.outline_modulate.a = 0.35 * lit
 	_neon_sign_light.light_energy = 2.0 * lit
 	_windows_tick(delta)
+	# the detective's chair turns back to the desk when nobody's in it
+	if _dchair != null and not (main.seated and main.seat_nodes[main.cur_seat] == _dchair):
+		_dchair.rotation.y = lerp_angle(_dchair.rotation.y, 0.0, minf(1.0, delta * 2.0))
 	# the curtains, drawn or open
 	var was_cur := _cur
 	_cur = move_toward(_cur, 1.0 if _cur_closed else 0.0, delta / 1.2)
@@ -374,12 +378,21 @@ func _build_office() -> void:
 	o.add_child(ll)
 	# the detective's chair (yours) behind the desk, facing the door; the client's chair in front
 	var chair_m := _m(Color(0.22, 0.10, 0.08), 0.5)
+	# the detective's swivel chair: a padded seat and back on a steel spine, low arms, a round cast base. It sits
+	# far enough back from the desk to turn all the way round without the back going into it, and it turns back
+	# to face the desk when you get up.
 	var dch := Node3D.new()
-	dch.position = Vector3(2.4, 0.0, 13.15)
+	dch.position = Vector3(2.4, 0.0, 13.45)
 	o.add_child(dch)
-	main._box(Vector3(0, 0.46, 0), Vector3(0.52, 0.08, 0.5), chair_m, dch)
-	main._box(Vector3(0, 0.85, 0.24), Vector3(0.52, 0.72, 0.08), chair_m, dch)
-	main._cyl(Vector3(0, 0.23, 0), 0.03, 0.42, metal, dch)
+	_dchair = dch
+	main._box(Vector3(0, 0.47, 0), Vector3(0.5, 0.09, 0.48), chair_m, dch)                       # seat
+	main._box(Vector3(0, 0.88, 0.25), Vector3(0.48, 0.56, 0.07), chair_m, dch)                   # back
+	main._box(Vector3(0, 0.57, 0.235), Vector3(0.06, 0.18, 0.04), metal, dch)                    # the spine joining them
+	main._box(Vector3(0, 0.505, 0.15), Vector3(0.06, 0.03, 0.2), metal, dch)
+	for sx in [-1.0, 1.0]:
+		main._box(Vector3(sx * 0.27, 0.6, 0.0), Vector3(0.03, 0.2, 0.03), metal, dch)            # arm posts
+		main._box(Vector3(sx * 0.27, 0.71, -0.02), Vector3(0.06, 0.03, 0.3), chair_m, dch)       # arm pads
+	main._cyl(Vector3(0, 0.24, 0), 0.03, 0.42, metal, dch)
 	main._cyl(Vector3(0, 0.02, 0), 0.26, 0.03, metal, dch)
 	main.seat_nodes.append(dch)
 	main.seat_eye.append(main.SEAT_EYE_HEIGHT)
