@@ -2790,7 +2790,7 @@ func _go_to_sleep() -> void:
 
 # Starts a fresh copy of the room (same display / VR options) and closes this one.
 func _relaunch() -> bool:
-	if Plat.is_android() and not dry_relaunch:
+	if not Plat.can_spawn_programs() and not dry_relaunch:
 		# a headset app can't start a second copy of itself, so the room starts over inside this run instead
 		get_tree().reload_current_scene.call_deferred()
 		return true
@@ -2806,35 +2806,18 @@ func _relaunch() -> bool:
 	if wm == DisplayServer.WINDOW_MODE_FULLSCREEN or wm == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		args.append("--fullscreen")
 	args.append_array(relaunch_extra)
-	# the new copy writes a little "I'm up" file; this one only closes once it has seen it, so a copy that fails
-	# to start can never leave you with no room at all
 	var token := "%d_%d" % [OS.get_process_id(), Time.get_ticks_msec()]
 	args.append_array(["--", "lofi_relaunch=" + token])
 	if dry_relaunch:
 		print("RELAUNCH ", OS.get_executable_path(), " ", args)
 		return false
-	var ok_file := "user://relaunch_%s.ok" % token
-	_relaunch_log("starting: %s %s" % [OS.get_executable_path(), " ".join(args)])
-	var pid := OS.create_process(OS.get_executable_path(), args)
-	if pid <= 0:
-		_relaunch_log("could not start it (create_process returned %d)" % pid)
-		return false
-	_relaunch_log("started pid %d, waiting for it" % pid)
-	var waited := 0.0
-	while waited < 25.0:
-		await get_tree().create_timer(0.25).timeout
-		waited += 0.25
-		if FileAccess.file_exists(ok_file):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(ok_file))
-			_relaunch_log("it is up after %.1f s; closing this copy" % waited)
-			get_tree().quit()
-			return true
-		if not OS.is_process_running(pid):
-			_relaunch_log("it closed by itself after %.1f s (exit code %d)" % [waited, OS.get_process_exit_code(pid)])
-			return false
-	_relaunch_log("no sign of it after 25 s")
-	OS.kill(pid)
-	return false
+	# The new copy starts once this one has fully closed (Godot does it on the way out). Starting it while this
+	# copy was still open made it close again within 0.3 s on Windows, every time (relaunch.log), so the room
+	# never came back by itself after an update.
+	_relaunch_log("restarting on exit: %s %s" % [OS.get_executable_path(), " ".join(args)])
+	OS.set_restart_on_exit(true, args)
+	get_tree().quit()
+	return true
 
 
 func _relaunch_log(line: String) -> void:
@@ -2860,6 +2843,7 @@ func _on_second_copy() -> void:
 func _relaunch_ack() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("lofi_relaunch="):
+			_relaunch_log("the new copy is up (%s)" % a.trim_prefix("lofi_relaunch="))
 			var f := FileAccess.open("user://relaunch_%s.ok" % a.trim_prefix("lofi_relaunch="), FileAccess.WRITE)
 			if f != null:
 				f.store_string("ok")
