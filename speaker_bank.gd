@@ -61,7 +61,43 @@ var playing: bool:
 		return _ref != null and _ref.playing
 
 
+# The theater is quiet: everything else in the apartment (music elsewhere, the weather, the other TVs, the cats,
+# the monsters outside...) fades out while you're in it. Every sound is steered into the "Room" bus (players that
+# would go straight to Master as they enter the tree, buses that send to Master), and that bus is turned down in
+# the theater. The Theater Screen, the theater's own speakers and friends' voices use "Theater" instead.
+const OUT := "Theater"
+const HUSH := "Room"
+var _quiet := 0.0
+var _bus_t := 0.0
+
+static func setup_out_bus() -> void:
+	for n in [HUSH, OUT]:
+		if AudioServer.get_bus_index(n) < 0:
+			AudioServer.add_bus()
+			AudioServer.set_bus_name(AudioServer.bus_count - 1, n)
+			AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+
+
+static func reroute(n: Node) -> void:
+	if (n is AudioStreamPlayer or n is AudioStreamPlayer3D or n is AudioStreamPlayer2D) and n.bus == &"Master":
+		n.bus = HUSH
+
+
+static func reroute_all(n: Node) -> void:
+	reroute(n)
+	for c in n.get_children():
+		reroute_all(c)
+
+
+static func reroute_buses() -> void:
+	for i in range(1, AudioServer.bus_count):
+		var nm := AudioServer.get_bus_name(i)
+		if nm != HUSH and nm != OUT and AudioServer.get_bus_send(i) == &"Master":
+			AudioServer.set_bus_send(i, HUSH)
+
+
 func _ensure_ref() -> void:
+	setup_out_bus()
 	if _ref != null:
 		return
 	if AudioServer.get_bus_index("SpeakerClock") < 0:
@@ -222,6 +258,9 @@ func assign_rooms(room_at: Callable) -> void:
 		var pos: Vector3 = (s["player"] as Node3D).global_position
 		s["room"] = str(room_at.call(pos))
 		s["tv_bus"] = TV_OF.get(s["room"], "TV")
+		if s["room"] == "theater":                       # (not hushed by the theater's quiet)
+			(s["player"] as AudioStreamPlayer3D).bus = OUT
+			(s["lp"] as AudioStreamPlayer3D).bus = OUT
 		(s["tv"] as AudioStreamPlayer3D).stop()
 	_rooms_set = true
 	for i in speakers.size():
@@ -300,7 +339,8 @@ func _refresh_feeds() -> void:
 	for b in TV_BUSES:
 		var bi := AudioServer.get_bus_index(b)
 		if bi >= 0:
-			AudioServer.set_bus_send(bi, "Master" if on.has(TV_BUSES[b]) or not _rooms_set else BusFeed.SINK)
+			var to := OUT if b == "TV_theater" else HUSH
+			AudioServer.set_bus_send(bi, to if on.has(TV_BUSES[b]) or not _rooms_set else BusFeed.SINK)
 
 
 func _apply() -> void:
@@ -340,6 +380,16 @@ func _apply() -> void:
 func _process(delta: float) -> void:
 	if not _rooms_set:
 		return
+	_bus_t -= delta
+	if _bus_t <= 0.0:
+		_bus_t = 1.0
+		reroute_buses()                              # (buses made or re-sent since: the weather, feeds, the arcade...)
+	var qt := 1.0 if listener_room == "theater" else 0.0
+	if _quiet != qt:
+		_quiet = move_toward(_quiet, qt, delta / FADE)
+		var mi := AudioServer.get_bus_index(HUSH)
+		if mi > 0:
+			AudioServer.set_bus_volume_db(mi, linear_to_db(maxf(1.0 - _quiet, 0.001)))
 	var step := delta * (1.0 - AWAY) / FADE
 	var moved := false
 	for s in speakers:

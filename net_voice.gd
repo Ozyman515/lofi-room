@@ -244,6 +244,7 @@ func _player_for(id: int) -> AudioStreamPlayer3D:
 	g.buffer_length = 0.4
 	var p := AudioStreamPlayer3D.new()
 	p.stream = g
+	p.bus = "Theater" if AudioServer.get_bus_index("Theater") >= 0 else "Master"     # (friends are heard even in the quiet theater)
 	p.unit_size = 3.0
 	p.max_distance = 30.0
 	var v := volume_of(id)

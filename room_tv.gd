@@ -15,7 +15,7 @@ var ui: ScreenUI
 var screen: MeshInstance3D
 var own_mat: ShaderMaterial              # driven by its own player and menus
 var speakers: Array[int] = []            # speaker bank indices in its room (they're set to it by default)
-var _glow: OmniLight3D
+var _glow: Light3D
 var _glow_energy := 1.0
 
 
@@ -58,7 +58,7 @@ func build(m: Node3D, parent: Node3D, bus_name: String, screen_xf: Transform3D, 
 
 
 # a light in front of the screen that glows while it's on
-func add_glow(l: OmniLight3D) -> void:
+func add_glow(l: Light3D) -> void:
 	_glow = l
 	_glow_energy = l.light_energy
 

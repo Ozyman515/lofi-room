@@ -20,6 +20,7 @@ signal settings_changed
 
 const USE_GLOW := true       # bloom on lamps and window; turn off if the headset struggles
 const MOVE_SPEED := 1.6      # metres per second
+const RUN_SPEED := 3.4       # holding Shift / clicking the left stick in: for getting round the apartment
 const SNAP_ANGLE := 30.0     # degrees per snap turn
 const DEADZONE := 0.2
 const SEAT_EYE_HEIGHT := 1.18   # eye height (m) while sitting
@@ -34,6 +35,7 @@ const WIN_X1 := 1.05
 const WIN_Y0 := 0.5
 const WIN_Y1 := 2.7
 const POINTER_RANGE := 4.0       # how far the VR laser / desktop crosshair reaches
+const FAR_RANGE := 9.0           # ...for the few things that say they reach further (the theater's speakers, from the seats)
 const RUG_WIDTH := 1.8          # lounge rug width along the wall
 const BED_ASSET := "res://assets/bed.glb"   # drop a bed model here and it replaces the built-in bed
 const BED_EXTRA_YAW := 0.0      # rotate the bed asset in 90 degree steps if it faces the wrong way
@@ -181,6 +183,8 @@ var laser_r: MeshInstance3D
 var hint_label: Label3D
 var hover_screen: ScreenUI = null
 var hover_item: Dictionary = {}
+var _running := false               # the faster walk, on a stick click (back to a walk when you stop)
+var _run_click := false
 var hover_node: Node3D = null
 var hover_hand := -1
 var hover_pos := Vector2.ZERO
@@ -201,6 +205,9 @@ var sit_label: Label3D
 
 
 func _ready() -> void:
+	SpeakerBank.setup_out_bus()        # (see speaker_bank.gd: the quiet theater)
+	get_tree().node_added.connect(SpeakerBank.reroute)
+	SpeakerBank.reroute_all(self)
 	if get_tree().get_script() == null:       # (not under a test script)
 		var one := preload("res://single_instance.gd").new()
 		one.name = "SingleInstance"
@@ -1672,19 +1679,54 @@ func _build_lights() -> void:
 	_light_group("Nightstand lamp", [l_night], [lamp_shades[0]["mat"]], lamp_shades[0]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Desk lamp", [l_desk], [lamp_shades[1]["mat"]], lamp_shades[1]["node"], Vector3(0.12, 0.14, 0.12))
 	_light_group("Paper lantern", [l_lantern], [lantern_mat], lantern_node, Vector3(0.2, 0.2, 0.2))
-	_light_group("Fairy lights", [], [fairy_mat], null, Vector3.ZERO)
-	_light_group("Ceiling strip", [], [strip_mat], null, Vector3.ZERO)
+	var g_fairy := _light_group("Fairy lights", [], [fairy_mat], null, Vector3.ZERO)
+	var g_strip := _light_group("Ceiling strip", [], [strip_mat], null, Vector3.ZERO)
+	var g_lantern := light_groups.size() - 3
+	wall_switch(Vector3(1.62, 1.2, 3.35), PI, [g_strip, g_fairy, g_lantern], _host())     # inside the bedroom door
 
 
-func _light_group(gname: String, omnis: Array, mats: Array, click_node: Node3D, half: Vector3) -> void:
+func _light_group(gname: String, omnis: Array, mats: Array, click_node: Node3D, half: Vector3) -> int:
 	var entries: Array = []
 	for m in mats:
 		entries.append({"m": m, "e": m.emission_energy_multiplier, "a": m.albedo_color})
-	light_groups.append({"name": gname, "on": true, "omnis": omnis, "mats": entries})
+	light_groups.append({"name": gname, "on": true, "omnis": omnis, "mats": entries, "rockers": []})
 	var gi := light_groups.size() - 1
 	if click_node != null:
 		interactables.append({"node": click_node, "half": half,
 			"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _noop_hover, "group": "lights"})
+	return gi
+
+
+# the rooms' own lights (apartment.gd); they show up in the PC's Lights window too
+func add_light_group(gname: String, omnis: Array, mats: Array, click_node: Node3D = null, half := Vector3.ZERO) -> int:
+	return _light_group(gname, omnis, mats, click_node, half)
+
+
+# a light that keeps its own state (the theater's house lights): the group just asks it
+func add_light_group_fn(gname: String, get_on: Callable, set_on: Callable) -> int:
+	light_groups.append({"name": gname, "on": true, "omnis": [], "mats": [], "rockers": [], "get": get_on, "set": set_on})
+	return light_groups.size() - 1
+
+
+# A light switch on the wall: one rocker per light group. pos is the wall's surface, yaw turns the plate's front
+# (local +z) to face into the room.
+func wall_switch(pos: Vector3, yaw: float, groups: Array, parent: Node3D) -> void:
+	var sw := Node3D.new()
+	sw.position = pos
+	sw.rotation.y = yaw
+	parent.add_child(sw)
+	var n := groups.size()
+	_box(Vector3(0, 0, 0.006), Vector3(0.075 + 0.045 * (n - 1), 0.115, 0.012), _mat(Color(0.85, 0.80, 0.88), 0.5), sw)
+	for k in n:
+		var gi: int = groups[k]
+		var x := (k - (n - 1) / 2.0) * 0.045
+		var rm := _mat(Color(0.30, 0.22, 0.36), 0.4)
+		var rocker := _box(Vector3(x, 0.0, 0.016), Vector3(0.032, 0.06, 0.012), rm, sw)
+		rocker.rotation.x = 0.25 if is_light_on(gi) else -0.25
+		_sphere(Vector3(x, 0.045, 0.014), 0.0045, _mat(Color(1.0, 0.7, 0.3), 0.4, 1.2), Vector3.ONE, sw, 8)   # (to find it in the dark)
+		(light_groups[gi]["rockers"] as Array).append(rocker)
+		interactables.append({"node": rocker, "half": Vector3(0.022, 0.05, 0.04),
+			"label": _light_label.bind(gi), "cb": toggle_light.bind(gi), "hover": _glow_hover(rm), "group": "lights"})
 
 
 func _noop_hover(_on: bool) -> void:
@@ -1692,34 +1734,65 @@ func _noop_hover(_on: bool) -> void:
 
 
 func _light_label(gi: int) -> String:
-	return "%s  [%s]" % [light_groups[gi]["name"], "ON" if light_groups[gi]["on"] else "OFF"]
+	return "%s  [%s]" % [String(light_groups[gi]["name"]).to_upper(), "ON" if is_light_on(gi) else "OFF"]
 
 
 func is_light_on(gi: int) -> bool:
-	return light_groups[gi]["on"]
-
-
-func set_light(gi: int, on: bool) -> void:
 	var g: Dictionary = light_groups[gi]
+	if g.has("get"):
+		return bool((g["get"] as Callable).call())
+	return g["on"]
+
+
+func set_light(gi: int, on: bool, from_net := false) -> void:
+	var g: Dictionary = light_groups[gi]
+	if g.has("set"):
+		if is_light_on(gi) != on:
+			(g["set"] as Callable).call(on)
+		return
 	if g["on"] == on:
 		return
+	if not from_net and _is_guest() and net_game != null:
+		if not bool(guest_allow_seen.get("lights", false)):
+			_net_say("The host's lights: ask them to let guests use the lights.")
+			return
+		shade_sync("light", [gi, on])                # the host switches it for everyone; ours flips right away
 	g["on"] = on
 	for l in g["omnis"]:
-		(l as OmniLight3D).visible = on
+		if is_instance_valid(l):
+			(l as Light3D).visible = on
 	for e in g["mats"]:
 		var m: StandardMaterial3D = e["m"]
 		m.emission_energy_multiplier = e["e"] if on else 0.0
 		m.albedo_color = e["a"] if on else (e["a"] as Color).darkened(0.65)
+	for r in g["rockers"]:
+		(r as Node3D).rotation.x = 0.25 if on else -0.25
 	lights_changed.emit()
+	if net_game != null and not _is_guest():
+		net_game.push_state_soon()
 
 
 func toggle_light(gi: int) -> void:
-	set_light(gi, not light_groups[gi]["on"])
+	set_light(gi, not is_light_on(gi))
 
 
 func set_all_lights(on: bool) -> void:
 	for gi in light_groups.size():
 		set_light(gi, on)
+
+
+# for the room state sent to guests (the groups that keep their own state are synced their own way)
+func lights_state() -> Array:
+	var a := []
+	for g in light_groups:
+		a.append(bool(g["on"]))
+	return a
+
+
+func apply_lights_state(a: Array) -> void:
+	for gi in mini(a.size(), light_groups.size()):
+		if not light_groups[gi].has("set"):
+			set_light(gi, bool(a[gi]), true)
 
 # ---------------------------------------------------------------- blackout curtains + weather
 
@@ -2098,7 +2171,12 @@ func _process(delta: float) -> void:
 				focus_screen = null
 			var yaw := head.global_rotation.y
 			var dir := Vector3(stick.x, 0.0, -stick.y).rotated(Vector3.UP, yaw)
-			_try_move(dir * MOVE_SPEED * delta)
+			if left_hand.is_button_pressed("primary_click") and not _run_click:
+				_running = not _running                      # click the stick in to walk faster (until you stop)
+			_run_click = left_hand.is_button_pressed("primary_click")
+			_try_move(dir * (RUN_SPEED if _running else MOVE_SPEED) * delta)
+		elif stick.length() <= DEADZONE:
+			_running = false
 		var turn := 0.0 if game_mode else right_hand.get_vector2("primary").x
 		if absf(turn) < 0.5:
 			snap_ready = true
@@ -2116,7 +2194,8 @@ func _process(delta: float) -> void:
 			if focus_level > 0:
 				_end_focus(false)
 			var yaw := desktop_cam.global_rotation.y
-			_try_move(Vector3(v.x, 0.0, -v.y).rotated(Vector3.UP, yaw) * MOVE_SPEED * delta)
+			var run := Input.is_physical_key_pressed(KEY_SHIFT)            # hold Shift to walk faster
+			_try_move(Vector3(v.x, 0.0, -v.y).rotated(Vector3.UP, yaw) * (RUN_SPEED if run else MOVE_SPEED) * delta)
 
 
 # ---- a gamepad (DualSense, DualShock, Xbox...) in the room on a PC
@@ -2158,7 +2237,12 @@ func _room_pad_tick(delta: float) -> void:
 		if focus_level > 0:
 			_end_focus(false)
 		var yaw := desktop_cam.global_rotation.y
-		_try_move(Vector3(ls.x, 0.0, ls.y).rotated(Vector3.UP, yaw) * MOVE_SPEED * delta)
+		if Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_STICK) and not _run_click:
+			_running = not _running                          # click the left stick in to walk faster (until you stop)
+		_run_click = Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_STICK)
+		_try_move(Vector3(ls.x, 0.0, ls.y).rotated(Vector3.UP, yaw) * (RUN_SPEED if _running else MOVE_SPEED) * delta)
+	elif ls == Vector2.ZERO:
+		_running = false
 	_pad_edges(d, false)
 
 
@@ -4326,8 +4410,8 @@ func _prefs_now() -> Dictionary:
 	for i in bank.speakers.size():
 		d["spk_" + String(bank.speakers[i]["name"])] = bank.get_mode(i)
 	d["spk_ver"] = 2
-	for g in light_groups:
-		d["light_" + String(g["name"])] = bool(g["on"])
+	for gi in light_groups.size():
+		d["light_" + String(light_groups[gi]["name"])] = is_light_on(gi)
 	return d
 
 
@@ -5127,7 +5211,7 @@ func _update_pointer(delta: float) -> void:
 	for ray in rays:
 		var o: Vector3 = ray[0]
 		var d: Vector3 = ray[1]
-		var best := POINTER_RANGE
+		var best := FAR_RANGE
 		var sc_hit: ScreenUI = null
 		var sc_pos := Vector2.ZERO
 		var it_hit: Dictionary = {}
@@ -5146,7 +5230,7 @@ func _update_pointer(delta: float) -> void:
 			if apartment != null and not apartment.can_reach(it["node"]):
 				continue                                 # (things in other rooms, behind the walls)
 			var t := _ray_box(o, d, it["node"], (it["half_fn"] as Callable).call() if it.has("half_fn") else it["half"])
-			if t >= 0.0 and t < best:
+			if t >= 0.0 and t < best and t <= float(it.get("range", POINTER_RANGE)):
 				best = t
 				it_hit = it
 				sc_hit = null

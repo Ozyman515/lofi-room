@@ -180,7 +180,7 @@ func _current_state() -> Dictionary:
 	for id in guest_pad_idx:
 		if guest_pad.get(id, false) and not guest_arcade.get(id, false):
 			pad_of[id] = guest_pad_idx[id]
-	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "rtv": main.net_room_tvs.state() if main.net_room_tvs != null else [], "shades": [snappedf(main.curtain_target, 0.01), main.apartment._bal_closed if main.apartment != null else false, main.noir._cur_closed if main.noir != null else false], "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
+	return {"ufo": main.ufo.state() if main.ufo != null else 0, "kaiju": main.kaiju.state() if main.kaiju != null else 0, "gaboon": main.gaboon.state() if main.gaboon != null else 0, "fight": main.fight.state() if main.fight != null else 0, "noir": main.noir.state() if main.noir != null else false, "cats": main.cats.state() if main.cats != null else {}, "tv_src": tv_source, "tv_live": tv_live, "rtv": main.net_room_tvs.state() if main.net_room_tvs != null else [], "shades": [snappedf(main.curtain_target, 0.01), main.apartment._bal_closed if main.apartment != null else false, main.noir._cur_closed if main.noir != null else false, main.lights_state()], "tv_rate": main.tv_rating.state() if main.tv_rating != null else [], "rec": main.recliner_state(), "seats": seats_held, "th_dark": main.apartment.th_dark if main.apartment != null else false, "sticks": sticks, "pad_of": pad_of, "k": "game", "cart": main.slot_cart, "console": main.console_on, "tv": main.vcr.tv_on,
 		"run": emu.state == emu.State.RUNNING, "pads": pads, "slap": main.slap_minutes, "arcade": main.arcade_on, "guests": main.guest_allow, "song": main.pc._title.text if main.pc != null and main.bank.playing and not main.bank.stream_paused else ""}
 
 
@@ -578,6 +578,8 @@ func _apply_shades(a) -> void:
 		main.apartment._bal_closed = bool(a[1])
 	if main.noir != null:
 		main.noir._cur_closed = bool(a[2])
+	if a.size() > 3 and a[3] is Array:
+		main.apply_lights_state(a[3])
 
 
 func _host_tv_event(from: int, d: Dictionary) -> void:
@@ -593,6 +595,10 @@ func _host_tv_event(from: int, d: Dictionary) -> void:
 				"ncur":
 					if main.noir != null:
 						main.noir._cur_closed = bool(d.get("v", false))
+				"light":
+					var lv = d.get("v", [])
+					if lv is Array and lv.size() == 2 and int(lv[0]) >= 0 and int(lv[0]) < main.light_groups.size():
+						main.set_light(int(lv[0]), bool(lv[1]), true)
 		return
 	match str(d.get("k", "")):
 		"tv_take":

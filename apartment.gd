@@ -137,6 +137,8 @@ func build(m: Node3D) -> void:
 	_build_hallway()
 	_build_living()
 	_build_balcony()
+	# the living room's switch, just inside the arch: its lamps and the balcony's string lights
+	main.wall_switch(Vector3(ARCH.y + 0.3, 1.2, FRONT_Z - 0.05), PI, [_liv_lights, _bal_lights], rooms["living"])
 	_build_game()
 	_build_study()
 	_build_noir_office()
@@ -476,11 +478,12 @@ func _build_hallway() -> void:
 	main._sphere(Vector3(5.55, 0.52, HALL_S - 0.22), 0.07, _mat(Color(0.3, 0.6, 0.5), 0.6), Vector3(1, 1.3, 1), p)
 	var bowl := _mat(Color(0.95, 0.75, 0.5), 0.4)
 	_box(Vector3(6.05, 0.46, HALL_S - 0.22), Vector3(0.22, 0.04, 0.16), bowl, p)
-	# ceiling lights
+	# ceiling lights, and their switch outside the bedroom door
+	var disc := _mat(Color(1.0, 0.85, 0.65), 0.4, 2.2)
 	for lx3 in [-1.8, 3.4, 7.8]:
-		main._cyl(Vector3(lx3, H - 0.02, zc), 0.16, 0.03, _mat(Color(1.0, 0.85, 0.65), 0.4, 2.2), p)
-	_light(Vector3(-1.8, 2.4, zc), main.WARM, 0.8, 4.2, p)
-	_light(Vector3(5.6, 2.4, zc), main.WARM, 0.8, 5.0, p)
+		main._cyl(Vector3(lx3, H - 0.02, zc), 0.16, 0.03, disc, p)
+	var hl := [_light(Vector3(-1.8, 2.4, zc), main.WARM, 0.8, 4.2, p), _light(Vector3(5.6, 2.4, zc), main.WARM, 0.8, 5.0, p)]
+	main.wall_switch(Vector3(0.05, 1.2, FRONT_Z + 0.1), 0.0, [main.add_light_group("Hallway ceiling lights", hl, [disc])], p)
 
 
 func _build_leave_sign(p: Node3D) -> void:
@@ -588,7 +591,9 @@ var th_dark := false                         # the theater's house lights are of
 var _th_lights: Array = []                   # [OmniLight3D, energy]
 var _th_glow: Array = []                     # [material, glow]
 var _th_rocker: MeshInstance3D
-var _liv_glow: OmniLight3D
+var _liv_glow: SpotLight3D
+var _liv_lights := -1
+var _bal_lights := -1
 var _liv_led: StandardMaterial3D
 
 func _furnish_living(p: Node3D) -> void:
@@ -631,7 +636,17 @@ func _furnish_living(p: Node3D) -> void:
 				set_liv_tv(not liv_tv.is_on()),
 		"hover": main._glow_hover(pw_m)})
 	_label("TV", Vector3(stand_x + 0.178, 0.514, LIV_TV.z + 0.8), PI / 2.0, 24, Color(0.85, 0.8, 0.9), p).rotation.x = -PI / 2.0
-	_liv_glow = _light(Vector3(LIV_TV.x + 0.8, LIV_TV.y - 0.2, LIV_TV.z), Color(0.45, 0.6, 1.0), 1.1, 5.0, p)
+	# the screen's glow is a spotlight thrown into the room, not a lamp: a plain light here shone right through the
+	# wall behind the TV and tinted the bedroom blue
+	_liv_glow = SpotLight3D.new()
+	_liv_glow.position = Vector3(LIV_TV.x + 0.15, LIV_TV.y - 0.1, LIV_TV.z)
+	_liv_glow.rotation.y = -PI / 2.0                     # (looking east, into the living room)
+	_liv_glow.light_color = Color(0.45, 0.6, 1.0)
+	_liv_glow.light_energy = 1.6
+	_liv_glow.spot_range = 6.0
+	_liv_glow.spot_angle = 70.0
+	_liv_glow.spot_attenuation = 0.8
+	p.add_child(_liv_glow)
 	liv_tv.add_glow(_liv_glow)
 	# a little plant on the console beside the player
 	main._cyl(Vector3(stand_x, 0.58, LIV_TV.z + 0.5), 0.06, 0.12, _mat(Color(0.85, 0.45, 0.55), 0.7), p)
@@ -774,7 +789,8 @@ func _furnish_living(p: Node3D) -> void:
 	var lamp_m := _mat(Color(0.12, 0.08, 0.14), 0.5)
 	main._cyl(Vector3(9.2, 0.02, 2.95), 0.16, 0.04, lamp_m, p)
 	main._cyl(Vector3(9.2, 0.8, 2.95), 0.015, 1.56, lamp_m, p)
-	main._cyl(Vector3(9.2, 1.62, 2.95), 0.2, 0.3, _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4), p)
+	var lamp_shade := _mat(Color(1.0, 0.75, 0.55), 0.6, 1.4)
+	var lamp_node: MeshInstance3D = main._cyl(Vector3(9.2, 1.62, 2.95), 0.2, 0.3, lamp_shade, p)
 	_blockers["living"].append(Rect2(8.95, 2.7, 0.5, 0.5))
 	# ---- a big print on the south wall, over the records
 	var frame_m := _mat(Color(0.10, 0.06, 0.12), 0.5)
@@ -784,11 +800,12 @@ func _furnish_living(p: Node3D) -> void:
 	main._sphere(Vector3(7.25, 1.82, FRONT_Z - 0.065), 0.16, _mat(Color(1.0, 0.85, 0.45), 0.6, 0.8), Vector3(1, 1, 0.05), p, 16)   # a sun
 	_box(Vector3(7.4, 1.58, FRONT_Z - 0.066), Vector3(1.1, 0.26, 0.005), _mat(Color(0.45, 0.20, 0.50), 0.8), p)                     # hills
 	# ---- lights
-	_light(Vector3(9.1, 1.6, 2.75), main.WARM, 1.0, 5.5, p)
+	var ll := [_light(Vector3(9.1, 1.6, 2.75), main.WARM, 1.0, 5.5, p)]
 	_light(Vector3(6.0, 2.2, -1.2), main.PINK, 0.7, 5.0, p)          # the city's glow through the glass
 	if not lp:                                                        # (the headset gets fewer lights)
-		_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p)
-		_light(Vector3(5.0, 2.5, 2.4), Color(0.6, 0.3, 0.75), 0.5, 5.0, p)   # soft fill
+		ll.append(_light(Vector3(8.75, 0.9, 0.05), main.WARM, 0.7, 3.0, p))
+		ll.append(_light(Vector3(5.0, 2.5, 2.4), Color(0.6, 0.3, 0.75), 0.5, 5.0, p))   # soft fill
+	_liv_lights = main.add_light_group("Living room lights", ll, [lamp_shade], lamp_node, Vector3(0.22, 0.17, 0.22))
 	# ---- two speakers either side of the TV (they play the TV's sound unless you set them otherwise)
 	main._make_speaker("Living room speaker L", Vector3(MID_X + 0.15, 1.45, LIV_TV.z - LIV_TV_SIZE.x / 2.0 - 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
 	main._make_speaker("Living room speaker R", Vector3(MID_X + 0.15, 1.45, LIV_TV.z + LIV_TV_SIZE.x / 2.0 + 0.38), PI / 2.0, 0.0, Vector3(0.18, 0.32, 0.16), 0.055, p)
@@ -935,11 +952,11 @@ func _build_balcony() -> void:
 			var t := (k + 0.5) / 5.0
 			var q := a.lerp(b, t) - Vector3(0, 0.22 * sin(t * PI), 0)
 			main._sphere(q, 0.03, bulb, Vector3.ONE, p, 8)
-	_light(Vector3(1.0, 2.0, (BAL_N + NORTH_Z) / 2.0), main.WARM, 0.7, 5.5, p)
-	_light(Vector3(10.7, 2.0, -3.2), main.WARM, 0.8, 4.5, p)
+	var bl := [_light(Vector3(1.0, 2.0, (BAL_N + NORTH_Z) / 2.0), main.WARM, 0.7, 5.5, p), _light(Vector3(10.7, 2.0, -3.2), main.WARM, 0.8, 4.5, p)]
 	if not Plat.low_power():
-		_light(Vector3(-2.8, 2.0, (BAL_N + NORTH_Z) / 2.0), main.WARM, 0.5, 4.0, p)
-		_light(Vector3(10.7, 2.0, 1.5), main.WARM, 0.5, 4.0, p)
+		bl.append(_light(Vector3(-2.8, 2.0, (BAL_N + NORTH_Z) / 2.0), main.WARM, 0.5, 4.0, p))
+		bl.append(_light(Vector3(10.7, 2.0, 1.5), main.WARM, 0.5, 4.0, p))
+	_bal_lights = main.add_light_group("Balcony string lights", bl, [bulb])
 	# a little table and two chairs in the corner, facing the city
 	var wood := _mat(Color(0.36, 0.18, 0.20), 0.7)
 	var cushion := _mat(Color(0.85, 0.40, 0.55), 0.95)
@@ -1059,9 +1076,10 @@ func _build_game() -> void:
 		for j in 4:
 			_box(Vector3(0, -0.12 - j * 0.05, 0.016), Vector3(0.5 - j * 0.06, 0.012, 0.004), _mat(Color(0.2, 0.08, 0.25), 0.7), fr)
 	# lights
-	_light(Vector3(-1.6, 2.5, 7.4), Color(0.75, 0.45, 0.95), 0.6, 5.0, p)
+	var gl := [_light(Vector3(-1.6, 2.5, 7.4), Color(0.75, 0.45, 0.95), 0.6, 5.0, p)]
 	if not Plat.low_power():
 		_light(Vector3(GAME_E - 0.5, 2.3, 6.45), Color(1.0, 0.45, 0.85), 0.6, 3.0, p)     # the neon's glow
+	main.wall_switch(Vector3(GAME_DOOR - 0.6, 1.2, HALL_S + 0.15), 0.0, [main.add_light_group("Game room lights", gl, [])], p)
 	# the TV corner and the arcade, carried over from where they were built
 	main.game_kit.reparent(p, false)
 	main.game_kit.transform = Transform3D(Basis.IDENTITY, GAME_KIT_SHIFT)
@@ -1161,9 +1179,10 @@ func _build_study() -> void:
 	main._cyl(Vector3(0.85, 0.22, 5.95), 0.2, 0.44, pot, p)
 	main._sphere(Vector3(0.85, 0.75, 5.95), 0.3, leaf, Vector3(1.0, 1.4, 1.0), p, 10)
 	_blockers["study"].append(Rect2(0.55, 5.65, 0.6, 0.6))
-	_light(Vector3(4.05, 1.5, 6.5), main.WARM, 0.9, 4.0, p)
+	var sl := [_light(Vector3(4.05, 1.5, 6.5), main.WARM, 0.9, 4.0, p)]
 	if not Plat.low_power():
-		_light(Vector3(2.5, 2.5, 7.8), Color(0.75, 0.45, 0.85), 0.5, 5.0, p)
+		sl.append(_light(Vector3(2.5, 2.5, 7.8), Color(0.75, 0.45, 0.85), 0.5, 5.0, p))
+	main.wall_switch(Vector3(STUDY_DOOR - 0.6, 1.2, HALL_S + 0.15), 0.0, [main.add_light_group("Study lights", sl, [])], p)
 	# the desk, the PC, the shelf, carried over
 	main.study_kit.reparent(p, false)
 	main.study_kit.transform = STUDY_KIT_XF
@@ -1337,6 +1356,7 @@ func _build_theater() -> void:
 	for side in [-1.0, 1.0]:
 		main._make_speaker("Theater speaker " + ("L" if side < 0 else "R"), Vector3(cx + side * (TH_SCREEN.x / 2.0 + 0.15), TH_LOW + 0.55, z1 - 0.35),
 			PI, 0.0, Vector3(0.4, 1.1, 0.4), 0.13, p)
+		main.interactables[-1]["range"] = 9.0             # (you can point at them from the seats)
 		main.bank.set_mode(main.bank.speakers.size() - 1, "tv")
 		th_tv.speakers.append(main.bank.speakers.size() - 1)
 		_blockers["theater"].append(Rect2(cx + side * (TH_SCREEN.x / 2.0 + 0.15) - 0.3, z1 - 0.65, 0.6, 0.6))
@@ -1394,6 +1414,7 @@ func _build_theater() -> void:
 	_box(Vector3.ZERO, Vector3(0.09, 0.14, 0.012), swp, sw)
 	_th_rocker = _box(Vector3(0, 0, 0.012), Vector3(0.03, 0.06, 0.016), _mat(Color(0.95, 0.92, 0.88), 0.4), sw)
 	_th_rocker.rotation.x = 0.25
+	main.add_light_group_fn("Theater house lights", func() -> bool: return not th_dark, func(on: bool) -> void: request_th_dark(not on))
 	main.interactables.append({"node": sw, "half": Vector3(0.06, 0.09, 0.04), "guest_ok": true,
 		"label": func() -> String: return "HOUSE LIGHTS  [%s]" % ("OFF" if th_dark else "ON"),
 		"cb": func() -> void: request_th_dark(not th_dark)})
@@ -1419,6 +1440,7 @@ func set_th_dark(on: bool) -> void:
 		m.emission_energy_multiplier = 0.0 if on else float(g[1])
 		m.albedo_color.v = 0.25 if on else 1.0
 	_th_rocker.rotation.x = -0.25 if on else 0.25
+	main.lights_changed.emit()
 
 
 # the floor under (x, z): only the theater isn't flat
