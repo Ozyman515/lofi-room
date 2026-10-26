@@ -1,5 +1,5 @@
 {
- "version": 118,
+ "version": 119,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "f848d5d0f5841136919d6a5a879b72221f602f40965ec1c6d30c65ddda42708c",
-   "size": 82173
+   "sha": "4fada32d99605b28fe094f05d5682d1f2c7fa6efb2806189817f0308af8444e2",
+   "size": 82300
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -410,8 +410,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "298f94c2bf440331b918ae7de7872a1513faef81bc364555b0ab2dd0a84b353e",
-   "size": 219732
+   "sha": "a5d353a785c1f94c2f5eeefa3da540927fe945d243d02a8a0da1b3b8a1b583ca",
+   "size": 219408
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -450,8 +450,8 @@
    "size": 2839789
   },
   "net_audio.gd": {
-   "sha": "7d378feabe992b8f1aa649ac038f0226d2f5e7557bd06242005aaf765015866e",
-   "size": 8041
+   "sha": "2536b085dc6ddb89882534293b05610de090a46ffed9b47fb40dde8615c1abc3",
+   "size": 8205
   },
   "net_avatars.gd": {
    "sha": "6bd8897ab6dd9713453d0174387592f949ba60c652188afadb72064f3d1f8190",
@@ -466,12 +466,16 @@
    "size": 2098
   },
   "net_game.gd": {
-   "sha": "272447aa32662ea1f5befa5ff208c11599c3356aaab0438dac82d294ba09a7f1",
-   "size": 24434
+   "sha": "1624a42622b8d0666e52c6677e4fcf32e3702b3be759563ed542f3bfca8566fe",
+   "size": 25212
   },
   "net_phone.gd": {
    "sha": "d4c57de6984774beb3a69b0730e35a6302da0ce4b25c530eb99a229a409e2ad8",
    "size": 9635
+  },
+  "net_room_tvs.gd": {
+   "sha": "1daffdadf9ed648a97e39c4184819321426d7939709c133d50aea5a894b30933",
+   "size": 11342
   },
   "net_session.gd": {
    "sha": "77ede98f4fe0da10ca1f1b2d708d75a1c16b2124edae35afda44b0057392b770",
@@ -658,7 +662,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "f10f7170eeb4986f69d764a4cb97c3f8e9337963222188a647fc4c0ac289d0e4",
+   "sha": "6af2f5b785a8930f0bd3edc833e18fa191167ab0535ef359b19a1982a6984e96",
    "size": 4
   },
   "weather.gd": {
