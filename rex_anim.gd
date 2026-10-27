@@ -84,7 +84,23 @@ static func pose_tail(skel: Skeleton3D, idle: Dictionary, walk: Dictionary, wk: 
 			q = q.slerp(amp(atk[k], aamp), aw)
 		if extra != 0.0:
 			q = q * Quaternion(Vector3.UP, extra * (0.12 + 0.07 * i))
-		skel.set_bone_pose_rotation(i + 1, q)
+		skel.set_bone_pose_rotation(i + 1, _tail_limit(i, q))
+
+
+# Banira's tail lies on the ground and ends in an upturned curl, where the pack's tail is straight out: the pack's
+# up-and-down bends are kept off the ground (joints 2-3 can't press it down into the street) and can only open the
+# curl at the end (joints 4-5), never tighten it until the tip folds into itself. Side to side swings stay as they are.
+static func _tail_limit(i: int, q: Quaternion) -> Quaternion:
+	if i == 0:
+		return q
+	var e := q.get_euler()
+	match i:
+		1, 2:
+			e.z = clampf(e.z, -0.18, 0.04)             # (+z presses a flat piece down; lifting it a lot rolls the curl round)
+		3, 4:
+			e.z = clampf(e.z * 0.6, -0.02, 0.45)        # (-z tips the upturned end forward, into the tail)
+			e.x *= 0.5
+	return Quaternion.from_euler(e)
 
 
 # a rotation made bigger (k > 1) or smaller, about the same axis
