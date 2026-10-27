@@ -96,7 +96,7 @@ var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV
 var arcade_vol_label: Label3D
 var emu: Node                         # NES / SNES games (emu.gd)
 var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo", "ps" (the disc console) or "egg" (the secret one)
-var ps_kit: Node                       # ps_kit.gd: the disc console beside the cartridge one, and its long-box case
+var ps_kit: Node                       # ps_kit.gd: the disc slot in the console's front, and the long-box case
 var lightgun: Node                     # lightgun.gd: the light gun on top of the disc console
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
 var drawer_node: Node3D               # the nightstand drawer
@@ -3607,7 +3607,7 @@ func _build_console() -> void:
 	_box(Vector3(0.0164, 0.067, fz + 0.0006), Vector3(0.259, 0.026, 0.0016), grey, root)
 	_box(Vector3(-0.092, 0.067, fz + 0.0016), Vector3(0.044, 0.026, 0.0016), _mat(Color(0.52, 0.52, 0.50), 0.6), root)  # the tab on the left
 	_box(Vector3(0.0275, 0.067, fz + 0.0016), Vector3(0.212, 0.020, 0.0014), _mat(Color(0.56, 0.56, 0.54), 0.5), root)   # the disc slot door
-	_cart_text("COMPACT DISC", 22, 0.0004, Color(0.2, 0.2, 0.22), Vector3(0.015, 0.067, fz + 0.0030), root)
+	_cart_text("COMPACT DISC", 18, 0.0004, Color(0.2, 0.2, 0.22), Vector3(0.015, 0.0635, fz + 0.0030), root)   # (the slit above it: ps_kit.gd)
 	_box(Vector3(0.1595, 0.067, fz + 0.0014), Vector3(0.024, 0.026, 0.003), olive, root)                       # eject key
 	var knob_m := _mat(Color(0.88, 0.80, 0.55), 0.45)
 	console_knob = _box(Vector3(-0.157, 0.081, fz + 0.005), Vector3(0.028, 0.018, 0.011), knob_m, root)      # the power switch: slides right = ON
@@ -4304,10 +4304,10 @@ func _scatter_carts() -> void:
 	rng.randomize()
 	var centre := Vector2(-2.60, 1.45 + LOUNGE_DZ)                # the console
 	var console_rect := Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55)
-	if ps_kit != null:                                               # (and the disc console beside it, and the space in front of it)
-		for at in [ps_kit.console.global_position, ps_kit.stage_point()]:
+	if ps_kit != null:                                               # (and where the disc case opens, and the light gun)
+		for at in [ps_kit.stage_point(), lightgun.rest_point() if lightgun != null else ps_kit.stage_point()]:
 			var pc := lounge.to_local(at)
-			console_rect = console_rect.merge(Rect2(pc.x - 0.25, pc.z - 0.25, 0.5, 0.5))
+			console_rect = console_rect.merge(Rect2(pc.x - 0.22, pc.z - 0.22, 0.44, 0.44))
 	var tv_rect := Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7)
 	var pads := [Vector2(-2.0, 2.58), Vector2(-2.25, 2.25)]
 	var placed: Array = []                                           # [Vector2, radius]

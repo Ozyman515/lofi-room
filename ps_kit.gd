@@ -1,18 +1,17 @@
 extends Node
-## The disc console: a slim dark machine with a slot in its front, next to the cartridge console and on the same TV
+## PlayStation discs for the cartridge console: it has a disc door on its upper front, and the disc goes in there
 ## (emu.gd's "ps" system: the PlayStation core). Its "cart" is a tall long-box case lying with the other carts.
-## Inserting: the case flies over in front of the console, lies down and opens, the disc lifts off the hub and slides
-## into the slot; the empty case shuts and goes home. Ejecting is the same backwards. Our own designs: no logos.
+## Inserting: the case flies over beside the console, lies down and opens, the disc lifts off the hub and slides
+## into the door's slit; the empty case shuts and goes home. Ejecting is the same backwards. Our own designs: no logos.
 
 const CASE_W := 0.152            # the long box: width, height (its long side), thickness
 const CASE_H := 0.27
 const CASE_T := 0.024
 const DISC_R := 0.06
-const CON_W := 0.3               # the disc console: width, depth, height
-const CON_D := 0.24
-const CON_H := 0.062
-const SLOT_Y := 0.038            # the slot's height on its front
-const CON_AT := Vector3(0.44, 0.0, 0.0)       # where it stands, in the cartridge console's frame (beside it, same way round)
+const SLOT_X := 0.0275           # the slit in the console's disc door (console space; the door is on its upper front)
+const SLOT_Y := 0.0725
+const SLOT_W := 0.13
+const STAGE_AT := Vector3(0.42, 0.0, 0.10)    # where the open case lies: beside the console, by its front corner (clear of the controllers)
 
 var main: Node3D
 var console: Node3D
@@ -20,7 +19,6 @@ var case_node: Node3D
 var lid: Node3D
 var disc: Node3D
 var _hub := Vector3.ZERO          # where the disc sits in the case (case space)
-var _led: StandardMaterial3D
 var _slot_glow: StandardMaterial3D
 
 
@@ -68,43 +66,25 @@ func _cyl(parent: Node3D, pos: Vector3, r: float, h: float, mt: Material, segs :
 	return mi
 
 
-# ---- the console: local +z is its front (the same way round as the cartridge console)
+# ---- the console is the cartridge console: its upper front has the disc door, and a slit in it takes the disc.
+# Local +z is its front.
 
 func _build_console() -> void:
-	console = Node3D.new()
-	console.name = "DiscConsole"
-	main.console_root.get_parent().add_child(console)
-	console.transform = main.console_root.transform * Transform3D(Basis.IDENTITY, CON_AT)
-	var body := _mat(Color(0.1, 0.1, 0.115), 0.45, 0.2)
-	var top := _mat(Color(0.14, 0.14, 0.16), 0.4, 0.2)
-	var dark := _mat(Color(0.05, 0.05, 0.06), 0.5)
-	var fz := CON_D / 2.0
-	_box(console, Vector3(0, 0.004, 0), Vector3(CON_W - 0.02, 0.008, CON_D - 0.02), dark)           # feet plinth
-	_box(console, Vector3(0, 0.008 + (CON_H - 0.008) / 2.0, 0), Vector3(CON_W, CON_H - 0.008, CON_D), body)
-	_box(console, Vector3(0, CON_H + 0.002, -0.01), Vector3(CON_W - 0.03, 0.004, CON_D - 0.05), top)    # a raised top panel
-	# the front: the disc slot across the middle with a soft glow along it, a power button and a reset button
-	_box(console, Vector3(-0.02, SLOT_Y, fz + 0.0005), Vector3(0.15, 0.007, 0.002), dark)
-	_slot_glow = _mat(Color(0.25, 0.55, 1.0), 0.3, 0.0, 0.6)
-	_box(console, Vector3(-0.02, SLOT_Y + 0.009, fz + 0.0008), Vector3(0.15, 0.0015, 0.001), _slot_glow)
-	var btn := _cyl(console, Vector3(0.105, SLOT_Y, fz + 0.002), 0.011, 0.006, _mat(Color(0.32, 0.32, 0.36), 0.35))
-	btn.rotation.x = PI / 2.0
-	var rst := _cyl(console, Vector3(0.105, SLOT_Y - 0.02, fz + 0.0015), 0.006, 0.004, _mat(Color(0.32, 0.32, 0.36), 0.35))
-	rst.rotation.x = PI / 2.0
-	_led = _mat(Color(0.2, 1.0, 0.45), 0.3, 0.0, 0.0)
-	_box(console, Vector3(0.105, SLOT_Y + 0.019, fz + 0.0006), Vector3(0.008, 0.003, 0.001), _led)
-	# two controller ports low on the front
-	for sx in [-0.09, -0.045]:
-		_box(console, Vector3(sx, 0.017, fz + 0.0006), Vector3(0.03, 0.01, 0.001), dark)
-	main.interactables.append({"node": btn, "half": Vector3(0.02, 0.02, 0.02), "egg_lock": true, "group": "games",
-		"label": func() -> String: return "DISC CONSOLE POWER  [%s]" % ("ON" if main.console_on else "OFF"),
-		"cb": func() -> void: main.toggle_console()})
+	console = main.console_root
+	var fz: float = main.CON_D / 2.0
+	_slot_glow = _mat(Color(0.05, 0.05, 0.06), 0.5, 0.0, 0.0)
+	_slot_glow.emission = Color(0.25, 0.55, 1.0)
+	_box(console, Vector3(SLOT_X, SLOT_Y, fz + 0.0028), Vector3(SLOT_W, 0.003, 0.001), _slot_glow)     # the slit
 
 
-func set_power_light(on: bool) -> void:
-	if _led != null:
-		_led.emission_enabled = on
-		_led.emission_energy_multiplier = 2.0 if on else 0.0
-		_led.albedo_color = Color(0.2, 1.0, 0.45) if on else Color(0.08, 0.12, 0.09)
+# a soft blue in the slit while a disc is in
+func _glow(on: bool) -> void:
+	_slot_glow.emission_enabled = on
+	_slot_glow.emission_energy_multiplier = 1.4 if on else 0.0
+
+
+func set_power_light(_on: bool) -> void:
+	pass                                            # (the console's own power switch shows it)
 
 
 # ---- the long-box case: built standing up, its front (+z) facing out, hinged on its left long edge; the disc on
@@ -219,7 +199,7 @@ func _console_xf(local: Transform3D) -> Transform3D:
 func _stage_xf() -> Transform3D:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)                       # front up
 	var b := lay.rotated(Vector3.UP, 0.0) * Basis(Vector3.BACK, -PI / 2.0)     # long side across the console
-	return _console_xf(Transform3D(Basis(Vector3.UP, 0.0) * b, Vector3(0.25, 0.003 + CASE_T / 2.0, CON_D / 2.0 + 0.2)))
+	return _console_xf(Transform3D(Basis(Vector3.UP, 0.0) * b, Vector3(STAGE_AT.x, 0.003 + CASE_T / 2.0, STAGE_AT.z)))
 
 
 # (for keeping the carts out of the way)
@@ -228,7 +208,7 @@ func stage_point() -> Vector3:
 
 
 func _slot_point(depth: float) -> Vector3:
-	return _console_xf(Transform3D(Basis.IDENTITY, Vector3(-0.02, SLOT_Y, CON_D / 2.0 + depth))).origin
+	return _console_xf(Transform3D(Basis.IDENTITY, Vector3(SLOT_X, SLOT_Y, main.CON_D / 2.0 + depth))).origin
 
 
 func _ease(k: float) -> float:
@@ -266,7 +246,7 @@ func insert(home_done: Callable) -> void:
 	tw.tween_method(func(k: float) -> void: disc.global_position = _slot_point(lerpf(0.03, -0.1, _ease(k))), 0.0, 1.0, 0.45)
 	tw.tween_callback(func() -> void:
 		disc.visible = false
-		_slot_glow.emission_energy_multiplier = 1.6)
+		_glow(true))
 	_lid(tw, false)
 	tw.tween_callback(func() -> void: c["busy"] = false)
 	tw.tween_callback(home_done)
@@ -282,7 +262,7 @@ func eject(home: Callable) -> void:
 		disc.visible = true
 		disc.global_transform = Transform3D(console.global_transform.basis, _slot_point(-0.1)))
 	tw.tween_method(func(k: float) -> void: disc.global_position = _slot_point(lerpf(-0.1, 0.03, _ease(k))), 0.0, 1.0, 0.45)
-	tw.tween_callback(func() -> void: _slot_glow.emission_energy_multiplier = 0.6)
+	tw.tween_callback(func() -> void: _glow(false))
 	# back onto the hub in the open case
 	_fly(tw, disc, func() -> Transform3D: return case_node.global_transform * Transform3D(Basis(Vector3.RIGHT, PI / 2.0), _hub + Vector3(0, 0, 0.004)), 0.55, 0.06)
 	tw.tween_callback(func() -> void: disc.reparent(case_node, true))

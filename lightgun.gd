@@ -19,6 +19,7 @@ var gun: Node3D                    # the model (on its rest, or in your hand / v
 var _rest_parent: Node3D
 var _rest_xf := Transform3D()
 var _kick := 0.0
+const REST_AT := Vector3(0.27, 0.0, -0.10)      # where it lies, in the console's frame (beside its right side)
 var _trigger := false
 var _reload := false
 var _aux := 0                      # bit 0 = A, bit 1 = B
@@ -34,14 +35,14 @@ func build(m: Node3D) -> void:
 	mi.name = "Model"
 	mi.mesh = load(MESH) if ResourceLoader.exists(MESH) else null
 	gun.add_child(mi)
-	# lying on its side on top of the disc console, the muzzle toward the TV side
-	var con: Node3D = main.ps_kit.console
+	# lying on its side on the rug beside the console, the muzzle toward the front
+	var con: Node3D = main.console_root
 	_rest_parent = con
-	_rest_xf = Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.25) * Basis(Vector3.FORWARD, PI / 2.0), Vector3(0.0, main.ps_kit.CON_H + 0.016, -0.02))
+	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT + Vector3(0.0, 0.016, 0.0))
 	con.add_child(gun)
 	gun.transform = _rest_xf
 	_hit = Node3D.new()
-	_hit.position = Vector3(0.0, main.ps_kit.CON_H + 0.03, -0.02)
+	_hit.position = REST_AT + Vector3(0.0, 0.03, 0.0)
 	con.add_child(_hit)
 	main.interactables.append({"node": _hit, "half": Vector3(0.11, 0.04, 0.08), "egg_lock": true, "group": "games",
 		"label": func() -> String: return "PICK UP THE LIGHT GUN",
@@ -52,6 +53,11 @@ func build(m: Node3D) -> void:
 	_click.volume_db = -10.0
 	_click.bus = "Room" if AudioServer.get_bus_index("Room") >= 0 else "Master"
 	add_child(_click)
+
+
+# (for keeping the carts out of the way)
+func rest_point() -> Vector3:
+	return main.console_root.to_global(REST_AT)
 
 
 func pick_up() -> void:
