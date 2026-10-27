@@ -37,7 +37,7 @@ func build(m: Node3D) -> void:
 	# lying on its side on top of the disc console, the muzzle toward the TV side
 	var con: Node3D = main.ps_kit.console
 	_rest_parent = con
-	_rest_xf = Transform3D(Basis(Vector3.FORWARD, PI / 2.0) * Basis(Vector3.UP, -PI / 2.0 + 0.25), Vector3(0.0, main.ps_kit.CON_H + 0.016, -0.02))
+	_rest_xf = Transform3D(Basis(Vector3.UP, -PI / 2.0 + 0.25) * Basis(Vector3.FORWARD, PI / 2.0), Vector3(0.0, main.ps_kit.CON_H + 0.016, -0.02))
 	con.add_child(gun)
 	gun.transform = _rest_xf
 	_hit = Node3D.new()
