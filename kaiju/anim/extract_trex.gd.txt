@@ -31,7 +31,7 @@ func _init() -> void:
 		var anim := ap.get_animation(an)
 		var L: float = anim.length
 		var J := {}
-		for j in ["body", "head", "armL", "armR", "tail", "lift", "footL", "footR"]:
+		for j in ["body", "head", "armL", "armR", "tail", "lift", "footL", "footR", "tail1", "tail2", "tail3", "tail4", "tail5"]:
 			J[j] = PackedFloat32Array()
 		var frames := int(ceil(L * FPS)) + 1
 		for f in frames:
@@ -48,7 +48,9 @@ func _init() -> void:
 				local[bi] = tr
 			var body := A("Hips")
 			var parts := {"body": body, "head": body.inverse() * A("Head"), "armL": body.inverse() * A("FrontUpLeg.L"),
-				"armR": body.inverse() * A("FrontUpLeg.R"), "tail": body.inverse() * A("Tail3")}
+				"armR": body.inverse() * A("FrontUpLeg.R"), "tail": body.inverse() * A("Tail3"),
+				"tail1": body.inverse() * A("Tail1"), "tail2": A("Tail1").inverse() * A("Tail2"), "tail3": A("Tail2").inverse() * A("Tail3"),
+				"tail4": A("Tail3").inverse() * A("Tail4"), "tail5": A("Tail4").inverse() * A("Tail5")}
 			for j in parts:
 				var q: Quaternion = (parts[j] as Basis).get_rotation_quaternion()
 				J[j].append_array([q.x, q.y, q.z, q.w])

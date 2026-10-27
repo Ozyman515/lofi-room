@@ -164,6 +164,7 @@ func _pose(ph: float, settle := 0.0) -> void:
 		_head.quaternion = RexAnim.amp(w["head"], 1.2).slerp(idle["head"], settle)
 		_arms[0].quaternion = RexAnim.amp(w["armL"], 1.2).slerp(idle["armL"], settle)
 		_arms[1].quaternion = RexAnim.amp(w["armR"], 1.2).slerp(idle["armR"], settle)
+		RexAnim.pose_tail(_body.get_node_or_null("Tail") as Skeleton3D, idle, w, 1.0 - settle, {}, 0.0)
 		for i in 2:
 			var f: Vector3 = w["footL" if i == 0 else "footR"]
 			var r: Array = RexAnim.leg_rest(_legs[i])

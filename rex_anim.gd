@@ -54,7 +54,9 @@ static func sample(anim: String, t: float, loop := true) -> Dictionary:
 	var j := mini(i + 1, n - 1)
 	var u := x - float(i)
 	var out := {}
-	for k in ["body", "head", "armL", "armR", "tail"]:
+	for k in ["body", "head", "armL", "armR", "tail", "tail1", "tail2", "tail3", "tail4", "tail5"]:
+		if not d.has(k):
+			continue
 		var a: PackedFloat32Array = d[k]
 		var qa := Quaternion(a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3])
 		var qb := Quaternion(a[j * 4], a[j * 4 + 1], a[j * 4 + 2], a[j * 4 + 3])
@@ -65,6 +67,24 @@ static func sample(anim: String, t: float, loop := true) -> Dictionary:
 		var f: PackedFloat32Array = d[k]
 		out[k] = Vector3(f[i * 3], f[i * 3 + 1], f[i * 3 + 2]).lerp(Vector3(f[j * 3], f[j * 3 + 1], f[j * 3 + 2]), u)
 	return out
+
+
+# the tail's five joints (kaiju_model.gd's skeleton under the body, bones 1..5) from three poses blended like the
+# rest of the body: idle, walk (by walk) and attack (by aw), each made bigger by its amp; extra adds a sway
+# (radians about y, spread down the tail so the tip swings most) for the fight's tail whips and a walk's swing
+static func pose_tail(skel: Skeleton3D, idle: Dictionary, walk: Dictionary, wk: float, atk: Dictionary, aw: float, wamp := 1.4, aamp := 1.3, extra := 0.0) -> void:
+	if skel == null:
+		return
+	for i in 5:
+		var k := "tail%d" % (i + 1)
+		if not idle.has(k):
+			return
+		var q: Quaternion = (idle[k] as Quaternion).slerp(amp(walk[k], wamp), wk)
+		if not atk.is_empty():
+			q = q.slerp(amp(atk[k], aamp), aw)
+		if extra != 0.0:
+			q = q * Quaternion(Vector3.UP, extra * (0.12 + 0.07 * i))
+		skel.set_bone_pose_rotation(i + 1, q)
 
 
 # a rotation made bigger (k > 1) or smaller, about the same axis

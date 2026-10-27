@@ -379,6 +379,8 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 		"tail":
 			var spin := _rise(t, 0.4, 2.0)
 			K["yaw"] = spin * TAU
+			# the tail trails the turn, then cracks round through the hit
+			K["whip"] = -1.3 * _pulse(t, 0.3, 0.9, 1.05, 1.25) + 1.8 * _pulse(t, 1.0, 1.2, 1.35, 2.2)
 			if _at(t, was, 1.2):
 				_impact(Vector3(gx - 0.35 * S, 0.4 * S + GROUND, Z), 0.9, Color(0.85, 0.95, 1.0))
 				_play(_groar, -3.0, 1.2)
@@ -937,6 +939,7 @@ func _rex_anim(parts: Dictionary, holder: Node3D, tilt: Node3D, P: Dictionary, p
 		RexAnim.reach(leg, body.transform.affine_inverse() * (sole + Vector3(f.x * 5.0, f.y * RexAnim.UNIT * 0.55, 0.0)))
 		leg.rotation.z += lunge * (0.25 if i == 0 else -0.15) + 0.3 * flail
 		(parts["knees"][i] as Node3D).rotation.z += 0.2 * lunge + 0.3 * absf(flail)
+	RexAnim.pose_tail(body.get_node_or_null("Tail") as Skeleton3D, idle, w, walk, a, aw, 1.4, 1.3, float(P.get("whip", 0.0)) + 0.6 * float(P.get("flail", 0.0)) * sin(_T * 4.0))
 	var open := maxf(roar, float(P["bite"]))
 	(parts["jaw"] as Node3D).rotation.z = -0.5 * open - 0.04 * open * sin(_T * 30.0)
 	tilt.rotation.z = P["tilt"]
