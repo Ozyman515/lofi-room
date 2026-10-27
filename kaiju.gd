@@ -8,14 +8,15 @@ extends Node3D
 ## In a shared room the host's kaiju walks past everybody's window.
 
 const Model := preload("res://kaiju_model.gd")
+const RexAnim := preload("res://rex_anim.gd")
 
 const SCALE := 28.0                  # so big that only its head and the top of its neck fit in the window
 const STREET := Vector3(0.0, -19.0, -11.5)   # just across the street; its shoulders stay below the sill
 const HEAD_X := 0.5 * SCALE          # how far ahead of its middle the head is
 const FROM_X := -28.0 - HEAD_X       # (positions are its middle; the head leads by HEAD_X)
 const TO_X := 24.0 - HEAD_X
-const STEP_TIME := 1.6               # seconds per footfall: slow and heavy
-const STRIDE := 2.6                  # how far it moves each step (city units)
+const STEP_TIME := 2.0               # seconds per footfall: slow and heavy (the pack's walk, played at about a third speed)
+const STRIDE := 4.0                  # how far it moves each step (city units): long strides, feet planted
 const PEEK_X := -1.5 - HEAD_X        # where it stops, head in the middle of the window, to look in
 const PEEK_TIME := 4.5
 const TOY_POS := Vector3(2.32, 2.215, 0.38)    # on top of the bookshelf, a collectable beside King Gaboon's figure
@@ -130,13 +131,13 @@ func _process(delta: float) -> void:
 	if not _peeked and _x >= PEEK_X:
 		_peek_t += delta
 		var k := clampf(_peek_t / 1.2, 0.0, 1.0) * (1.0 - clampf((_peek_t - (PEEK_TIME - 1.0)) / 1.0, 0.0, 1.0))
-		_head.rotation = Vector3(0.0, 0.55 * k, -0.12 * k)
+		_pose(_phase, k)
+		_head.rotation = Vector3(0.0, 0.55 * k, -0.12 * k) if not RexAnim.ok() else (_head.quaternion * Quaternion.from_euler(Vector3(0.0, 0.55 * k, -0.12 * k))).get_euler()
 		_jaw.rotation.z = -0.12 * k * (0.5 + 0.5 * sin(_peek_t * 5.0))
 		if _peek_t > 0.6 and not _rumble.playing and _peek_t < 1.0:
 			_rumble.play()
 		if _peek_t >= PEEK_TIME:
 			_peeked = true
-		_pose(_phase)
 		return
 	var before := int(_phase / PI)
 	_phase += delta * PI / STEP_TIME
@@ -149,8 +150,28 @@ func _process(delta: float) -> void:
 		_k.visible = false
 
 
-# legs swing, knees bend on the lifted leg, the body dips at each footfall, arms and tail sway
-func _pose(ph: float) -> void:
+# The walk: the T-Rex pack's walk cycle (rex_anim.gd), one cycle per two footfalls, feet planted on the street while
+# the body moves on; settle (0..1) eases it into standing still (the pause at the window), breathing with the idle.
+func _pose(ph: float, settle := 0.0) -> void:
+	if RexAnim.ok():
+		_k.position = STREET + Vector3(_x, 0.0, 0.0)
+		var w := RexAnim.sample("walk", ph / TAU * RexAnim.length("walk"))
+		var idle := RexAnim.sample("idle", _peek_t)
+		var fx := (STRIDE / SCALE) / RexAnim.stance("walk")       # foot travel matched to the stride: no sliding
+		var fy := RexAnim.UNIT * 0.55
+		_body.quaternion = RexAnim.amp(w["body"], 1.3).slerp(idle["body"], settle)
+		_body.position.y = lerpf(float(w["lift"]), float(idle["lift"]), settle) * RexAnim.UNIT * 1.3
+		_head.quaternion = RexAnim.amp(w["head"], 1.2).slerp(idle["head"], settle)
+		_arms[0].quaternion = RexAnim.amp(w["armL"], 1.2).slerp(idle["armL"], settle)
+		_arms[1].quaternion = RexAnim.amp(w["armR"], 1.2).slerp(idle["armR"], settle)
+		for i in 2:
+			var f: Vector3 = w["footL" if i == 0 else "footR"]
+			var r: Array = RexAnim.leg_rest(_legs[i])
+			var sole: Vector3 = r[2]
+			# down (settling): the lifted foot comes to the ground where it is
+			var target := sole + Vector3(f.x * fx, f.y * fy * (1.0 - settle), 0.0)
+			RexAnim.reach(_legs[i], _body.transform.affine_inverse() * target)
+		return
 	var s := sin(ph)
 	_k.position = STREET + Vector3(_x, -absf(cos(ph)) * 0.012 * SCALE + 0.012 * SCALE, 0.0)
 	_body.rotation.z = 0.04 * sin(ph * 2.0)

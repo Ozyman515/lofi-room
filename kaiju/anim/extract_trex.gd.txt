@@ -1,0 +1,79 @@
+extends SceneTree
+# Samples the T-Rex pack's animations for Banira (kaiju_model.gd's frame: +x forward, +y up, L side at -z).
+# Output: a Resource with meta "anims" = {name: {"len", "fps", "body"/"head"/"armL"/"armR"/"tail": quaternions (xyzw),
+# "lift": body rise, "footL"/"footR": foot positions (xyz, relative to the rest pose, in the pack's units)}}.
+const FPS := 30.0
+const C := Basis(Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0))   # columns: their x, y, z in our frame
+var sk: Skeleton3D
+var local := {}            # bone index -> Transform3D (this frame's pose)
+
+func gpose(i: int) -> Transform3D:
+	var p := sk.get_bone_parent(i)
+	var t: Transform3D = local.get(i, sk.get_bone_rest(i))
+	return t if p < 0 else gpose(p) * t
+
+func A(b: String) -> Basis:
+	var i := sk.find_bone(b)
+	return C * (gpose(i).basis.orthonormalized() * sk.get_bone_global_rest(i).basis.orthonormalized().inverse()) * C.inverse()
+
+func org(b: String) -> Vector3:
+	var i := sk.find_bone(b)
+	return C * (gpose(i).origin - sk.get_bone_global_rest(i).origin)
+
+func _init() -> void:
+	var n: Node3D = (load("res://Trex.fbx") as PackedScene).instantiate()
+	root.add_child(n)
+	sk = n.find_children("*", "Skeleton3D", true, false)[0]
+	var ap: AnimationPlayer = n.find_children("*", "AnimationPlayer", true, false)[0]
+	var out := {}
+	for an in ap.get_animation_list():
+		var nm := String(an).get_slice("_", 1).to_lower()
+		var anim := ap.get_animation(an)
+		var L: float = anim.length
+		var J := {}
+		for j in ["body", "head", "armL", "armR", "tail", "lift", "footL", "footR"]:
+			J[j] = PackedFloat32Array()
+		var frames := int(ceil(L * FPS)) + 1
+		for f in frames:
+			var t := minf(f / FPS, L)
+			local.clear()
+			for ti in anim.get_track_count():
+				var bi := sk.find_bone(String(anim.track_get_path(ti).get_concatenated_subnames()))
+				if bi < 0:
+					continue
+				var tr: Transform3D = local.get(bi, sk.get_bone_rest(bi))
+				match anim.track_get_type(ti):
+					Animation.TYPE_ROTATION_3D: tr.basis = Basis(anim.rotation_track_interpolate(ti, t)).scaled(tr.basis.get_scale())
+					Animation.TYPE_POSITION_3D: tr.origin = anim.position_track_interpolate(ti, t)
+				local[bi] = tr
+			var body := A("Hips")
+			var parts := {"body": body, "head": body.inverse() * A("Head"), "armL": body.inverse() * A("FrontUpLeg.L"),
+				"armR": body.inverse() * A("FrontUpLeg.R"), "tail": body.inverse() * A("Tail3")}
+			for j in parts:
+				var q: Quaternion = (parts[j] as Basis).get_rotation_quaternion()
+				J[j].append_array([q.x, q.y, q.z, q.w])
+			J["lift"].append(org("Hips").y)
+			for s in ["L", "R"]:
+				var fo := org("BackFoot." + s)
+				J["foot" + s].append_array([fo.x, fo.y, fo.z])
+		var d := {"len": L, "fps": FPS}
+		for j in J:
+			d[j] = J[j]
+		out[nm] = d
+	var r := Resource.new()
+	r.set_meta("anims", out)
+	r.set_meta("source", "Dinosaur Animated Pack (Dec 2018) by Quaternius, CC0 1.0: Trex.fbx")
+	print("SAVE ", ResourceSaver.save(r, "res://trex_anims.res"))
+	# what the walk looks like: foot travel and the body's rise, in the pack's units; leg length for scale
+	var fl: PackedFloat32Array = out["walk"]["footL"]
+	var s := ""
+	for k in range(0, fl.size(), 9):
+		s += "(%.4f,%.4f) " % [fl[k], fl[k + 1]]
+	print("WALK footL x,y: ", s)
+	print("WALK lift: ", Array(out["walk"]["lift"]).map(func(v): return snappedf(v, 0.0001)).slice(0, 43, 4))
+	print("ATTACK head pitch: ", range(0, 36, 3).map(func(f): return snappedf(Quaternion(out["attack"]["head"][f*4], out["attack"]["head"][f*4+1], out["attack"]["head"][f*4+2], out["attack"]["head"][f*4+3]).get_euler().z, 0.01)))
+	print("ATTACK body pitch: ", range(0, 36, 3).map(func(f): return snappedf(Quaternion(out["attack"]["body"][f*4], out["attack"]["body"][f*4+1], out["attack"]["body"][f*4+2], out["attack"]["body"][f*4+3]).get_euler().z, 0.01)))
+	var hip := C * sk.get_bone_global_rest(sk.find_bone("BackUpLeg.L")).origin
+	var ft := C * sk.get_bone_global_rest(sk.find_bone("BackFoot.L")).origin
+	print("REST hip ", hip, " foot ", ft)
+	quit()

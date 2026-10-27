@@ -18,6 +18,7 @@ const GModel := preload("res://gaboon_model.gd")
 const KaijuScript := preload("res://kaiju.gd")
 const GaboonScript := preload("res://gaboon.gd")
 const Plat := preload("res://platform.gd")
+const RexAnim := preload("res://rex_anim.gd")
 
 const S := 60.0                      # both stand about 60 units tall: heads and shoulders over the far rooftops,
                                      # below the blinds at the top of the window
@@ -287,6 +288,16 @@ static func _rise(t: float, a: float, b: float) -> float:
 	return smoothstep(a, b, t)
 
 
+# piecewise-linear time: beat time ts[i] plays the animation at as[i]
+static func _warp(t: float, ts: Array, as_: Array) -> float:
+	if t <= float(ts[0]):
+		return float(as_[0])
+	for i in range(1, ts.size()):
+		if t <= float(ts[i]):
+			return lerpf(float(as_[i - 1]), float(as_[i]), (t - float(ts[i - 1])) / (float(ts[i]) - float(ts[i - 1])))
+	return float(as_[as_.size() - 1])
+
+
 static func _pulse(t: float, a: float, b: float, c: float, d: float) -> float:
 	return smoothstep(a, b, t) * (1.0 - smoothstep(c, d, t))
 
@@ -343,6 +354,9 @@ func _beat(n: String, t: float, was: float, d: float, delta: float) -> void:
 		"bite":
 			K["lunge"] = _pulse(t, 0.2, 0.8, 2.2, 3.2)
 			K["bite"] = _pulse(t, 0.3, 0.7, 0.9, 1.0) + 0.6 * _pulse(t, 1.0, 1.1, 1.8, 2.4)
+			# the pack's bite, given weight: a slow rear back, a hold, then the snap lands right on the hit (0.95 s)
+			K["atk"] = _warp(t, [0.2, 0.75, 0.95, 2.4], [0.0, 0.3, 0.6, 1.17])
+			K["atk_w"] = _pulse(t, 0.1, 0.3, 2.2, 3.0)
 			kx = _k0 + 0.12 * S * K["lunge"]
 			if _at(t, was, 0.95):
 				_impact(Vector3(gx - 0.32 * S, 0.66 * S + GROUND, Z), 0.8, Color(1.0, 0.85, 0.7))
@@ -861,8 +875,8 @@ func _fireball_attack(t: float, was: float, d: float) -> void:
 # ---- poses
 
 func _reset_pose() -> void:
-	B = {"walk": 0.0, "roar": 0.0, "lunge": 0.0, "bite": 0.0, "snap": 0.0, "arms": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": -PI / 2.0}
-	K = {"walk": 0.0, "roar": 0.0, "lunge": 0.0, "bite": 0.0, "snap": 0.0, "arms": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": 0.0}
+	B = {"walk": 0.0, "roar": 0.0, "lunge": 0.0, "bite": 0.0, "snap": 0.0, "arms": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": -PI / 2.0, "atk": 0.0, "atk_w": 0.0}
+	K = {"walk": 0.0, "roar": 0.0, "lunge": 0.0, "bite": 0.0, "snap": 0.0, "arms": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": 0.0, "atk": 0.0, "atk_w": 0.0}
 	G = {"walk": 0.0, "rear": 1.0, "beat": 0.0, "roar": 0.0, "grab": 0.0, "punch_r": 0.0, "punch_l": 0.0, "recoil": 0.0,
 		"snap": 0.0, "tilt": 0.0, "sink": 0.0, "yaw": PI}
 
@@ -873,6 +887,9 @@ func _apply_k() -> void:
 
 # the T-Rex and the black kaiju share a body plan: faces +x, legs and arms swing about z, Head > Jaw
 func _rex(parts: Dictionary, holder: Node3D, tilt: Node3D, P: Dictionary, ph: float, x: float, z: float) -> void:
+	if RexAnim.ok():
+		_rex_anim(parts, holder, tilt, P, ph, x, z)
+		return
 	var s := sin(ph) * float(P["walk"])
 	var lunge: float = P["lunge"]
 	var roar: float = P["roar"]
@@ -890,6 +907,40 @@ func _rex(parts: Dictionary, holder: Node3D, tilt: Node3D, P: Dictionary, ph: fl
 	tilt.rotation.z = P["tilt"]
 	var bob := -absf(cos(ph)) * 0.012 * S * float(P["walk"])
 	holder.position = Vector3(x, GROUND - float(P["sink"]) * S + bob + float(P.get("lift", 0.0)), z)
+	holder.rotation.y = P["yaw"]
+
+
+# the same moves on the T-Rex pack's motion (rex_anim.gd): its walk and bite underneath, the fight's own roars,
+# lunges, snaps and flails on top
+func _rex_anim(parts: Dictionary, holder: Node3D, tilt: Node3D, P: Dictionary, ph: float, x: float, z: float) -> void:
+	var walk: float = P["walk"]
+	var lunge: float = P["lunge"]
+	var roar: float = P["roar"]
+	var aw := float(P.get("atk_w", 0.0))
+	var w := RexAnim.sample("walk", ph / TAU * RexAnim.length("walk"))
+	var a := RexAnim.sample("attack", float(P.get("atk", 0.0)), false)
+	var idle := RexAnim.sample("idle", _T)
+	var body := parts["body"] as Node3D
+	var mix := func(k: String, wamp: float, aamp: float) -> Quaternion:
+		var q: Quaternion = (idle[k] as Quaternion).slerp(RexAnim.amp(w[k], wamp), walk)
+		return q.slerp(RexAnim.amp(a[k], aamp), aw)
+	body.quaternion = mix.call("body", 1.3, 1.2) * Quaternion.from_euler(Vector3(0.0, 0.0, 0.12 * roar - 0.35 * lunge * (1.0 - aw)))
+	body.position.y = lerpf(float(idle["lift"]), float(w["lift"]), walk) * RexAnim.UNIT * 1.3
+	(parts["head"] as Node3D).quaternion = mix.call("head", 1.2, 1.25) * Quaternion.from_euler(Vector3(0.0, 0.5 * float(P["snap"]), 0.42 * roar - 0.2 * lunge * (1.0 - aw) + 0.04 * sin(_T * 0.7)))
+	for i in 2:
+		var side := "L" if i == 0 else "R"
+		var flail := float(P.get("flail", 0.0)) * sin(_T * 5.0 + i * 2.0)
+		(parts["arms"][i] as Node3D).quaternion = mix.call("arm" + side, 1.2, 1.2) * Quaternion.from_euler(Vector3(0.0, 0.0, 0.9 * float(P["arms"]) + 0.4 * lunge + 0.8 * flail))
+		var leg := parts["legs"][i] as Node3D
+		var f: Vector3 = (w["foot" + side] as Vector3) * walk
+		var sole: Vector3 = RexAnim.leg_rest(leg)[2]
+		RexAnim.reach(leg, body.transform.affine_inverse() * (sole + Vector3(f.x * 5.0, f.y * RexAnim.UNIT * 0.55, 0.0)))
+		leg.rotation.z += lunge * (0.25 if i == 0 else -0.15) + 0.3 * flail
+		(parts["knees"][i] as Node3D).rotation.z += 0.2 * lunge + 0.3 * absf(flail)
+	var open := maxf(roar, float(P["bite"]))
+	(parts["jaw"] as Node3D).rotation.z = -0.5 * open - 0.04 * open * sin(_T * 30.0)
+	tilt.rotation.z = P["tilt"]
+	holder.position = Vector3(x, GROUND - float(P["sink"]) * S + float(P.get("lift", 0.0)), z)
 	holder.rotation.y = P["yaw"]
 
 
