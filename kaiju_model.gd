@@ -11,7 +11,7 @@ const WHITE := Color(0.93, 0.94, 0.96)
 const TOOTH := Color(0.97, 0.96, 0.90)
 const TONGUE := Color(0.14, 0.19, 0.38)
 const ICE_GLOW := Color(0.35, 0.75, 1.0)
-const EYE := Color(0.35, 0.8, 1.0)              # the eyes glow like the ice crest
+const EYE := Color(0.13, 0.40, 0.95)            # the eyes: the deep blue of the crest's crystals, no pupils (reads from afar)
 const EYE_AT := Vector3(0.214, 0.152, 0.043)   # the eye sockets (head space; z mirrored for the other side)
 const BOXY := 0.75                              # how far the skull's rounded top is squared off (0 = as baked)
 
@@ -287,12 +287,9 @@ static func _head_detail(head: Node3D, horn_mat: Material) -> void:
 	em.albedo_color = EYE
 	em.emission_enabled = true
 	em.emission = EYE
-	em.emission_energy_multiplier = 1.6
+	em.emission_energy_multiplier = 1.3
 	em.roughness = 0.2
 	em.disable_fog = true
-	var pup := StandardMaterial3D.new()
-	pup.albedo_color = Color(0.04, 0.05, 0.1)
-	pup.roughness = 0.3
 	for sd in [1.0, -1.0]:
 		var at := Vector3(EYE_AT.x, EYE_AT.y, EYE_AT.z * sd)
 		var eye := MeshInstance3D.new()
@@ -305,14 +302,6 @@ static func _head_detail(head: Node3D, horn_mat: Material) -> void:
 		eye.material_override = em
 		eye.position = at + Vector3(0.0, -0.004, 0.0)
 		head.add_child(eye)
-		var pu := MeshInstance3D.new()                  # a slit pupil, looking out and forward
-		var pm := BoxMesh.new()
-		pm.size = Vector3(0.007, 0.03, 0.004)
-		pu.mesh = pm
-		pu.material_override = pup
-		pu.position = at + Vector3(0.007, -0.003, 0.019 * sd)
-		pu.rotation = Vector3(0.0, -0.6 * sd, 0.0)
-		head.add_child(pu)
 		# a little horn on the brow over each eye, swept back and a little out (the base sits on the skull)
 		var pivot := Node3D.new()
 		pivot.position = Vector3(0.178, 0.186, 0.056 * sd)
