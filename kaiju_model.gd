@@ -100,10 +100,11 @@ static func _rig_tail(body: Node3D, parts: Array) -> void:
 	var skin := Skin.new()
 	for b in sk.get_bone_count():
 		skin.add_named_bind(sk.get_bone_name(b), sk.get_bone_global_rest(b).affine_inverse())
-	for mi: MeshInstance3D in parts:
+	for k in parts.size():
+		var mi: MeshInstance3D = parts[k]
 		var key := mi.mesh.resource_path
 		if not _skinned.has(key):
-			_skinned[key] = _skin_mesh(mi.mesh)
+			_skinned[key] = _skin_mesh(mi.mesh, k > 0)      # (the crest: each spike moves whole)
 		mi.mesh = _skinned[key]
 		mi.skin = skin
 		mi.skeleton = mi.get_path_to(sk)
@@ -129,7 +130,62 @@ static func _along(x: float, y: float) -> float:
 	return minf(s, ahead / d0.length()) if ahead < 0.0 else s
 
 
-static func _skin_mesh(src: Mesh) -> ArrayMesh:
+# the separate pieces of a mesh (triangles that share corners): for each vertex, the index of its piece's base,
+# the corner nearest the tail's middle line (where a spike grows out of the body)
+static func _piece_bases(v: PackedVector3Array, idx: PackedInt32Array) -> PackedInt32Array:
+	var parent: Array[int] = []
+	parent.resize(v.size())
+	for n in v.size():
+		parent[n] = n
+	var at := {}
+	for n in v.size():                                   # corners at the same spot are one corner
+		var key := v[n].snapped(Vector3.ONE * 0.0001)
+		if at.has(key):
+			parent[_root(parent, n)] = _root(parent, int(at[key]))
+		else:
+			at[key] = n
+	for t in range(0, idx.size(), 3):                    # and a triangle's corners are one piece
+		var r0 := _root(parent, idx[t])
+		for c in [1, 2]:
+			var rc := _root(parent, idx[t + c])
+			if rc != r0:
+				parent[rc] = r0
+	var best := {}
+	var bd := {}
+	for n in v.size():
+		var r := _root(parent, n)
+		var d := _off_line(v[n].x, v[n].y)
+		if not bd.has(r) or d < float(bd[r]):
+			bd[r] = d
+			best[r] = n
+	var out := PackedInt32Array()
+	out.resize(v.size())
+	for n in v.size():
+		out[n] = int(best[_root(parent, n)])
+	return out
+
+
+static func _root(parent: Array[int], a: int) -> int:
+	while parent[a] != a:
+		parent[a] = parent[parent[a]]
+		a = parent[a]
+	return a
+
+
+# how far a point is from the tail's middle line (x, y)
+static func _off_line(x: float, y: float) -> float:
+	var q := Vector2(x, y)
+	var best := 1e9
+	for i in 5:
+		var a: Vector2 = TAIL_PTS[i]
+		var b: Vector2 = TAIL_PTS[i + 1]
+		var ab := b - a
+		var u := clampf((q - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+		best = minf(best, q.distance_to(a + ab * u))
+	return best
+
+
+static func _skin_mesh(src: Mesh, rigid := false) -> ArrayMesh:
 	var out := ArrayMesh.new()
 	for si in src.get_surface_count():
 		var arr := src.surface_get_arrays(si)
@@ -138,10 +194,17 @@ static func _skin_mesh(src: Mesh) -> ArrayMesh:
 		var weights := PackedFloat32Array()
 		bones.resize(v.size() * 4)
 		weights.resize(v.size() * 4)
+		var base := PackedInt32Array()
+		if rigid:
+			var idx = arr[Mesh.ARRAY_INDEX]
+			if idx == null:
+				idx = PackedInt32Array(range(v.size()))
+			base = _piece_bases(v, idx)
 		for n in v.size():
 			# joint k bends what's past it: a vertex at s gets bone floor(s)+1, blended into the one before
-			# over the first 40% of the segment, so the bends are soft
-			var s := _along(v[n].x, v[n].y)
+			# over the first 40% of the segment, so the bends are soft; a spike takes its base's weights whole
+			var p := v[base[n]] if rigid else v[n]
+			var s := _along(p.x, p.y)
 			var b0 := 0
 			var b1 := 0
 			var w1 := 0.0
