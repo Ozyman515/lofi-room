@@ -241,6 +241,20 @@ static bool RETRO_CALLCONV env_cb(unsigned cmd, void *data) {
 		case RETRO_ENVIRONMENT_SET_GEOMETRY:
 		case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
 			return true;
+		case RETRO_ENVIRONMENT_GET_VARIABLE: {
+			/* a few core options of our own; the rest stay at the core's defaults */
+			static const char *opts[][2] = {
+				/* PCSX ReARMed's recompiler crashes after a saved position is loaded, and the
+				   interpreter is quick enough on a PC */
+				{ "pcsx_rearmed_drc", "disabled" },
+			};
+			struct retro_variable *v = (struct retro_variable *)data;
+			unsigned i;
+			if (!v || !v->key) return false;
+			for (i = 0; i < sizeof(opts) / sizeof(opts[0]); i++)
+				if (strcmp(v->key, opts[i][0]) == 0) { v->value = opts[i][1]; return true; }
+			return false;
+		}
 		case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
 			*(bool *)data = false;
 			return true;

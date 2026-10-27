@@ -80,6 +80,11 @@ var _err_text := ""
 var _err_cd := 0.0
 var _game_name := ""
 var frames_done := 0
+# the light gun (lightgun.gd): which port each console's gun goes in, and what the core called it
+const GUN_PORT := {"nes": 1, "snes": 1, "gen": 1, "ps": 0}
+var gun_on := false
+var gun_kind := ""                  # the core's name for it ("Zapper", "SuperScope", "MD Menacer", "guncon"), "" = none
+var _gun_sent := PackedByteArray()
 var custom_active := false      # the room is drawing its own screen (the controls screen) over the menu
 var _ctop := 0
 
@@ -337,6 +342,35 @@ func _enter_idle_or_menu() -> void:
 
 
 # the pad state as libretro bits; call every frame while the controller is held
+# hold the light gun (on) or put it down: the core's own gun goes in (or comes out of) its port
+func set_gun(on: bool) -> void:
+	gun_on = on
+	gun_kind = ""
+	_send_gun_plug()
+
+
+func _send_gun_plug() -> void:
+	if state != State.RUNNING or _peer == null or not GUN_PORT.has(system):
+		return
+	_peer.put_data(PackedByteArray([76, GUN_PORT[system], 1 if gun_on else 0]))     # 'L' port on
+	_gun_sent = PackedByteArray()
+
+
+# where the gun points (-1..1 across the picture, y down) and its buttons (bit 0 trigger, 1 off the screen,
+# 2 reload, 3 A, 4 B); sent when it changes
+func gun_aim(p: Vector2, buttons: int) -> void:
+	if not gun_on or state != State.RUNNING or _peer == null or not GUN_PORT.has(system):
+		return
+	var x := clampi(int(p.x * 32767.0), -32767, 32767)
+	var y := clampi(int(p.y * 32767.0), -32767, 32767)
+	var pkt := PackedByteArray([71, GUN_PORT[system], 0, 0, 0, 0, buttons])       # 'G'
+	pkt.encode_s16(2, x)
+	pkt.encode_s16(4, y)
+	if pkt != _gun_sent:
+		_peer.put_data(pkt)
+		_gun_sent = pkt
+
+
 func set_buttons(mask: int) -> void:
 	var pressed := mask & ~_prev_mask
 	_prev_mask = mask
@@ -605,6 +639,12 @@ func _parse() -> void:
 			_rate = clampf(_rx.decode_double(p + 9), 8000.0, 192000.0)       # the Game Boy core plays at 131072 Hz
 			p += 25
 			_on_hello()
+		elif t == 73:                             # 'I' what went into the gun port
+			if n - p < 2: break
+			var ilen := _rx[p + 1]
+			if n - p < 2 + ilen: break
+			gun_kind = _rx.slice(p + 2, p + 2 + ilen).get_string_from_utf8()
+			p += 2 + ilen
 		elif t == 69:                             # 'E' error
 			if n - p < 2: break
 			var len := _rx[p + 1]
@@ -633,6 +673,8 @@ func _parse() -> void:
 
 func _on_hello() -> void:
 	state = State.RUNNING
+	if gun_on:
+		_send_gun_plug.call_deferred()
 	Diary.game_started(system, _game_name)
 	_gen = AudioStreamGenerator.new()
 	_gen.mix_rate = _rate

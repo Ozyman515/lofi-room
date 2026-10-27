@@ -1,0 +1,2 @@
+lightgun_mesh.res: "Pistol_6" from Quaternius's "Ultimate Gun Pack", https://quaternius.itch.io - CC0 1.0 (public domain).
+Turned to face -z, grip down, scaled to 19 cm and merged into one mesh for the room's light gun.
