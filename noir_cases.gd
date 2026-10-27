@@ -18,7 +18,7 @@ const CASES := [
 	["THE MAN WHO PRESSED START", "He walked in, pressed START on the console and walked out. Didn't play. Didn't say a word. The game's been waiting ever since.", "I let it wait. Patience is a virtue. So is minding your business."],
 	["THE NEON THAT BLINKED", "The HOTEL sign across the street flickered in a pattern. Three short, three long, three short. Either a cry for help or a bad wire.", "I called the hotel. Bad wire. I was almost disappointed."],
 	["A KAIJU WALKS INTO A CITY", "Something big walked past the window last night. The whole building hummed. The insurance people say it was 'weather'.", "Weather doesn't leave footprints the size of a bus."],
-	["THE APE ON THE SHELF", "The little King Gaboon on the bookshelf was facing the wall this morning. I didn't turn him. Nobody did.", "I turned him back. He looked relieved. So was I."],
+	["THE MONKEY ON THE SHELF", "The little King Gaboon on the bookshelf was facing the wall this morning. I didn't turn him. Nobody did.", "I turned him back. He looked relieved. So was I."],
 	["THE SAUCER AT THE WINDOW", "Lights at the glass, a hum in my teeth, and a grey face looking in like it owed me money.", "It left before I could ask what it wanted. They always do."],
 	["THE TAPE WITH NO LABEL", "A VHS tape on the doorstep. No label, no note. Forty minutes of static and one second of someone waving.", "I rewound it. I watched it again. I waved back."],
 	["THE RECORD THAT SKIPPED", "Same song, same groove, same skip, every night at midnight. The needle's fine. The record's fine. The skip is not.", "Some songs want you to hear a line twice. I listened."],

@@ -271,7 +271,7 @@ func _start(kind := "fight") -> void:
 			_say(_pick(LINES["b_open_k"]), 6.0)
 			_iv_queue = [[13.0, "vendor"]]
 		"g":
-			_ticker.text = "  BULLETIN: GIANT APE ON THE LOOSE  *  ZOO SAYS 'NOT OURS'  *  HUNTER ARRIVES AT THE DOCKS  *  STAY TUNED TO CH 3  *"
+			_ticker.text = "  BULLETIN: GIANT MONKEY ON THE LOOSE  *  ZOO SAYS 'NOT OURS'  *  HUNTER ARRIVES AT THE DOCKS  *  STAY TUNED TO CH 3  *"
 			_cut("rep", 6.0)
 			_say(_pick(LINES["b_open_g"]), 6.0)
 			_iv_queue = [[13.0, "hunter"]]
@@ -551,7 +551,7 @@ const IV := {
 		"after": ["You heard him, folks. The creature has a name, and that name is Banira.",
 			"Banira. That's what they're calling it down in Old Town. Back to the rooftops."]},
 	"hunter": {"strip": "BIG-GAME HUNTER  -  THE DOCKS", "name": "g", "lines": [
-		["q", "Sir, you look like a man who knows something about that ape.", ""],
+		["q", "Sir, you look like a man who knows something about that monkey.", ""],
 		["a", "Know him? I've tracked him across three continents for twenty years!", ""],
 		["a", "That, my boy, is King Gaboon. And King Gaboon bows to no one.", ""]],
 		"after": ["King Gaboon. A hunter's word for it, folks, and I'm not about to argue.",
@@ -902,7 +902,7 @@ func _animate_iv(delta: float) -> void:
 			(p["fore_r"] as Node3D).rotation = Vector3(0.0, 0.0, 0.5)
 			(p["arm_l"] as Node3D).rotation = Vector3(-0.5, 0.0, -0.1)
 			(p["fore_l"] as Node3D).rotation = Vector3(-1.2, 0.0, 0.0)
-		"point":                       # one arm up at the sky, where the ape is; the other fist on his hip
+		"point":                       # one arm up at the sky, where the monkey is; the other fist on his hip
 			(p["arm_l"] as Node3D).rotation = Vector3(0.0, 0.0, -2.5 - 0.15 * sin(_T * 3.0) * talk)
 			(p["fore_l"] as Node3D).rotation = Vector3(0.0, 0.0, -0.1)
 			(p["arm_r"] as Node3D).rotation = Vector3(0.0, 0.0, 0.45)
@@ -915,20 +915,20 @@ const LINES := {
 	"enter": ["They're both coming in from opposite ends of the city. The ground is shaking up here.",
 		"There it is. Two of them. I never thought I'd say that on the air."],
 	"faceoff": ["They've stopped. They're staring each other down. I can hear them from here.",
-		"That roar shattered windows three blocks away. The big ape is answering it."],
+		"That roar shattered windows three blocks away. The big monkey is answering it."],
 	"grapple": ["They're locked together, shoving, neither one giving an inch.",
 		"They've grabbed hold of each other. The whole skyline is swaying."],
-	"bite": ["The white one has its jaws on the ape's shoulder!", "A savage bite! King Gaboon is reeling!"],
+	"bite": ["The white one has its jaws on the monkey's shoulder!", "A savage bite! King Gaboon is reeling!"],
 	"punch": ["King Gaboon lands a blow right across its jaw!", "A punch you could feel in your teeth, folks."],
 	"tail": ["It spun around and caught him with that enormous tail!", "That tail swept him clean off his feet!"],
-	"tackle": ["The ape is down! He's down behind the towers!", "A head-on charge, and King Gaboon goes over!"],
+	"tackle": ["The monkey is down! He's down behind the towers!", "A head-on charge, and King Gaboon goes over!"],
 	"slam": ["He's thrown it! The white one is down in a cloud of dust!", "King Gaboon picked it up and slammed it into the street!"],
 	"circle": ["They're circling now. Catching their breath, if monsters breathe.", "A lull. But nobody down there believes it's over."],
 	"roars": ["Listen to that. I don't think there's a glass window left on Fifth Street.", "They're roaring at each other across the rooftops."],
-	"ice_beam": ["Its back is glowing! It's breathing... ice? The ape is freezing solid!", "A beam of pure cold! I can see frost forming from here!"],
+	"ice_beam": ["Its back is glowing! It's breathing... ice? The monkey is freezing solid!", "A beam of pure cold! I can see frost forming from here!"],
 	"fireball": ["He's holding fire in his hands! He's thrown it!", "A ball of fire! It hit the white one square in the chest!"],
 	"clash": ["They've hit each other at the same moment! Both of them are staggering!", "Head to head! Neither one is standing straight!"],
-	"g_retreat": ["The ape is thawing out and backing away. He's leaving!", "King Gaboon is retreating into the city."],
+	"g_retreat": ["The monkey is thawing out and backing away. He's leaving!", "King Gaboon is retreating into the city."],
 	"k_retreat": ["The white one is limping off, smoke trailing behind it.", "It's turning away. It's had enough."],
 	"k_victory": ["The white one is roaring over the city. It's claimed the night.", "Listen to that victory cry."],
 	"g_victory": ["King Gaboon beats his chest. There's no doubt who won tonight.", "He's standing tall over the skyline."],
@@ -947,7 +947,7 @@ const LINES := {
 		"I've covered fires, floods and a strike at the docks. Nothing like this."],
 	"b_open_k": ["We interrupt this program. Something enormous is walking through downtown, right past the apartment towers.",
 		"This is a Channel 3 bulletin. A giant white creature has been sighted downtown. Stay away from your windows."],
-	"b_open_g": ["We interrupt this program. A giant ape is walking through the city. I repeat, a giant ape.",
+	"b_open_g": ["We interrupt this program. A giant monkey is walking through the city. I repeat, a giant monkey.",
 		"This is a Channel 3 bulletin. Something huge and hairy is moving between the towers downtown."],
 	"b_filler": ["If you're just joining us: a giant creature is walking through downtown. Stay indoors.",
 		"It doesn't seem to be in a hurry. It's just... looking in the windows.",

@@ -1,5 +1,5 @@
 extends RefCounted
-## King Gaboon: the owner's own monster, a giant mandrill-like ape. He walks on his knuckles with a huge
+## King Gaboon: the owner's own monster, a giant mandrill (a big monkey). He walks on his knuckles with a huge
 ## hunched chest and shaggy olive fur, a red ridge down his long snout, blue ridged cheeks, a gold beard and
 ## cheek fur, long canines and a big curled tail. The fur is smooth with a few large swept-back locks
 ## (no bumpy or clustered textures anywhere).

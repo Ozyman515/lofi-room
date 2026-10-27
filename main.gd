@@ -85,7 +85,7 @@ var poster: Node3D                     # poster.gd: the picture on the right wal
 var noir: Node3D                       # noir.gd: Noir Night (an easter egg)
 var ufo: Node3D                        # ufo.gd: a saucer stops at the window and an alien looks in (an easter egg)
 var kaiju: Node3D                      # kaiju.gd: a giant monster walks past the window (an easter egg)
-var gaboon: Node3D                     # gaboon.gd: King Gaboon, the owner's giant ape, walks past and roars (figure on the bookshelf)
+var gaboon: Node3D                     # gaboon.gd: King Gaboon, the owner's giant monkey, walks past and roars (figure on the bookshelf)
 var fight: Node3D                      # fight.gd: the T-Rex and King Gaboon fight out past the rooftops, helicopters circling
 var keyboard_node: Node3D              # the desk's keyboard and mug (Noir Night swaps in a typewriter and a whiskey)
 var mug_node: Node3D

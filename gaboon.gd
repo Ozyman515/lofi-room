@@ -1,5 +1,5 @@
 extends Node3D
-## King Gaboon (the owner's monster): a giant mandrill-like ape (gaboon_model.gd) knuckle-walks down the street
+## King Gaboon (the owner's monster): a giant mandrill, a big monkey (gaboon_model.gd), knuckle-walks down the street
 ## outside the window. Every step thumps and rattles the window (the kaiju's jolt: a screen jolts, a headset
 ## only rumbles the controllers). Halfway across he stops, looks in, rears up, beats his chest and roars at you,
 ## then drops back down and walks on.
@@ -353,7 +353,7 @@ func apply_remote(n: int) -> void:
 
 # ---- sounds, made here
 
-# a big ape roar: a growling throat that climbs, holds and falls, with breath over it
+# a big monkey roar: a growling throat that climbs, holds and falls, with breath over it
 static func _make_roar() -> AudioStreamWAV:
 	var rate := 22050
 	var n := int(2.6 * rate)

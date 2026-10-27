@@ -19,7 +19,7 @@ const KaijuScript := preload("res://kaiju.gd")
 const GaboonScript := preload("res://gaboon.gd")
 const Plat := preload("res://platform.gd")
 const RexAnim := preload("res://rex_anim.gd")
-const ApeAnim := preload("res://ape_anim.gd")
+const MonkeyAnim := preload("res://monkey_anim.gd")
 
 const S := 60.0                      # both stand about 60 units tall: heads and shoulders over the far rooftops,
                                      # below the blinds at the top of the window
@@ -972,15 +972,15 @@ func _apply_g() -> void:
 		(p["elbows"][i] as Node3D).rotation = Vector3(-0.35 * maxf(0.0, front) + rear * (-1.9 + 0.3 * beat * hit) + 1.7 * rear * reach, 0.0, 0.0)
 		(p["legs"][i] as Node3D).rotation = Vector3(-0.28 * back + 0.35 * rear, 0.0, 0.0)
 		(p["knees"][i] as Node3D).rotation = Vector3(0.5 * maxf(0.0, back) - 0.25 * rear, 0.0, 0.0)
-	if ApeAnim.ok():
-		_ape_arms(p, rear, beat, grab)
+	if MonkeyAnim.ok():
+		_monkey_arms(p, rear, beat, grab)
 	_gt.rotation.z = G["tilt"]
 	var bob := absf(sin(_gph)) * 0.008 * S * w
 	_gh.position = Vector3(gx, GROUND - float(G["sink"]) * S + bob + float(G.get("lift", 0.0)), Z)
 	_gh.rotation.y = G["yaw"]
 
 
-# King Gaboon on the Animated Robot's motion (ape_anim.gd): reared up he holds his fists up in its guard and his
+# King Gaboon on the Animated Robot's motion (monkey_anim.gd): reared up he holds his fists up in its guard and his
 # torso and head breathe with its idle; each punch is its jab, the fist landing on the hit. The chest beats and the
 # grapples keep their own moves.
 var _punch_prev := [0.0, 0.0]
@@ -988,8 +988,8 @@ var _fist_l := false
 var _punch_t := [0.0, 0.0]
 
 
-func _ape_arms(p: Dictionary, rear: float, beat: float, grab: float) -> void:
-	var idle := ApeAnim.sample("idle", _T * 0.8)
+func _monkey_arms(p: Dictionary, rear: float, beat: float, grab: float) -> void:
+	var idle := MonkeyAnim.sample("idle", _T * 0.8)
 	var body := p["body"] as Node3D
 	var head := p["head"] as Node3D
 	body.quaternion = body.quaternion * Quaternion.IDENTITY.slerp(idle["torso"], 0.8 * rear)
@@ -1003,7 +1003,7 @@ func _ape_arms(p: Dictionary, rear: float, beat: float, grab: float) -> void:
 		elif v > 0.0:
 			_punch_t[i] = maxf(_punch_t[i], 0.3 + 0.4 * (1.0 - v))
 		_punch_prev[i] = v
-		var pose: Dictionary = ApeAnim.sample("punch", _punch_t[i], false) if v > 0.0 else idle
+		var pose: Dictionary = MonkeyAnim.sample("punch", _punch_t[i], false) if v > 0.0 else idle
 		var w := maxf(guard * 0.85, minf(1.0, v * 1.4))
 		var fist_on := w > 0.35 or rear > 0.5
 		if i == 0:
@@ -1012,7 +1012,7 @@ func _ape_arms(p: Dictionary, rear: float, beat: float, grab: float) -> void:
 			GaboonScript.fists(p, _fist_l, fist_on)
 		if w <= 0.001:
 			continue
-		var q: Array = ApeAnim.arm(pose, i, body.quaternion)
+		var q: Array = MonkeyAnim.arm(pose, i, body.quaternion)
 		var arm := p["arms"][i] as Node3D
 		var elbow := p["elbows"][i] as Node3D
 		arm.quaternion = arm.quaternion.slerp(q[0], w)
