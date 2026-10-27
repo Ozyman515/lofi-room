@@ -14,6 +14,11 @@ const ICE_GLOW := Color(0.35, 0.75, 1.0)
 const EYE := Color(0.13, 0.40, 0.95)            # the eyes: the deep blue of the crest's crystals, no pupils (reads from afar)
 const EYE_AT := Vector3(0.214, 0.152, 0.043)   # the eye sockets (head space; z mirrored for the other side)
 const BOXY := 0.75                              # how far the skull's rounded top is squared off (0 = as baked)
+const BACK_FLAT := 0.35                         # ...and its rounded back (side on), very slightly
+const BACK_X := 0.06                            # (the back of the skull: behind this, above BACK_Y, out to XMIN / YMAX)
+const BACK_Y := 0.06
+const XMIN := -0.11
+const YMAX := 0.2
 
 # pivots (body space), from the bake
 const HEAD := Vector3(0.356, 0.784, 0.0)
@@ -271,7 +276,19 @@ static func _boxy_head(src: Mesh) -> Mesh:
 			var k := 1.0 / pow(pow(c, 4.0) + pow(sn, 4.0), 0.25)           # circle -> rounded square
 			var g := smoothstep(0.0, 0.5, uy) * smoothstep(-0.12, 0.0, p.x) * (1.0 - smoothstep(0.24, 0.31, p.x))
 			var kk := lerpf(1.0, k, BOXY * g)
-			v[n] = Vector3(p.x, cy + uy * kk * hy, uz * kk * hz)
+			var q := Vector3(p.x, cy + uy * kk * hy, uz * kk * hz)
+			# the back of the skull: its rounded top-back corner squared off a touch (side on)
+			if p.x < BACK_X and q.y > BACK_Y:
+				var bu := (p.x - BACK_X) / (BACK_X - XMIN)
+				var bw := (q.y - BACK_Y) / (YMAX - BACK_Y)
+				var br := Vector2(bu, bw).length()
+				if br > 0.001:
+					var bc := absf(bu) / br
+					var bs := bw / br
+					var bk := lerpf(1.0, 1.0 / pow(pow(bc, 4.0) + pow(bs, 4.0), 0.25), BACK_FLAT * smoothstep(0.2, 0.7, br))
+					q.x = BACK_X + bu * bk * (BACK_X - XMIN)
+					q.y = BACK_Y + bw * bk * (YMAX - BACK_Y)
+			v[n] = q
 		arr[Mesh.ARRAY_VERTEX] = v
 		arr[Mesh.ARRAY_NORMAL] = null
 		var st := SurfaceTool.new()
