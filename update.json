@@ -1,5 +1,5 @@
 {
- "version": 127,
+ "version": 128,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -130,8 +130,8 @@
    "size": 3374
   },
   "apartment.gd": {
-   "sha": "d18cf406e6d701d0190992425249ade95fa784f0cade657cefd59d3f0f4765b4",
-   "size": 92374
+   "sha": "5244818255477714f5fab04b75aa4f7809be2c8560a9d6b02e9457c82113b0fa",
+   "size": 93394
   },
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
@@ -242,20 +242,20 @@
    "size": 22629
   },
   "fight.gd": {
-   "sha": "b8de0fc7c87e68db06d89ea46cf3bd71e497c48c6464bfd44a4cdbd4fc72efbe",
-   "size": 59277
+   "sha": "488edd22e79533ec90ad1da696c1ca13e0ca50b7d31a309bc118855ca7573796",
+   "size": 64310
   },
   "file_browser.gd": {
    "sha": "7e6a1fedfe11e1a5f1cb39f629ccbcf9de529563c85a6f4210c54e6a0eefde56",
    "size": 4561
   },
   "gaboon.gd": {
-   "sha": "7ca126aa371ea017d889a7b87463d900a09a319075d7574dfb6414709cbbe5ad",
-   "size": 13852
+   "sha": "93c0cca62813aed15ced83b98f61d505080307ddbf1aa547338fd56cc8208c7d",
+   "size": 14356
   },
   "gaboon_model.gd": {
-   "sha": "d36234825b72f576c946b96c95025350bcbfccce422d49282ecb5a9c6cc16b8b",
-   "size": 13196
+   "sha": "1df1a9c11d62961ed287e583367719d3399a457d8822a5dba55221538c8c4892",
+   "size": 14108
   },
   "gif_player.gd": {
    "sha": "270391ad48b3737e208cada68917b3a1165dc7e67d205b504798cd195f61c700",
@@ -278,8 +278,28 @@
    "size": 8732
   },
   "kaiju.gd": {
-   "sha": "c7baddce18792f34c23a12a4b902f80348245ea2300d88f2ea5f5b2e9a793ba0",
-   "size": 12917
+   "sha": "395d5d7e1d1136b47c1025b30fca7c7bbf2fbc084f854b175e41cc9735897beb",
+   "size": 15270
+  },
+  "kaiju/anim/CREDITS.txt": {
+   "sha": "84742959537afb8858b168731ca3aeb38da931f75b948e41ecbc0f045a1ea0cb",
+   "size": 529
+  },
+  "kaiju/anim/extract_robot.gd.txt": {
+   "sha": "fb793643dfd86fa05e5af3ab97e2b992bab075512695d4b10c0a54b19c35e216",
+   "size": 4101
+  },
+  "kaiju/anim/extract_trex.gd.txt": {
+   "sha": "3cd3480c0de49b6f3129d0183c850a51396d37bf21c6a553843deb8450399a92",
+   "size": 4248
+  },
+  "kaiju/anim/robot_anims.res": {
+   "sha": "1b5b3720e533d1a4c4b3529844c48c78d435ad82f28a34c4c5022873bae909fe",
+   "size": 83877
+  },
+  "kaiju/anim/trex_anims.res": {
+   "sha": "87a99455ee0f89270bf5d843ae9ba8895960ac4e1e7147b76dd9135b8d116ac6",
+   "size": 54692
   },
   "kaiju/full/armL.res": {
    "sha": "a86ca459a8555bee5d50bf6dea6ac0d2719d55f8cd2a2cf6c8dbccfc6251ea49",
@@ -402,16 +422,16 @@
    "size": 3943
   },
   "kaiju_model.gd": {
-   "sha": "2bcc37f1f4cf1b766e61d96888e497b407d36f708d11f47c7a36d80c75651969",
-   "size": 3620
+   "sha": "a153bf5c77229b2c78328e51945363889d8e7901ea774c3d4099e2a28f4b6323",
+   "size": 13068
   },
   "lofi_theme.gd": {
    "sha": "3ecf7eb4936ed43b2e90831ded4ab8cf3ef049b5437e4b70c238582f618e6917",
    "size": 3474
   },
   "main.gd": {
-   "sha": "4ce678bfd525a24f40c5202e6d5f82452f8192755eaa1ddd55c9692b4a430af1",
-   "size": 229216
+   "sha": "4738b876e1c6cef183c30ea69bcacc8e87fa1fad4973e0ec261004b482763cf4",
+   "size": 229219
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -428,6 +448,10 @@
   "media/tv.gif": {
    "sha": "f00180678aa3eafb30bd9861a959bef0e3b4fceb3ca0834c49b11aa0f70502ef",
    "size": 9927
+  },
+  "monkey_anim.gd": {
+   "sha": "36c58ce89ed33886cc0e69e1ba617b01c35ef2c538e004edd44c66c0a117b9c1",
+   "size": 2781
   },
   "music/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -486,8 +510,8 @@
    "size": 9218
   },
   "news.gd": {
-   "sha": "32297e80d4e2e8d136174acbf905ca6a097d8332bdc14314a3365d72a9bb3149",
-   "size": 49414
+   "sha": "18a9baa583d8ec028d5c3aa40258cbc4838884b95de7a7595ada280607de1e82",
+   "size": 50719
   },
   "noir.gd": {
    "sha": "5b82b4b63568706af904d88aa5c5ee824dd7841b59c69332b7de0bfaaadb96fc",
@@ -506,8 +530,8 @@
    "size": 2246945
   },
   "noir_cases.gd": {
-   "sha": "afbb157904fb803c226483eeaa4628371e709bc5e2feba9945323c2d24d1bbac",
-   "size": 20915
+   "sha": "13130cda9623a7e42152d9bbb03a0f7b53d9b606d6102956dd681f354a5790d7",
+   "size": 20918
   },
   "noir_props.gd": {
    "sha": "2b669d9e330e077dfa79a26dbca26c040183b1a9e6af85622d179f61200cd978",
@@ -585,6 +609,10 @@
    "sha": "a595804e4cb5d20acd89ec7f93a6a3011412a3a8760a87f9cddca93a38d54b9a",
    "size": 952
   },
+  "rex_anim.gd": {
+   "sha": "a260c2e12a86c94e6a0eb5c8f5f1fb4320399f2b1aa2953af5e99c0a3608976f",
+   "size": 6427
+  },
   "room_tv.gd": {
    "sha": "970f159633ef6b50cffb3cbde2067d1ae79cfe8f7fca934af412fe454be8bfc5",
    "size": 2661
@@ -641,13 +669,17 @@
    "sha": "e508b48286b542e12462e5968c473bf2c0411fa493c3e746f5760915c71f8baa",
    "size": 1254
   },
+  "toy_hold.gd": {
+   "sha": "15260e2c943794bcba136f74ba2b05a6603cfab7f90e03b66fa8fda489d14692",
+   "size": 2526
+  },
   "tv_rating.gd": {
    "sha": "571aff420629e74a0241b97162176a57134476ae018c91964b6a60d215f67130",
    "size": 10601
   },
   "ufo.gd": {
-   "sha": "f798e39b05559d4a9892a544f1a29e62912bb52b4cb7e54919e60da7e31a7c1a",
-   "size": 13889
+   "sha": "67212940a33eda8b8d3b3722d2aef3c3104f77e3c7f00fbd22ea648d5d185294",
+   "size": 15353
   },
   "ufo_model.gd": {
    "sha": "9c1781112de964c5449786ee8ac40f81126a5f1e0bb9e23441e8529a64d8e663",
@@ -662,7 +694,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "743c7850cccfba5e53a9002663ec1ddd1079315a98bdbfdde10e6044f56abefe",
+   "sha": "56292515f7d3a7110811eb8de26b3f75f82a0766aa5a1fd66ebcfcb84fe6d5ff",
    "size": 4
   },
   "weather.gd": {
