@@ -95,7 +95,8 @@ var arcade_glow: Array = []            # [material, lit energy]: the buttons and
 var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV's buttons set the console's)
 var arcade_vol_label: Label3D
 var emu: Node                         # NES / SNES games (emu.gd)
-var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo" or "egg" (the secret one)
+var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo", "ps" (the disc console) or "egg" (the secret one)
+var ps_kit: Node                       # ps_kit.gd: the disc console beside the cartridge one, and its long-box case
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
 var drawer_node: Node3D               # the nightstand drawer
 var drawer_open := false
@@ -3669,6 +3670,8 @@ func _apply_console() -> void:
 		return
 	var arcade_in := slot_cart == "neo" and arcade_on
 	tv_mat.set_shader_parameter("use_console", console_on and not arcade_in)
+	if ps_kit != null:
+		ps_kit.set_power_light(console_on)
 	if arcade_mat != null:
 		arcade_mat.set_shader_parameter("console_tex", emu.tex if emu != null else null)
 		arcade_mat.set_shader_parameter("use_console", arcade_in)
@@ -4264,7 +4267,7 @@ func _neo_cart_mesh() -> Node3D:
 # The carts lie on the floor around the console, somewhere new every visit: never inside the console, the TV,
 # the controllers, a wall or a beanbag spot, and never through each other.
 var cart_spots := {}                   # id -> Transform3D in lounge coordinates
-const CART_RADIUS := {"nes": 0.085, "snes": 0.085, "sgb": 0.08, "gen": 0.085, "neo": 0.14}
+const CART_RADIUS := {"nes": 0.085, "snes": 0.085, "sgb": 0.08, "gen": 0.085, "neo": 0.14, "ps": 0.15}
 
 
 func _scatter_carts() -> void:
@@ -4273,10 +4276,14 @@ func _scatter_carts() -> void:
 	rng.randomize()
 	var centre := Vector2(-2.60, 1.45 + LOUNGE_DZ)                # the console
 	var console_rect := Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55)
+	if ps_kit != null:                                               # (and the disc console beside it, and the space in front of it)
+		for at in [ps_kit.console.global_position, ps_kit.stage_point()]:
+			var pc := lounge.to_local(at)
+			console_rect = console_rect.merge(Rect2(pc.x - 0.25, pc.z - 0.25, 0.5, 0.5))
 	var tv_rect := Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7)
 	var pads := [Vector2(-2.0, 2.58), Vector2(-2.25, 2.25)]
 	var placed: Array = []                                           # [Vector2, radius]
-	var ids := ["neo", "nes", "snes", "gen", "sgb"]                  # biggest first, it is the hardest to fit
+	var ids := ["ps", "neo", "nes", "snes", "gen", "sgb"]            # biggest first, it is the hardest to fit
 	for id in ids:
 		var r: float = CART_RADIUS[id]
 		var best := Vector2.ZERO
@@ -4319,6 +4326,11 @@ func _build_carts() -> void:
 	var gen := _gen_cart_mesh()
 	var neo := _neo_cart_mesh()
 	var egg_c := _nes_cart_mesh(true)
+	ps_kit = load("res://ps_kit.gd").new()
+	ps_kit.name = "DiscConsoleKit"
+	add_child(ps_kit)
+	ps_kit.build(self)
+	game_kit.add_child(ps_kit.case_node)
 	_scatter_carts()
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["nes"]}
@@ -4330,21 +4342,23 @@ func _build_carts() -> void:
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["gen"]}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["neo"]}
+	carts["ps"] = {"node": ps_kit.case_node, "name": "DISC", "busy": false,
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["ps"] * Transform3D(Basis.IDENTITY, Vector3(0, 0, ps_kit.CASE_T / 2.0 - 0.012))}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
-	for id in ["nes", "snes", "sgb", "gen", "neo"]:
+	for id in ["nes", "snes", "sgb", "gen", "neo", "ps"]:
 		var n: Node3D = carts[id]["node"]
 		n.global_transform = (carts[id]["home"] as Callable).call()
 	egg_c.reparent(drawer_node, false)
 	egg_c.transform = Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))
-	for id in ["nes", "snes", "sgb", "gen", "neo", "egg"]:
-		interactables.append({"node": carts[id]["node"], "half": Vector3(0.085, 0.065, 0.03), "egg_lock": true, "group": "games",
+	for id in ["nes", "snes", "sgb", "gen", "neo", "egg", "ps"]:
+		interactables.append({"node": carts[id]["node"], "half": (Vector3(0.085, 0.065, 0.03) if id != "ps" else ps_kit.case_node.get_meta("half")), "egg_lock": true, "group": "games",
 			"label": _cart_label.bind(id), "cb": _cart_click.bind(id)})
 
 
 func _cart_label(id: String) -> String:
 	if slot_cart == id:
-		return "EJECT CART"
+		return "EJECT DISC" if id == "ps" else "EJECT CART"
 	return "INSERT " + String(carts[id]["name"])
 
 
@@ -4383,6 +4397,12 @@ func _insert_cart(id: String) -> void:
 	var n: Node3D = carts[id]["node"]
 	if n.get_parent() != game_kit:
 		n.reparent(game_kit, true)
+	if id == "ps":
+		ps_kit.insert(func() -> void:
+			if slot_cart == "ps":
+				_fly_cart("ps", (carts["ps"]["home"] as Callable).call()))   # the empty case goes back with the others
+		_cart_changed()
+		return
 	if id == "neo":
 		_fly_cart(id, cab_root.global_transform * Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.776, 0.52, 0.0)))   # upright in the cart bay, label out
 	else:
@@ -4397,6 +4417,10 @@ func _eject_cart() -> void:
 		return
 	slot_cart = ""
 	var home: Transform3D = (carts[id]["home"] as Callable).call()
+	if id == "ps":
+		ps_kit.eject(func() -> Transform3D: return (carts["ps"]["home"] as Callable).call())
+		_cart_changed()
+		return
 	if id == "egg":
 		_fly_cart(id, home, func() -> void: (carts["egg"]["node"] as Node3D).reparent(drawer_node, true))
 	else:
@@ -4407,14 +4431,14 @@ func _eject_cart() -> void:
 func _cart_changed() -> void:
 	konami_progress = 0
 	_close_controls()
-	if slot_cart != "" and slot_cart != "neo":
+	if slot_cart != "" and slot_cart != "neo" and slot_cart != "ps":
 		_set_lid(true)
 	else:
 		get_tree().create_timer(0.7).timeout.connect(func() -> void:
-			if slot_cart == "" or slot_cart == "neo":
+			if slot_cart == "" or slot_cart == "neo" or slot_cart == "ps":
 				_set_lid(false))
 	if emu != null:
-		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen", "neo"]) else "")
+		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen", "neo", "ps"]) else "")
 	_apply_console()
 
 

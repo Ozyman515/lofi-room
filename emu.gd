@@ -21,6 +21,7 @@ const SYSTEMS := {
 	"sgb": {"title": "SGB", "core": "mgba_libretro", "ext": ["gb", "gbc", "gba", "sgb"]},
 	"neo": {"title": "NEO GEO", "core": "fbneo_neogeo_libretro", "ext": ["zip", "7z"]},
 	"gen": {"title": "GENESIS", "core": "genesis_plus_gx_libretro", "ext": ["md", "gen", "smd", "bin", "sms", "gg", "sg"]},
+	"ps": {"title": "PLAYSTATION", "core": "pcsx_rearmed_libretro", "ext": ["cue", "chd", "pbp", "m3u", "bin", "iso", "img", "exe"]},
 }
 # libretro joypad bits
 const B_B := 1 << 0
@@ -116,7 +117,7 @@ func _ensure_dirs() -> void:
 	if not FileAccess.file_exists(readme):
 		var f := FileAccess.open(readme, FileAccess.WRITE)
 		if f != null:
-			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
+			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
 
 
 # ---------------------------------------------------------------- the text screen (menu, messages)
@@ -241,10 +242,23 @@ func _scan_roms() -> void:
 	var exts: Array = SYSTEMS[system]["ext"]
 	for f in DirAccess.get_files_at(dir):
 		if f.get_extension().to_lower() in exts and not (system == "neo" and f.to_lower() in NEO_BIOS):
+			if system == "ps" and f.get_extension().to_lower() == "bin" and not _lone_bin(dir, f):
+				continue                                    # (the tracks of a game with a .cue: the .cue is the game)
 			_roms.append(f)
 	_roms.sort_custom(func(a, b): return String(a).naturalnocasecmp_to(String(b)) < 0)
 	_sel = clampi(_sel, 0, maxi(_roms.size() - 1, 0))
 	_top = clampi(_top, 0, maxi(_roms.size() - ROWS, 0))
+
+
+# a PlayStation .bin with no .cue naming it (a single-track disc image you can load as it is)
+func _lone_bin(dir: String, bin: String) -> bool:
+	for f in DirAccess.get_files_at(dir):
+		var e := f.get_extension().to_lower()
+		if e == "cue" or e == "m3u":
+			var txt := FileAccess.get_file_as_string(dir.path_join(f))
+			if txt.findn(bin) >= 0 or f.get_basename() == bin.get_basename():
+				return false
+	return true
 
 
 # ---------------------------------------------------------------- called by the room
