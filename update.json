@@ -1,5 +1,5 @@
 {
- "version": 128,
+ "version": 129,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "00b98f6a765ba70648d9dddf025293201126634e1feb7aaaa97ab95a398d10e8",
-   "size": 16149
+   "sha": "7257af8bb9e627eb4fab4fc259a8d09976c3bfb5c6d2a9e8d1511df5f0a6d001",
+   "size": 17187
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -146,12 +146,20 @@
    "size": 16288
   },
   "bin/retro_host.exe": {
-   "sha": "f7d877137be99aa63320f36b6c39631e6b39bead4075132297995260cd6cee03",
-   "size": 12800
+   "sha": "919c9311fd8e5e98a69f52f33e4df5a39399b2d73fba8d6c3297e50c1a4046ad",
+   "size": 74752
   },
   "bin/retro_host_linux": {
-   "sha": "9d7e9a847dc6a2e30d79c4d9715c318905fb501a0b191bda10faead797c1ca6c",
-   "size": 23184
+   "sha": "86add40aa8f63bb904b2c681f7b418ae4c84aa925f52af598c6f36f33152a3a9",
+   "size": 31984
+  },
+  "bin/retro_host_src/libretro.h": {
+   "sha": "036ddffc995ad116c3081ca0a7515d09c2a116f3483e4f5012fe0c29a885da76",
+   "size": 342023
+  },
+  "bin/retro_host_src/retro_host.c": {
+   "sha": "d278e70ec33ccbe95cdef28d37de262676eadc2778f1d7e4457ee6789f6a1153",
+   "size": 24121
   },
   "black_kaiju_model.gd": {
    "sha": "d72b18f7eafb12a3bf7f3ddfbbbc5ecad35bf2352cc1f8945fb1e374db02525d",
@@ -180,6 +188,10 @@
   "comic_book.gd": {
    "sha": "3c56eaa52825af602b3d797a674894ee5eca8669d0401c2f339c97e227a06a29",
    "size": 35543
+  },
+  "cores/CORES.txt": {
+   "sha": "6dcafdfe833a2cd364735fe6c0d05b2d75726f4cf03ba3c4e57fcbb042b7b0a0",
+   "size": 1191
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -213,6 +225,14 @@
    "sha": "c486b289b739cf096af1ed51cc57f5d347a1052c65f53910a797a86d6296acd6",
    "size": 2727400
   },
+  "cores/pcsx_rearmed_libretro.dll": {
+   "sha": "7e5e5c01a614ca57a4653c0ae05500f41801ae4dfd75e312bf054ffcf3325508",
+   "size": 1646080
+  },
+  "cores/pcsx_rearmed_libretro.so": {
+   "sha": "24a5dc82a58704d3f4445f1708965dc181ecd90e8eef677cf0ceeddd6651fb3f",
+   "size": 2287440
+  },
   "cores/snes9x2010_libretro.dll": {
    "sha": "6e185b1d30358cbcaeb927810e75ff9843343eee9ca3328e893eaf7a493e01c8",
    "size": 2889728
@@ -238,8 +258,8 @@
    "size": 4237
   },
   "emu.gd": {
-   "sha": "11c820f466edcf6e02f7dfbc24c8d5289c4fe1686c49db65f7444592dece88f7",
-   "size": 22629
+   "sha": "431a2d4551a8ca7e76d4ad44bc385cff4db4ae6ade5ff0987519d434ec86635c",
+   "size": 25182
   },
   "fight.gd": {
    "sha": "488edd22e79533ec90ad1da696c1ca13e0ca50b7d31a309bc118855ca7573796",
@@ -425,13 +445,21 @@
    "sha": "a153bf5c77229b2c78328e51945363889d8e7901ea774c3d4099e2a28f4b6323",
    "size": 13068
   },
+  "lightgun.gd": {
+   "sha": "b7d81043a628c3e8b86a0d7b61e60554347a256809a8fafdac2093f48532f6d2",
+   "size": 6485
+  },
+  "lightgun_model.gd": {
+   "sha": "ff32dbe01d77f742d0979917602264e889ac8c8e41747a62e2c2954b22727ead",
+   "size": 3034
+  },
   "lofi_theme.gd": {
    "sha": "3ecf7eb4936ed43b2e90831ded4ab8cf3ef049b5437e4b70c238582f618e6917",
    "size": 3474
   },
   "main.gd": {
-   "sha": "4738b876e1c6cef183c30ea69bcacc8e87fa1fad4973e0ec261004b482763cf4",
-   "size": 229219
+   "sha": "cd97c38befc448c8b2f5f4cb03175305c4d38940dc96f6242d6f558ee39f9105",
+   "size": 232108
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -448,6 +476,14 @@
   "media/tv.gif": {
    "sha": "f00180678aa3eafb30bd9861a959bef0e3b4fceb3ca0834c49b11aa0f70502ef",
    "size": 9927
+  },
+  "models/CREDITS.txt": {
+   "sha": "5ac3d251a1ac3d3d99ab68b2aed6257b532b12ff658933d224b0074cd5f23c1c",
+   "size": 220
+  },
+  "models/lightgun_mesh.res": {
+   "sha": "8ad60b9bcbcb6c7e7624b17a7dd94731602867f8636890bac176044f736a984b",
+   "size": 85344
   },
   "monkey_anim.gd": {
    "sha": "36c58ce89ed33886cc0e69e1ba617b01c35ef2c538e004edd44c66c0a117b9c1",
@@ -597,6 +633,10 @@
    "sha": "45e09d72e3ee392d384ff47b0965aa92b14f3fe599237f564bcac6583937cb7c",
    "size": 1204579
   },
+  "ps_kit.gd": {
+   "sha": "ef0a8683b9d98f3a5821aff07bdb39856820df0e8fe6353da0f93c781becdf86",
+   "size": 10579
+  },
   "recliner.gd": {
    "sha": "57929133100e0c132f2c80dd34ce087e29cb70c73aeccf96f88c0d1c9a47bd85",
    "size": 4270
@@ -694,7 +734,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "56292515f7d3a7110811eb8de26b3f75f82a0766aa5a1fd66ebcfcb84fe6d5ff",
+   "sha": "38a407cd7d38b41132709485046d7817571b73c32433877751399e229ce11ce2",
    "size": 4
   },
   "weather.gd": {
