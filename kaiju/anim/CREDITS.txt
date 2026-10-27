@@ -1,3 +1,5 @@
 trex_anims.res: the walk, run, idle, attack (bite), jump and death of the T-Rex in Quaternius's
 "Dinosaur Animated Pack" (Dec 2018), https://quaternius.itch.io - CC0 1.0 (public domain).
 Only the motion is used (sampled onto Banira's own joints by extract_trex.gd.txt); none of the pack's meshes ship.
+robot_anims.res: the idle, punch, walk and other moves of Quaternius's "Animated Robot", https://quaternius.itch.io
+- CC0 1.0 (public domain). Only the motion is used (King Gaboon's arms, torso and head, extract_robot.gd.txt).

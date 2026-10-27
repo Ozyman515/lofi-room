@@ -1,0 +1,85 @@
+extends SceneTree
+# Samples the Robot pack's animations for King Gaboon (gaboon_model.gd's rig frame: authored facing +z, +y up, L side
+# at +x). The robot stands in a T-pose and Gaboon's arms hang, so limbs are kept as the direction each bone points
+# (in the hips' frame), not as turns from rest; the torso and head as turns. Output: meta "anims" =
+# {name: {"len", "fps", "torso"/"head": quaternions xyzw, "upL"/"upR"/"loL"/"loR" (arms), "thL"/"thR"/"shL"/"shR" (legs):
+# unit directions xyz, "lift": hips rise}}
+const FPS := 30.0
+const C := Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0))   # columns: their x, y, z in Gaboon's frame
+var sk: Skeleton3D
+var local := {}
+
+func gpose(i: int) -> Transform3D:
+	var p := sk.get_bone_parent(i)
+	var t: Transform3D = local.get(i, sk.get_bone_rest(i))
+	return t if p < 0 else gpose(p) * t
+
+func A(b: String) -> Basis:
+	var i := sk.find_bone(b)
+	return C * (gpose(i).basis.orthonormalized() * sk.get_bone_global_rest(i).basis.orthonormalized().inverse()) * C.inverse()
+
+func pos(b: String) -> Vector3:
+	return C * gpose(sk.find_bone(b)).origin
+
+func dir(a: String, b: String) -> Vector3:
+	return (pos(b) - pos(a)).normalized()
+
+func _init() -> void:
+	var n: Node3D = (load("res://Robot.fbx") as PackedScene).instantiate()
+	root.add_child(n)
+	sk = n.find_children("*", "Skeleton3D", true, false)[0]
+	var ap: AnimationPlayer = n.find_children("*", "AnimationPlayer", true, false)[0]
+	var hips0 := C * sk.get_bone_global_rest(sk.find_bone("Hips")).origin
+	var out := {}
+	for an in ap.get_animation_list():
+		var nm := String(an).get_slice("_", 1).to_lower()
+		var anim := ap.get_animation(an)
+		var L: float = anim.length
+		var J := {}
+		for j in ["torso", "head", "upL", "upR", "loL", "loR", "thL", "thR", "shL", "shR", "lift"]:
+			J[j] = PackedFloat32Array()
+		var frames := int(ceil(L * FPS)) + 1
+		for f in frames:
+			var t := minf(f / FPS, L)
+			local.clear()
+			for ti in anim.get_track_count():
+				var bi := sk.find_bone(String(anim.track_get_path(ti).get_concatenated_subnames()))
+				if bi < 0:
+					continue
+				var tr: Transform3D = local.get(bi, sk.get_bone_rest(bi))
+				match anim.track_get_type(ti):
+					Animation.TYPE_ROTATION_3D: tr.basis = Basis(anim.rotation_track_interpolate(ti, t)).scaled(tr.basis.get_scale())
+					Animation.TYPE_POSITION_3D: tr.origin = anim.position_track_interpolate(ti, t)
+				local[bi] = tr
+			var hips := A("Hips")
+			var hinv := hips.inverse()
+			var torso := hinv * A("Torso")
+			for q in [["torso", torso], ["head", A("Torso").inverse() * A("Head")]]:
+				var qq: Quaternion = (q[1] as Basis).get_rotation_quaternion()
+				J[q[0]].append_array([qq.x, qq.y, qq.z, qq.w])
+			# limb directions in the hips' frame (Gaboon's arms hang off his body pivot, his legs off the rig)
+			var dirs := {"upL": hinv * dir("UpperArm.L", "LowerArm.L"), "loL": hinv * dir("LowerArm.L", "Palm2.L"),
+				"upR": hinv * dir("UpperArm.R", "LowerArm.R"), "loR": hinv * dir("LowerArm.R", "Palm2.R"),
+				"thL": dir("UpperLeg.L", "LowerLeg.L"), "shL": dir("LowerLeg.L", "LowerLeg.L_end"),
+				"thR": dir("UpperLeg.R", "LowerLeg.R"), "shR": dir("LowerLeg.R", "LowerLeg.R_end")}
+			for k in dirs:
+				var d: Vector3 = dirs[k]
+				J[k].append_array([d.x, d.y, d.z])
+			J["lift"].append((pos("Hips") - hips0).y)
+		var d := {"len": L, "fps": FPS}
+		for j in J:
+			d[j] = J[j]
+		out[nm] = d
+	var r := Resource.new()
+	r.set_meta("anims", out)
+	r.set_meta("source", "Animated Robot by Quaternius, CC0 1.0: Robot.fbx")
+	print("SAVE ", ResourceSaver.save(r, "res://robot_anims.res"), " anims ", out.keys())
+	# which arm punches, and when (forward = +z)
+	var pu: Dictionary = out["punch"]
+	var s := ""
+	for f in range(0, int(pu["lift"].size()), 3):
+		s += "f%d L(%.2f,%.2f) R(%.2f,%.2f)  " % [f, pu["loL"][f*3+1], pu["loL"][f*3+2], pu["loR"][f*3+1], pu["loR"][f*3+2]]
+	print("PUNCH forearm y,z: ", s)
+	var id: Dictionary = out["idle"]
+	print("IDLE upL ", Vector3(id["upL"][0], id["upL"][1], id["upL"][2]), " loL ", Vector3(id["loL"][0], id["loL"][1], id["loL"][2]), " thL ", Vector3(id["thL"][0], id["thL"][1], id["thL"][2]))
+	quit()
