@@ -11,6 +11,9 @@ const WHITE := Color(0.93, 0.94, 0.96)
 const TOOTH := Color(0.97, 0.96, 0.90)
 const TONGUE := Color(0.14, 0.19, 0.38)
 const ICE_GLOW := Color(0.35, 0.75, 1.0)
+const EYE := Color(0.35, 0.8, 1.0)              # the eyes glow like the ice crest
+const EYE_AT := Vector3(0.214, 0.152, 0.043)   # the eye sockets (head space; z mirrored for the other side)
+const BOXY := 0.75                              # how far the skull's rounded top is squared off (0 = as baked)
 
 # pivots (body space), from the bake
 const HEAD := Vector3(0.356, 0.784, 0.0)
@@ -40,8 +43,10 @@ static func build(toy := false) -> Node3D:
 	head.name = "Head"
 	head.position = HEAD
 	body.add_child(head)
-	_part(head, dir + "head.res", skin)
+	var hm := _part(head, dir + "head.res", skin)
+	hm.mesh = _boxy_head(hm.mesh)
 	_part(head, dir + "teeth_up.res", tooth)
+	_head_detail(head, ice)
 	var jaw := Node3D.new()
 	jaw.name = "Jaw"
 	jaw.position = JAW - HEAD
@@ -161,6 +166,105 @@ static func _skin_mesh(src: Mesh) -> ArrayMesh:
 		arr[Mesh.ARRAY_WEIGHTS] = weights
 		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	return out
+
+
+# ---- the head: a boxier skull (the top squared off, brow ridges over the eyes), eyes that glow, little horns
+
+static var _boxed := {}
+
+
+static func _boxy_head(src: Mesh) -> Mesh:
+	var key := src.resource_path
+	if _boxed.has(key):
+		return _boxed[key]
+	var out := ArrayMesh.new()
+	for si in src.get_surface_count():
+		var arr := src.surface_get_arrays(si)
+		var v := arr[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		# per slice along the head (x): the middle height, the half height above it and the half width
+		var lo := {}
+		var hi := {}
+		var wd := {}
+		for p in v:
+			var b := int(floor(p.x / 0.02))
+			lo[b] = minf(lo.get(b, 9.0), p.y)
+			hi[b] = maxf(hi.get(b, -9.0), p.y)
+			wd[b] = maxf(wd.get(b, 0.0), absf(p.z))
+		for n in v.size():
+			var p := v[n]
+			var b := int(floor(p.x / 0.02))
+			var cy: float = (float(lo[b]) + float(hi[b])) * 0.5
+			var hy: float = maxf(float(hi[b]) - cy, 0.01)
+			var hz: float = maxf(float(wd[b]), 0.01)
+			var uy := (p.y - cy) / hy
+			var uz := p.z / hz
+			if uy <= 0.0:
+				continue                                   # the mouth line and below stay as they are (teeth, jaw)
+			var r := Vector2(uz, uy).length()
+			if r < 0.001:
+				continue
+			var c := absf(uz) / r
+			var sn := uy / r
+			var k := 1.0 / pow(pow(c, 4.0) + pow(sn, 4.0), 0.25)           # circle -> rounded square
+			var g := smoothstep(0.0, 0.5, uy) * smoothstep(-0.12, 0.0, p.x) * (1.0 - smoothstep(0.24, 0.31, p.x))
+			var kk := lerpf(1.0, k, BOXY * g)
+			v[n] = Vector3(p.x, cy + uy * kk * hy, uz * kk * hz)
+		arr[Mesh.ARRAY_VERTEX] = v
+		arr[Mesh.ARRAY_NORMAL] = null
+		var st := SurfaceTool.new()
+		st.create_from_arrays(arr)
+		st.generate_normals()
+		st.commit(out)
+	_boxed[key] = out
+	return out
+
+
+static func _head_detail(head: Node3D, horn_mat: Material) -> void:
+	var em := StandardMaterial3D.new()
+	em.albedo_color = EYE
+	em.emission_enabled = true
+	em.emission = EYE
+	em.emission_energy_multiplier = 1.6
+	em.roughness = 0.2
+	em.disable_fog = true
+	var pup := StandardMaterial3D.new()
+	pup.albedo_color = Color(0.04, 0.05, 0.1)
+	pup.roughness = 0.3
+	for sd in [1.0, -1.0]:
+		var at := Vector3(EYE_AT.x, EYE_AT.y, EYE_AT.z * sd)
+		var eye := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.022
+		sm.height = 0.044
+		sm.radial_segments = 14
+		sm.rings = 7
+		eye.mesh = sm
+		eye.material_override = em
+		eye.position = at + Vector3(0.0, -0.004, 0.0)
+		head.add_child(eye)
+		var pu := MeshInstance3D.new()                  # a slit pupil, looking out and forward
+		var pm := BoxMesh.new()
+		pm.size = Vector3(0.007, 0.03, 0.004)
+		pu.mesh = pm
+		pu.material_override = pup
+		pu.position = at + Vector3(0.007, -0.003, 0.019 * sd)
+		pu.rotation = Vector3(0.0, -0.6 * sd, 0.0)
+		head.add_child(pu)
+		# a little horn on the brow over each eye, swept back and a little out (the base sits on the skull)
+		var pivot := Node3D.new()
+		pivot.position = Vector3(0.178, 0.186, 0.056 * sd)
+		pivot.rotation = Vector3(0.3 * sd, 0.0, 0.62)
+		head.add_child(pivot)
+		var horn := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.0
+		cm.bottom_radius = 0.019
+		cm.height = 0.075
+		cm.radial_segments = 10
+		horn.mesh = cm
+		horn.material_override = horn_mat
+		horn.position = Vector3(0.0, 0.0375, 0.0)
+		pivot.add_child(horn)
 
 
 static func _part(parent: Node3D, path: String, mat: Material) -> MeshInstance3D:
