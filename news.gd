@@ -347,11 +347,20 @@ func _pick(list: Array) -> String:
 	return _names(str(list[_rng.randi() % list.size()]))
 
 
-# once the station has a name for one, he uses it
+# Nobody is called by name until an interview has given the station that name (Banira from the ice cream vendor,
+# King Gaboon from the hunter, Jogari from the visitor); until then they're the white one, the monkey, the black one.
+# The lines say {K}/{k}, {G}/{g}, {B}/{b} (capitalised or not) where a name goes.
 func _names(t: String) -> String:
-	if _named.has("k"):
+	var k := _named.has("k")
+	var g := _named.has("g")
+	var b := _named.has("b")
+	t = t.replace("{K}", "Banira" if k else "The white one").replace("{k}", "Banira" if k else "the white one")
+	t = t.replace("{G_big}", "King Gaboon" if g else "The big monkey")
+	t = t.replace("{G}", "King Gaboon" if g else "The monkey").replace("{g}", "King Gaboon" if g else "the monkey")
+	t = t.replace("{B}", "Jogari" if b else "The black one").replace("{b}", "Jogari" if b else "the black one")
+	if k:
 		t = t.replace("The white one", "Banira").replace("the white one", "Banira").replace("the T-Rex", "Banira")
-	if _named.has("b"):
+	if b:
 		t = t.replace("the black one", "Jogari").replace("The black one", "Jogari")
 	return t
 
@@ -552,9 +561,10 @@ const IV := {
 			"Banira. That's what they're calling it down in Old Town. Back to the rooftops."]},
 	"hunter": {"strip": "BIG-GAME HUNTER  -  THE DOCKS", "name": "g", "lines": [
 		["q", "Sir, you look like a man who knows something about that monkey.", ""],
-		["a", "Know him? I've tracked him across three continents for twenty years!", ""],
-		["a", "That, my boy, is King Gaboon. And King Gaboon bows to no one.", ""]],
-		"after": ["King Gaboon. A hunter's word for it, folks, and I'm not about to argue.",
+		["a", "Know him? Ja! I haff tracked him across three continents for twenty years!", ""],
+		["a", "He gave me zis scar in ze Congo. I gave him nothing. Not yet.", ""],
+		["a", "Zat, my boy, is King Gaboon. Und King Gaboon bows to no one.", ""]],
+		"after": ["King Gaboon. A hunter's word for it, folks, and with a scar like that I'm not about to argue.",
 			"King Gaboon. Twenty years that man has been chasing him. Back to the rooftops."]},
 	"visitor": {"strip": "A VISITOR  -  DECLINED TO GIVE A NAME", "name": "b", "lines": [
 		["q", "Excuse me, sir... the black one. Do you know what it is?", ""],
@@ -835,6 +845,16 @@ func _build_hunter(at: Vector3) -> Dictionary:
 	_ell(head, Vector3(0, 0.22, -0.005), Vector3(0.12, 0.1, 0.135), helmet)
 	_put(head, _cyl_mesh(0.18, 0.012), Vector3(0, 0.2, 0.0), helmet).scale = Vector3(1.0, 1.0, 1.15)
 	_put(head, _cyl_mesh(0.122, 0.022), Vector3(0, 0.215, -0.005), _mat(Color(0.35, 0.28, 0.2), 0.6)).scale = Vector3(1.0, 1.0, 1.1)   # hat band
+	# a big old scar down across his left eye, brow to cheek (King Gaboon gave him that)
+	var scar := _mat(Color(0.78, 0.42, 0.42), 0.5)
+	var sp := [Vector3(0.054, 0.205, 0.07), Vector3(0.046, 0.176, 0.09), Vector3(0.04, 0.15, 0.092), Vector3(0.036, 0.122, 0.086), Vector3(0.032, 0.094, 0.09)]
+	for i in sp.size() - 1:
+		var a: Vector3 = sp[i]
+		var b: Vector3 = sp[i + 1]
+		var seg := _box(head, (a + b) * 0.5, Vector3(0.009, a.distance_to(b) + 0.004, 0.005), scar)
+		var yv := (b - a).normalized()
+		var xv := yv.cross(Vector3(0, 0, 1)).normalized()
+		seg.basis = Basis(xv, yv, xv.cross(yv))
 	var tache := _mat(Color(0.82, 0.8, 0.76), 0.7)                                                          # a grand white moustache
 	for sx in [-1.0, 1.0]:
 		_ell(head, Vector3(sx * 0.03, 0.084, 0.092), Vector3(0.036, 0.012, 0.014), tache).rotation.z = sx * -0.35
@@ -915,23 +935,23 @@ const LINES := {
 	"enter": ["They're both coming in from opposite ends of the city. The ground is shaking up here.",
 		"There it is. Two of them. I never thought I'd say that on the air."],
 	"faceoff": ["They've stopped. They're staring each other down. I can hear them from here.",
-		"That roar shattered windows three blocks away. The big monkey is answering it."],
+		"That roar shattered windows three blocks away. {G_big} is answering it."],
 	"grapple": ["They're locked together, shoving, neither one giving an inch.",
 		"They've grabbed hold of each other. The whole skyline is swaying."],
-	"bite": ["The white one has its jaws on the monkey's shoulder!", "A savage bite! King Gaboon is reeling!"],
-	"punch": ["King Gaboon lands a blow right across its jaw!", "A punch you could feel in your teeth, folks."],
+	"bite": ["{K} has its jaws on {g}'s shoulder!", "A savage bite! {G} is reeling!"],
+	"punch": ["{G} lands a blow right across its jaw!", "A punch you could feel in your teeth, folks."],
 	"tail": ["It spun around and caught him with that enormous tail!", "That tail swept him clean off his feet!"],
-	"tackle": ["The monkey is down! He's down behind the towers!", "A head-on charge, and King Gaboon goes over!"],
-	"slam": ["He's thrown it! The white one is down in a cloud of dust!", "King Gaboon picked it up and slammed it into the street!"],
+	"tackle": ["{G} is down! He's down behind the towers!", "A head-on charge, and {G} goes over!"],
+	"slam": ["He's thrown it! {K} is down in a cloud of dust!", "{G} picked it up and slammed it into the street!"],
 	"circle": ["They're circling now. Catching their breath, if monsters breathe.", "A lull. But nobody down there believes it's over."],
 	"roars": ["Listen to that. I don't think there's a glass window left on Fifth Street.", "They're roaring at each other across the rooftops."],
-	"ice_beam": ["Its back is glowing! It's breathing... ice? The monkey is freezing solid!", "A beam of pure cold! I can see frost forming from here!"],
-	"fireball": ["He's holding fire in his hands! He's thrown it!", "A ball of fire! It hit the white one square in the chest!"],
+	"ice_beam": ["Its back is glowing! It's breathing... ice? {G} is freezing solid!", "A beam of pure cold! I can see frost forming from here!"],
+	"fireball": ["He's holding fire in his hands! He's thrown it!", "A ball of fire! It hit {k} square in the chest!"],
 	"clash": ["They've hit each other at the same moment! Both of them are staggering!", "Head to head! Neither one is standing straight!"],
-	"g_retreat": ["The monkey is thawing out and backing away. He's leaving!", "King Gaboon is retreating into the city."],
-	"k_retreat": ["The white one is limping off, smoke trailing behind it.", "It's turning away. It's had enough."],
-	"k_victory": ["The white one is roaring over the city. It's claimed the night.", "Listen to that victory cry."],
-	"g_victory": ["King Gaboon beats his chest. There's no doubt who won tonight.", "He's standing tall over the skyline."],
+	"g_retreat": ["{G} is thawing out and backing away. He's leaving!", "{G} is retreating into the city."],
+	"k_retreat": ["{K} is limping off, smoke trailing behind it.", "It's turning away. It's had enough."],
+	"k_victory": ["{K} is roaring over the city. It's claimed the night.", "Listen to that victory cry."],
+	"g_victory": ["{G} beats his chest. There's no doubt who won tonight.", "He's standing tall over the skyline."],
 	"bk_arrive": ["Wait. Something else is coming up behind them. A third one! Black as night!",
 		"There's another one! It's bigger than both of them!"],
 	"bk_roar": ["Listen to that! Its stripes are glowing like the signs on Main Street!", "All three of them, roaring at each other. God help us."],
