@@ -176,12 +176,35 @@ func _place_toys() -> void:
 	var jh := Node3D.new()
 	jh.position = jpos + Vector3(0, 0.08, 0)
 	main.study_kit.add_child(jh)
+	# pick it up: it rears, roars a low little roar and its neon flares
+	var jhead: Node3D = jt.get_node("Body/Head")
+	var jjaw: Node3D = jhead.get_node("Jaw")
+	var jroar := AudioStreamPlayer.new()
+	jroar.stream = load("res://gaboon.gd")._make_roar()
+	jroar.volume_db = -13.0
+	jroar.pitch_scale = 1.7
+	add_child(jroar)
+	var glows: Array = []
+	for mi in jt.find_children("*", "MeshInstance3D", true, false):
+		var gm := (mi as MeshInstance3D).material_override as StandardMaterial3D
+		if gm != null and gm.emission_enabled and not glows.has(gm):
+			glows.append([gm, gm.emission_energy_multiplier])
+	var jstate := {"roared": false}
+	var jhold: Node = load("res://toy_hold.gd").new()
+	add_child(jhold)
+	jhold.setup(main, jt, Vector3.RIGHT, 2.8, func(t: float, k: float) -> void:
+		var r := 0.0 if t < 0.0 else smoothstep(0.5, 1.0, t) * (1.0 - smoothstep(2.2, 2.6, t)) * k
+		jhead.rotation = Vector3(0.1 * r * sin(t * 18.0), 0.0, 0.4 * r)
+		jjaw.rotation.z = -0.5 * r
+		for g in glows:
+			(g[0] as StandardMaterial3D).emission_energy_multiplier = float(g[1]) * (1.0 + 1.5 * r)
+		if t >= 0.0 and t < 0.1:
+			jstate["roared"] = false
+		if t > 0.85 and not jstate["roared"]:
+			jstate["roared"] = true
+			jroar.play(), Callable())
 	main.interactables.append({"node": jh, "half": Vector3(0.08, 0.09, 0.08), "guest_ok": true,
-		"label": func() -> String: return "JOGARI", "cb": func() -> void:
-			var tw := jt.create_tween()                  # a little wobble
-			tw.tween_property(jt, "rotation:z", 0.2, 0.1)
-			tw.tween_property(jt, "rotation:z", -0.2, 0.15)
-			tw.tween_property(jt, "rotation:z", 0.0, 0.1)})
+		"label": func() -> String: return "JOGARI", "cb": func() -> void: jhold.pick()})
 
 
 # ---- snow settling outside: on the balcony floor, the railing, the table and chairs, the neighbours' balconies

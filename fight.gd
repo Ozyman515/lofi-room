@@ -984,6 +984,7 @@ func _apply_g() -> void:
 # torso and head breathe with its idle; each punch is its jab, the fist landing on the hit. The chest beats and the
 # grapples keep their own moves.
 var _punch_prev := [0.0, 0.0]
+var _fist_l := false
 var _punch_t := [0.0, 0.0]
 
 
@@ -1004,6 +1005,11 @@ func _ape_arms(p: Dictionary, rear: float, beat: float, grab: float) -> void:
 		_punch_prev[i] = v
 		var pose: Dictionary = ApeAnim.sample("punch", _punch_t[i], false) if v > 0.0 else idle
 		var w := maxf(guard * 0.85, minf(1.0, v * 1.4))
+		var fist_on := w > 0.35 or rear > 0.5
+		if i == 0:
+			_fist_l = fist_on
+		else:
+			GaboonScript.fists(p, _fist_l, fist_on)
 		if w <= 0.001:
 			continue
 		var q: Array = ApeAnim.arm(pose, i, body.quaternion)

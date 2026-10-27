@@ -80,6 +80,18 @@ static func _parts(g: Node3D) -> Dictionary:
 	}
 
 
+# fists (fighting, reared up) or open hands (walking on his knuckles), each side on its own
+static func fists(p: Dictionary, left: bool, right: bool) -> void:
+	for i in 2:
+		var e := p["elbows"][i] as Node3D
+		var on := left if i == 0 else right
+		var f := e.get_node_or_null("Fist") as Node3D
+		var o := e.get_node_or_null("Fingers") as Node3D
+		if f != null and o != null and f.visible != on:
+			f.visible = on
+			o.visible = not on
+
+
 # ---- starting a walk
 
 func request_walk() -> void:
@@ -133,6 +145,7 @@ func _process(delta: float) -> void:
 
 # diagonal pairs move together, like a real knuckle-walker: front left with back right
 static func _walk_pose(p: Dictionary, ph: float) -> void:
+	fists(p, false, false)
 	var s := sin(ph)
 	(p["body"] as Node3D).rotation = Vector3(0.03 * sin(ph * 2.0), 0.0, 0.035 * s)
 	for i in 2:
@@ -157,6 +170,7 @@ static func _show_pose(p: Dictionary, t: float, turn := -0.85) -> float:
 	var beat := _ramp(t, 1.8, 2.0) * (1.0 - _ramp(t, 3.3, 3.5))
 	var roar := _ramp(t, 3.4, 3.8) * (1.0 - _ramp(t, 5.6, 6.1))
 	(p["body"] as Node3D).rotation = Vector3(-0.5 * rear, 0.0, 0.0)          # front end rises, pivoting at the hips
+	fists(p, rear > 0.5, rear > 0.5)
 	(p["head"] as Node3D).rotation = Vector3(0.45 * rear - 0.25 * roar, turn * look, 0.0)   # toward the room, level while reared
 	(p["jaw"] as Node3D).rotation = Vector3(0.55 * roar + 0.04 * roar * sin(t * 30.0), 0.0, 0.0)
 	(p["tail"] as Node3D).rotation = Vector3(0.25 * rear, 0.15 * sin(t * 2.0) * rear, 0.0)

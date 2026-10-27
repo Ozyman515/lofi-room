@@ -70,12 +70,20 @@ func _build() -> Node3D:
 		var elbow := _pivot(arm, "Elbow", Vector3(1.45 * s, 1.85, 0.95))
 		_tube(elbow, "fur", [Vector3(1.45 * s, 1.85, 0.95), Vector3(1.42 * s, 1.2, 1.18), Vector3(x, 0.55, 1.35)], 0.41, 0.28, 0.04)
 		_cone(elbow, "dark", Vector3(0.03 * s, 0.1, -0.1) + Vector3(1.45 * s, 1.85, 0.95), Vector3(0.3 * s, -0.6, -1.0), 0.2, 0.55)
-		_ell(elbow, "skin", Vector3(x, 0.3, 1.47), Vector3(0.32, 0.28, 0.36))
+		# the open hand he walks on ("Fingers"), and the same hand balled into a fist ("Fist") for fighting
+		var open_hand := _pivot(elbow, "Fingers", Vector3(1.45 * s, 1.85, 0.95))
+		_ell(open_hand, "skin", Vector3(x, 0.3, 1.47), Vector3(0.32, 0.28, 0.36))
 		for k in 4:
 			var o := (k - 1.5) * 0.15 * s
-			_tube(elbow, "skin", [Vector3(x + o, 0.42, 1.68), Vector3(x + o, 0.24, 1.86), Vector3(x + o, 0.07, 1.88)], 0.085, 0.065, 0.0, 10, 12)
-			_cone(elbow, "claw", Vector3(x + o, 0.06, 1.9), Vector3(0, -0.3, 1), 0.05, 0.16)
-		_tube(elbow, "skin", [Vector3(x - 0.26 * s, 0.35, 1.5), Vector3(x - 0.34 * s, 0.18, 1.66), Vector3(x - 0.32 * s, 0.07, 1.74)], 0.08, 0.06, 0.0, 8, 12)
+			_tube(open_hand, "skin", [Vector3(x + o, 0.42, 1.68), Vector3(x + o, 0.24, 1.86), Vector3(x + o, 0.07, 1.88)], 0.085, 0.065, 0.0, 10, 12)
+			_cone(open_hand, "claw", Vector3(x + o, 0.06, 1.9), Vector3(0, -0.3, 1), 0.05, 0.16)
+		_tube(open_hand, "skin", [Vector3(x - 0.26 * s, 0.35, 1.5), Vector3(x - 0.34 * s, 0.18, 1.66), Vector3(x - 0.32 * s, 0.07, 1.74)], 0.08, 0.06, 0.0, 8, 12)
+		var fist := _pivot(elbow, "Fist", Vector3(1.45 * s, 1.85, 0.95))
+		fist.visible = false
+		_ell(fist, "skin", Vector3(x, 0.32, 1.45), Vector3(0.36, 0.34, 0.36))                          # the ball of the fist
+		_tube(fist, "skin", [Vector3(x + 0.27 * s, 0.42, 1.62), Vector3(x, 0.45, 1.7), Vector3(x - 0.27 * s, 0.42, 1.62)], 0.14, 0.14, 0.0, 10, 12)   # the curled fingers, knuckles forward
+		_tube(fist, "skin", [Vector3(x + 0.25 * s, 0.24, 1.6), Vector3(x, 0.2, 1.7), Vector3(x - 0.25 * s, 0.24, 1.6)], 0.12, 0.12, 0.0, 10, 12)
+		_tube(fist, "skin", [Vector3(x - 0.3 * s, 0.38, 1.4), Vector3(x - 0.3 * s, 0.28, 1.6), Vector3(x - 0.12 * s, 0.22, 1.76)], 0.08, 0.065, 0.0, 8, 12)   # the thumb across the front
 
 	# ---- legs: hip pivot (thigh), knee pivot (shin, foot, toes); on the rig so the feet stay put
 	for s: float in [1.0, -1.0]:

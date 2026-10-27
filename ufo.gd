@@ -150,6 +150,22 @@ func _build_figure() -> void:
 		e.scale = Vector3(0.0118, 0.0062, 0.0042)
 		e.rotation = Vector3(0.0, sx * 0.5, sx * 0.48)              # tilted up at the outer corners, following the curve
 		_fig_head.add_child(e)
+	_fig = fig
+	_fig_warble = AudioStreamPlayer.new()
+	_fig_warble.stream = _make_warble()
+	_fig_warble.volume_db = -12.0
+	add_child(_fig_warble)
+	_fig_hold = load("res://toy_hold.gd").new()
+	add_child(_fig_hold)
+	_fig_hold.setup(main, fig, Vector3.BACK, 2.6, func(t: float, _k: float) -> void:
+		if t >= 0.0:
+			_fig_t = maxf(_fig_t, 0.6)                  # it keeps bobbling while you hold it
+			set_process(true)
+		if t > 0.5 and not _fig_said:
+			_fig_said = true
+			_fig_warble.play()
+		if t >= 0.0 and t < 0.1:
+			_fig_said = false, Callable())
 	var hit := Node3D.new()
 	hit.position = FIG_POS + Vector3(0, 0.073, 0)
 	main.room.add_child(hit)
@@ -250,7 +266,16 @@ static func _cr(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
 	return 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t2 * t)
 
 
+var _fig: Node3D
+var _fig_hold: Node
+var _fig_warble: AudioStreamPlayer
+var _fig_said := false
+
+
+# pick it up: its head bobbles away in your hand and it warbles at you; ten times and the real one visits
 func tap_figure() -> void:
+	if _fig_hold != null and not _fig_hold.pick():
+		return
 	_fig_t = 1.2                                    # bobble
 	set_process(true)
 	if active:
@@ -373,6 +398,27 @@ func apply_remote(n: int) -> void:
 
 
 # ---- sounds, made here
+
+# a little alien warble: a sine that slides up and down twice, with a wobble
+static func _make_warble() -> AudioStreamWAV:
+	var rate := 22050
+	var n := int(rate * 0.9)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / rate
+		var f := 700.0 + 420.0 * sin(t * TAU * 2.3) + 40.0 * sin(t * TAU * 31.0)
+		ph += TAU * f / rate
+		var env := smoothstep(0.0, 0.04, t) * (1.0 - smoothstep(0.7, 0.9, t))
+		var v := int(clampf(sin(ph) * 0.5 * env, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, v)
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.data = data
+	return w
+
 
 static func _make_hum() -> AudioStreamWAV:
 	var rate := 22050

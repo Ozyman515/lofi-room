@@ -246,7 +246,6 @@ func _flicker(delta: float) -> void:
 
 var _toy: Node3D
 var _toy_plays := 0
-var _toy_busy := false
 const ToyCard := preload("res://toy_card.gd")
 const TOY_PLAYS := 10                # stomps it takes to call the real one
 
@@ -280,6 +279,13 @@ func _build_toy() -> void:
 	place_toy(main.study_kit, TOY_POS, PI + 0.3)
 	main.interactables.append({"node": _hit, "half": Vector3(0.07, 0.07, 0.07), "guest_ok": true,
 		"label": func() -> String: return "BANIRA" if not active else "BANIRA  (uh oh)", "cb": play_with_toy})
+	_toy_head = _toy.get_node("Body/Head")
+	_toy_jaw = _toy_head.get_node("Jaw")
+	_toy_roar = _player(load("res://gaboon.gd")._make_roar(), -13.0)
+	_toy_roar.pitch_scale = 2.1                      # a little roar, higher than King Gaboon's figure
+	_hold = load("res://toy_hold.gd").new()
+	add_child(_hold)
+	_hold.setup(main, _toy, Vector3.RIGHT, 2.8, _toy_show, _toy_back)
 
 
 # put the figure (on its base, with its name card) somewhere: pos is the top of what it stands on
@@ -298,23 +304,41 @@ func place_toy(parent: Node3D, pos: Vector3, yaw: float) -> void:
 	_card = ToyCard.place(parent, pos, yaw, "BANIRA", 0.075)
 
 
+# pick the figure up: it rears back and roars a little roar in your hand, then goes back on the console; the tenth
+# time, something out there answers (and played with King Gaboon's figure too, the two of them fight instead)
 func play_with_toy() -> void:
-	if _toy_busy or active:
+	if active or not _hold.pick():
 		return
-	_toy_busy = true
 	_toy_plays += 1
-	var fight_on: bool = main.fight != null and main.fight.toy_played("kaiju")
-	# a little stomp-stomp on the nightstand; the tenth time, something out there answers
-	var tw := create_tween()
-	for i in 2:
-		tw.tween_property(_toy, "rotation:z", 0.25, 0.12)
-		tw.tween_property(_toy, "position:y", _toy_pos.y + 0.04, 0.12)
-		tw.tween_property(_toy, "rotation:z", -0.25, 0.12)
-		tw.tween_property(_toy, "position:y", _toy_pos.y + 0.01, 0.1)
-	tw.tween_property(_toy, "rotation:z", 0.0, 0.15)
-	await tw.finished
-	_toy_busy = false
-	if fight_on:
+	_toy_fight = main.fight != null and main.fight.toy_played("kaiju")
+
+
+var _hold: Node
+var _toy_fight := false
+var _toy_head: Node3D
+var _toy_jaw: Node3D
+var _toy_roar: AudioStreamPlayer
+var _toy_roared := false
+
+
+func _toy_show(t: float, k: float) -> void:
+	if t < 0.0:
+		_toy_head.rotation = Vector3.ZERO
+		_toy_jaw.rotation = Vector3.ZERO
+		return
+	# rear back with the mouth open, then the roar, the head shaking
+	var r := smoothstep(0.5, 1.0, t) * (1.0 - smoothstep(2.2, 2.6, t)) * k
+	_toy_head.rotation = Vector3(0.12 * r * sin(t * 20.0), 0.0, 0.45 * r)
+	_toy_jaw.rotation.z = -0.55 * r
+	if not _toy_roared and t > 0.85:
+		_toy_roared = true
+		_toy_roar.play()
+	if t < 0.1:
+		_toy_roared = false
+
+
+func _toy_back() -> void:
+	if _toy_fight:
 		_toy_plays = 0
 		return
 	if _toy_plays < TOY_PLAYS:
