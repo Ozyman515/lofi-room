@@ -938,6 +938,12 @@ int main(int argc, char **argv) {
 	{
 		int one = 1;
 		setsockopt(g_sock, IPPROTO_TCP, 1 /* TCP_NODELAY */, (const char *)&one, sizeof(one));
+		{
+			/* room for a few whole pictures on the way (a GameCube one is 1.35 MB; Windows' default is 64 KB), so
+			   handing one over doesn't hold up the game while the room takes it in */
+			int big = 8 * 1024 * 1024;
+			setsockopt(g_sock, SOL_SOCKET, SO_SNDBUF, (const char *)&big, sizeof(big));
+		}
 	}
 	lib = open_lib(argv[2]);
 	if (!lib) { send_error("cannot load the core"); return 5; }

@@ -793,12 +793,56 @@ func _process_running(delta: float) -> void:
 			_peer.put_data(PackedByteArray([77, _speed]))
 
 
+# Take in what the emulator program has sent. One read only gets what fits in the connection's buffer (about
+# 64 KB on Windows), which is one SNES picture but a GameCube one is 1.35 MB: keep reading while more comes in
+# (it arrives about as fast as we read it), for up to 4 ms a frame, waiting for the rest of a picture that has
+# started arriving. Otherwise a GameCube game got 4 pictures a second, and the emulator, waiting to hand them
+# over, slowed down too.
 func _read() -> void:
-	var n := _peer.get_available_bytes()
-	if n > 0:
-		var r := _peer.get_data(n)
-		if r[0] == OK:
+	var t0 := Time.get_ticks_usec()
+	var idle := 0
+	while true:
+		var n := _peer.get_available_bytes()
+		if n > 0:
+			var r := _peer.get_data(n)
+			if r[0] != OK:
+				return
 			_rx.append_array(r[1] as PackedByteArray)
+			idle = 0
+		else:
+			idle += 1
+			if idle > 2 and not _mid_picture():
+				return                         # nothing more right now (and no picture half-way in)
+		if Time.get_ticks_usec() - t0 > 4000:
+			return
+		_peer.poll()
+
+
+# a message (most likely a picture) has started arriving but isn't all here yet (the same sizes _parse reads)
+func _mid_picture() -> bool:
+	var p := 0
+	var n := _rx.size()
+	while p < n:
+		var t := _rx[p]
+		var size := 0
+		match t:
+			75: size = 5                                                  # 'K'
+			86:                                                           # 'V'
+				if n - p < 9: return true
+				size = 9 + _rx.decode_u32(p + 1) * _rx.decode_u32(p + 5) * 4
+			65:                                                           # 'A'
+				if n - p < 5: return true
+				size = 5 + _rx.decode_u32(p + 1) * 8
+			72: size = 25                                                 # 'H'
+			73, 69:                                                       # 'I', 'E'
+				if n - p < 2: return true
+				size = 2 + _rx[p + 1]
+			_:
+				return false
+		if n - p < size:
+			return true
+		p += size
+	return false
 
 
 func _parse() -> void:
