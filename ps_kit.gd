@@ -11,7 +11,7 @@ const DISC_R := 0.06
 const SLOT_X := 0.0275           # the slit in the console's disc door (console space; the door is on its upper front)
 const SLOT_Y := 0.0725
 const SLOT_W := 0.13
-const STAGE_AT := Vector3(0.42, 0.0, 0.10)    # where the open case lies: beside the console, by its front corner (clear of the controllers)
+const STAGE_AT := Vector3(-0.47, 0.0, 0.08)   # where the open case lies: beside the console's left side, by its front (clear of the controllers and the guns)
 
 var main: Node3D
 var console: Node3D

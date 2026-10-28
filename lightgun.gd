@@ -21,7 +21,13 @@ var gun: Node3D                    # the model (on its rest, or in your hand / v
 var _rest_parent: Node3D
 var _rest_xf := Transform3D()
 var _kick := 0.0
-const REST_AT := [Vector3(0.28, 0.0, -0.22), Vector3(0.50, 0.0, -0.22)]   # where each lies, in the console's frame (beside its right side)
+const REST_AT := [Vector3(0.28, 0.0, -0.22), Vector3(0.60, 0.0, -0.01)]   # where each lies, in the console's frame (beside its right side)
+# how each lies there: gun 1 on its side, muzzle to the console's front and grip out; gun 2 further out the other
+# way round, its grip toward the console and the muzzle toward the TV (the two make a loose L)
+const REST_BASIS := [
+	Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0),
+	Basis(Vector3.UP, -0.15) * Basis(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)),
+]
 const SCALE := 2.0                 # (the model is 19 cm long; this makes it about 38 cm, a chunky arcade gun)
 const GRIP := Vector3(0.0, -0.069, 0.069)   # the middle of the grip, model space (unscaled)
 const HAND_AT := Vector3(0.0, -0.015, 0.02)  # VR: where the grip sits in the controller's frame
@@ -74,11 +80,11 @@ func build(m: Node3D, i := 0) -> void:
 	# lying on its side on the rug beside the console, the muzzle toward the front
 	var con: Node3D = main.console_root
 	_rest_parent = con
-	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT[idx] + Vector3(0.0, 0.0125 * SCALE + 0.002, 0.0))
+	_rest_xf = Transform3D(REST_BASIS[idx], REST_AT[idx] + Vector3(0.0, 0.0125 * SCALE + 0.002, 0.0))
 	con.add_child(gun)
 	gun.transform = _rest_xf
 	_hit = Node3D.new()
-	_hit.position = REST_AT[idx] + Vector3(0.0, 0.03, 0.0)
+	_hit.position = _rest_xf * (Vector3(0.0, -0.04, 0.0) * SCALE)      # (the middle of the gun, a little into the grip)
 	con.add_child(_hit)
 	main.interactables.append({"node": _hit, "half": Vector3(0.11, 0.06, 0.2), "egg_lock": true, "group": "games",
 		"label": func() -> String: return "PICK UP LIGHT GUN %d" % (idx + 1),

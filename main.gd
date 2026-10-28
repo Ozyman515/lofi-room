@@ -4373,9 +4373,9 @@ func _scatter_carts() -> void:
 		var r: float = CART_RADIUS[id]
 		var best := Vector2.ZERO
 		var found := false
-		for attempt in 400:
+		for attempt in 800:
 			var ang := rng.randf_range(0.0, TAU)
-			var dist := rng.randf_range(0.42, 0.78)
+			var dist := rng.randf_range(0.42, 0.78) if attempt < 400 else rng.randf_range(0.5, 1.05)   # (then a wider ring)
 			var p := centre + Vector2(cos(ang), sin(ang)) * dist
 			if console_rect.grow(r + 0.03).has_point(p) or tv_rect.grow(r + 0.02).has_point(p):
 				continue
