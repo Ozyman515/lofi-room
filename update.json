@@ -1,5 +1,5 @@
 {
- "version": 131,
+ "version": 132,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "8018bb418b3863c8cee5f3f72ea3ce7e072b91ce4918daee68977a7b1493eabd",
-   "size": 17509
+   "sha": "67b5ea81252969a09a65faffb2b71a64fbcb496738969ec4411989f667b3682e",
+   "size": 17580
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -446,8 +446,8 @@
    "size": 13068
   },
   "lightgun.gd": {
-   "sha": "f303850f307965ac63fd08db0976235b59798b52dd41ebb6ffa78b2064cdc996",
-   "size": 9439
+   "sha": "f1abf7b5b1356359177f56b61f43699fda93f479d60b1c266ff159534daf24b2",
+   "size": 11170
   },
   "lightgun_model.gd": {
    "sha": "ff32dbe01d77f742d0979917602264e889ac8c8e41747a62e2c2954b22727ead",
@@ -458,8 +458,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "7f6344be16b4ae0173107ff58857e0514b1d9551c62c007b556871e300730997",
-   "size": 232207
+   "sha": "fe483850555c6ad26f9dc07794df8261f2f301961afa76971eae114da5277f99",
+   "size": 237478
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -634,8 +634,8 @@
    "size": 1204579
   },
   "ps_kit.gd": {
-   "sha": "ef0a8683b9d98f3a5821aff07bdb39856820df0e8fe6353da0f93c781becdf86",
-   "size": 10579
+   "sha": "f027bc896c77f7fcf26345fecf413d5405104be4a18c0ed29d8b9b5c283eff5b",
+   "size": 10597
   },
   "recliner.gd": {
    "sha": "57929133100e0c132f2c80dd34ce087e29cb70c73aeccf96f88c0d1c9a47bd85",
@@ -734,7 +734,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "a5af689f2e58459835bb77930031a16999a7b03b90788d4e43f8b609e6d3475b",
+   "sha": "586900065999e00dfd03caec2bd5eb43dd939f082db4718edecd72fabfdcdbec",
    "size": 4
   },
   "weather.gd": {
