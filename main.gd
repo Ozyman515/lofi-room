@@ -2109,7 +2109,7 @@ func _setup_player() -> void:
 	hint_label.modulate = Color(1.0, 0.9, 1.0)
 	hint_label.outline_modulate = Color(0.2, 0.05, 0.3)
 	hint_label.visible = false
-	_host().add_child(hint_label)
+	add_child(hint_label)             # (not in the bedroom: it's hidden while you're in a room far from it, and the label with it)
 
 	var xr := XRServer.find_interface("OpenXR")
 	if xr and xr.is_initialized():
@@ -2289,6 +2289,7 @@ func _process(delta: float) -> void:
 const PAD_LOOK_SPEED := 2.4            # radians a second at full tilt
 const PAD_DEAD := 0.18
 var pad_in_use := false                # the gamepad moved recently (shows the crosshair without the mouse)
+var _pad_told := false                 # (the gamepad's buttons have been shown once this visit)
 var _pad_prev := {}
 var _pad_idle := 0.0
 
@@ -2308,6 +2309,7 @@ func _room_pad_tick(delta: float) -> void:
 	_pad_idle = 0.0 if any else _pad_idle + delta
 	if any:
 		pad_in_use = true
+		_tell_pad_buttons()
 	if game_mode or sleeping:
 		_pad_edges(d, true)                 # the console has the gamepad; only keep the edge state current
 		return
@@ -2330,6 +2332,16 @@ func _room_pad_tick(delta: float) -> void:
 	_pad_edges(d, false)
 
 
+# the first time the gamepad is used: what its buttons do in the room (once a visit)
+func _tell_pad_buttons() -> void:
+	if _pad_told or updater == null:
+		return
+	_pad_told = true
+	var ps := padmap != null and padmap.has_method("is_playstation") and padmap.is_playstation()
+	updater.show_toast("Gamepad: CROSS / R2 use what the dot is on   CIRCLE sit / stand   SQUARE put down   TRIANGLE zoom   L1 / R1 pages" if ps
+		else "Gamepad: A / RT use what the dot is on   B sit / stand   X put down   Y zoom   LB / RB pages", 8.0)
+
+
 func _pad_edges(d: int, quiet: bool) -> void:
 	var now := {
 		"click": Input.is_joy_button_pressed(d, JOY_BUTTON_A) or Input.get_joy_axis(d, JOY_AXIS_TRIGGER_RIGHT) > 0.5,
@@ -2349,6 +2361,7 @@ func _pad_edges(d: int, quiet: bool) -> void:
 	if bool(now["click"]) != bool(was.get("click", false)):
 		if now["click"]:
 			pad_in_use = true
+			_tell_pad_buttons()
 			_pointer_press(2)
 		else:
 			_pointer_release(2)
@@ -5491,7 +5504,7 @@ func _update_pointer(delta: float) -> void:
 	elif xr_active:
 		rays.append([right_hand.global_position, -right_hand.global_transform.basis.z.normalized(), 1])
 		rays.append([left_hand.global_position, -left_hand.global_transform.basis.z.normalized(), 0])
-	elif desktop_cam != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	elif desktop_cam != null and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or pad_in_use):    # (a gamepad aims with the crosshair too)
 		rays.append([desktop_cam.global_position, -desktop_cam.global_transform.basis.z.normalized(), 2])
 
 	var found_screen: ScreenUI = null

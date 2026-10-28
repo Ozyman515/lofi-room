@@ -17,3 +17,5 @@ Battery saves are written to the saves folder next to roms.
 In the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.
 Hold START + SELECT for a second to go back to the game list.
 If something does not start, look at emulator.log in this folder.
+Games can also sit in folders inside roms (up to two levels deep), for example
+ps/roms/Time Crisis (USA)/Time Crisis (USA).cue with its .bin tracks next to it. Neo Geo games stay at the top.

@@ -252,24 +252,36 @@ func _draw_menu() -> void:
 
 
 func _pretty(file: String) -> String:
-	var n := file.get_basename().replace("_", " ")
+	var n := file.get_file().get_basename().replace("_", " ")
 	if n.length() > 34:
 		n = n.substr(0, 33) + "~"
 	return n
 
 
+# The games in carts/<system>/roms, and in folders inside it (two deep: people keep a disc game's .cue and .bin
+# tracks in a folder of its own). Entries are paths relative to roms. Neo Geo games stay at the top, next to the
+# neogeo.zip BIOS the core looks for beside them.
 func _scan_roms() -> void:
 	_roms.clear()
-	var dir := carts_dir().path_join(system).path_join("roms")
+	var root := carts_dir().path_join(system).path_join("roms")
+	_scan_dir(root, "", 0 if system == "neo" else 2)
+	_roms.sort_custom(func(a, b): return String(a).get_file().naturalnocasecmp_to(String(b).get_file()) < 0)   # (by name, wherever it is)
+	_sel = clampi(_sel, 0, maxi(_roms.size() - 1, 0))
+	_top = clampi(_top, 0, maxi(_roms.size() - ROWS, 0))
+
+
+func _scan_dir(root: String, rel: String, depth: int) -> void:
+	var dir := root.path_join(rel)
 	var exts: Array = SYSTEMS[system]["ext"]
 	for f in DirAccess.get_files_at(dir):
 		if f.get_extension().to_lower() in exts and not (system == "neo" and f.to_lower() in NEO_BIOS):
 			if system == "ps" and f.get_extension().to_lower() == "bin" and not _lone_bin(dir, f):
 				continue                                    # (the tracks of a game with a .cue: the .cue is the game)
-			_roms.append(f)
-	_roms.sort_custom(func(a, b): return String(a).naturalnocasecmp_to(String(b)) < 0)
-	_sel = clampi(_sel, 0, maxi(_roms.size() - 1, 0))
-	_top = clampi(_top, 0, maxi(_roms.size() - ROWS, 0))
+			_roms.append(rel.path_join(f) if rel != "" else f)
+	if depth > 0:
+		for sub in DirAccess.get_directories_at(dir):
+			if not sub.begins_with("."):
+				_scan_dir(root, rel.path_join(sub) if rel != "" else sub, depth - 1)
 
 
 # a PlayStation .bin with no .cue naming it (a single-track disc image you can load as it is)
@@ -278,7 +290,7 @@ func _lone_bin(dir: String, bin: String) -> bool:
 		var e := f.get_extension().to_lower()
 		if e == "cue" or e == "m3u":
 			var txt := FileAccess.get_file_as_string(dir.path_join(f))
-			if txt.findn(bin) >= 0 or f.get_basename() == bin.get_basename():
+			if txt.findn(bin) >= 0 or bin.get_basename().begins_with(f.get_basename()):   # (its tracks: "Game (Track 2).bin")
 				return false
 	return true
 
@@ -519,7 +531,7 @@ func _launch(rom_file: String) -> void:
 			break
 	if port == 0:
 		return _fail("Could not open a local port.")
-	var state_path := saves.path_join(rom_file + ".state") if resume_games else ""
+	var state_path := saves.path_join(rom_file.get_file() + ".state") if resume_games else ""
 	if win and system == "neo":
 		rom = rom.replace("/", "\\")          # FBNeo finds the game folder by looking for a backslash on Windows
 	_pid = OS.create_process(host, [str(port), core, rom, saves, base.path_join("cores"), carts_dir().path_join("emulator.log"), state_path, "1" if resume_games else "0"])
