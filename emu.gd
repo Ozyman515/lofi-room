@@ -80,11 +80,15 @@ var _err_text := ""
 var _err_cd := 0.0
 var _game_name := ""
 var frames_done := 0
-# the light gun (lightgun.gd): which port each console's gun goes in, and what the core called it
+# the light guns (lightgun.gd, two of them): the first one picked up goes in the console's usual gun port, the
+# second in the other port; put one down and its port gets a pad again
 const GUN_PORT := {"nes": 1, "snes": 1, "gen": 1, "ps": 0}
-var gun_on := false
-var gun_kind := ""                  # the core's name for it ("Zapper", "SuperScope", "MD Menacer", "guncon"), "" = none
-var _gun_sent := PackedByteArray()
+var gun_order: Array[int] = []      # the held guns (lightgun index), in the order they were picked up
+var gun_kind := ["", ""]            # per port: the core's name for what's in it ("Zapper", "guncon"...), "" = a pad / none
+var _gun_sent := [PackedByteArray(), PackedByteArray()]
+var _plug_wait: Array[int] = []     # ports whose 'I' answer is still to come
+var gun_on: bool:
+	get: return not gun_order.is_empty()
 var custom_active := false      # the room is drawing its own screen (the controls screen) over the menu
 var _ctop := 0
 
@@ -343,32 +347,77 @@ func _enter_idle_or_menu() -> void:
 
 # the pad state as libretro bits; call every frame while the controller is held
 # hold the light gun (on) or put it down: the core's own gun goes in (or comes out of) its port
-func set_gun(on: bool) -> void:
-	gun_on = on
-	gun_kind = ""
-	_send_gun_plug()
+func set_gun(idx: int, on: bool) -> void:
+	var before := _gun_ports()
+	gun_order.erase(idx)
+	if on:
+		gun_order.append(idx)
+	var after := _gun_ports()
+	# unplug the ports no gun uses any more, plug the new ones
+	for port in 2:
+		var was: bool = before.values().has(port)
+		var now: bool = after.values().has(port)
+		if was != now:
+			_send_plug(port, now)
 
 
-func _send_gun_plug() -> void:
-	if state != State.RUNNING or _peer == null or not GUN_PORT.has(system):
+# lightgun index -> port, for the guns held now. A gun keeps its port while it is held: the first one picked up takes
+# the console's usual gun port, the next takes whichever is free.
+var _gun_at := {}
+var _gun_sys := ""
+func _gun_ports() -> Dictionary:
+	if _gun_sys != system:                  # (another console: its own ports)
+		_gun_at.clear()
+		_gun_sys = system
+	if not GUN_PORT.has(system):
+		_gun_at.clear()
+		return {}
+	var first: int = GUN_PORT[system]
+	for k in _gun_at.keys():
+		if not gun_order.has(k):
+			_gun_at.erase(k)
+	for i in gun_order:
+		if not _gun_at.has(i):
+			var used: Array = _gun_at.values()
+			if not used.has(first):
+				_gun_at[i] = first
+			elif not used.has(1 - first):
+				_gun_at[i] = 1 - first
+	return _gun_at.duplicate()
+
+
+func gun_port(idx: int) -> int:
+	return _gun_ports().get(idx, -1)
+
+
+func _send_plug(port: int, on: bool) -> void:
+	gun_kind[port] = ""
+	_gun_sent[port] = PackedByteArray()
+	if state != State.RUNNING or _peer == null:
 		return
-	_peer.put_data(PackedByteArray([76, GUN_PORT[system], 1 if gun_on else 0]))     # 'L' port on
-	_gun_sent = PackedByteArray()
+	_peer.put_data(PackedByteArray([76, port, 1 if on else 0]))     # 'L' port on
+	_plug_wait.append(port)
 
 
-# where the gun points (-1..1 across the picture, y down) and its buttons (bit 0 trigger, 1 off the screen,
-# 2 reload, 3 A, 4 B); sent when it changes
-func gun_aim(p: Vector2, buttons: int) -> void:
-	if not gun_on or state != State.RUNNING or _peer == null or not GUN_PORT.has(system):
+func _replug_guns() -> void:
+	for port in _gun_ports().values():
+		_send_plug(port, true)
+
+
+# where gun idx points (-1..1 across the picture, y down) and its buttons (bit 0 trigger, 1 off the screen,
+# 2 reload, 3 A, 4 B, 5 START); sent when it changes
+func gun_aim(idx: int, p: Vector2, buttons: int) -> void:
+	var port := gun_port(idx)
+	if port < 0 or state != State.RUNNING or _peer == null:
 		return
 	var x := clampi(int(p.x * 32767.0), -32767, 32767)
 	var y := clampi(int(p.y * 32767.0), -32767, 32767)
-	var pkt := PackedByteArray([71, GUN_PORT[system], 0, 0, 0, 0, buttons])       # 'G'
+	var pkt := PackedByteArray([71, port, 0, 0, 0, 0, buttons])       # 'G'
 	pkt.encode_s16(2, x)
 	pkt.encode_s16(4, y)
-	if pkt != _gun_sent:
+	if pkt != _gun_sent[port]:
 		_peer.put_data(pkt)
-		_gun_sent = pkt
+		_gun_sent[port] = pkt
 
 
 func set_buttons(mask: int) -> void:
@@ -643,7 +692,10 @@ func _parse() -> void:
 			if n - p < 2: break
 			var ilen := _rx[p + 1]
 			if n - p < 2 + ilen: break
-			gun_kind = _rx.slice(p + 2, p + 2 + ilen).get_string_from_utf8()
+			var said := _rx.slice(p + 2, p + 2 + ilen).get_string_from_utf8()
+			if not _plug_wait.is_empty():
+				var port: int = _plug_wait.pop_front()
+				gun_kind[port] = "" if said == "pad" else said
 			p += 2 + ilen
 		elif t == 69:                             # 'E' error
 			if n - p < 2: break
@@ -673,8 +725,9 @@ func _parse() -> void:
 
 func _on_hello() -> void:
 	state = State.RUNNING
+	_plug_wait.clear()
 	if gun_on:
-		_send_gun_plug.call_deferred()
+		_replug_guns.call_deferred()
 	Diary.game_started(system, _game_name)
 	_gen = AudioStreamGenerator.new()
 	_gen.mix_rate = _rate

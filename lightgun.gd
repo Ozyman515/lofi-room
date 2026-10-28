@@ -1,7 +1,9 @@
 extends Node
-## The light gun (Pistol 6 from Quaternius's CC0 Ultimate Gun Pack), resting on top of the disc console. Pick it up
+## A light gun (Pistol 6 from Quaternius's CC0 Ultimate Gun Pack); there are two, lying on the rug beside the console,
+## the second one tinted. Pick one up
 ## and it plays the console's own light-gun games: NES Zapper, SNES Super Scope, Genesis Menacer, PlayStation GunCon
-## (emu.gd plugs the core's gun into the right port). Aim at the TV and pull the trigger: where it points on the
+## (emu.gd plugs the core's gun into the right port: the first gun picked up gets the console's usual gun port,
+## the second the other one, and a gun put down gives its port back to the pad). Aim at the TV and pull the trigger: where it points on the
 ## glass is where the game thinks you shot. Point off the screen and pull to reload.
 ##   PC: aim with the middle of the view (the dot), left click shoots, right click reloads, Enter is the gun's A
 ##       button (START on the GunCon), Backspace its B; E puts it down. The pad keys still work for the menus.
@@ -10,16 +12,18 @@ extends Node
 
 const Emu := preload("res://emu.gd")
 const MESH := "res://models/lightgun_mesh.res"
-const REST := Vector3(0.0, 0.0, 0.0)              # (set from the disc console in build)
 
 var main: Node3D
+var idx := 0                       # 0 = the first gun, 1 = the second (tinted)
 var held := false
 var hand := -1                     # VR: which controller has it (0 left, 1 right); -1 on the desktop
 var gun: Node3D                    # the model (on its rest, or in your hand / view)
 var _rest_parent: Node3D
 var _rest_xf := Transform3D()
 var _kick := 0.0
-const REST_AT := Vector3(0.27, 0.0, -0.10)      # where it lies, in the console's frame (beside its right side)
+const REST_AT := [Vector3(0.25, 0.0, -0.10), Vector3(0.36, 0.0, -0.10)]   # where each lies, in the console's frame (beside its right side)
+const TINT := [Color(1, 1, 1), Color(1.0, 0.45, 0.28)]                  # the second gun is a warm orange
+var _mats: Array[Material] = []    # its own colours, per surface
 var _trigger := false
 var _reload := false
 var _aux := 0                      # bit 0 = A, bit 1 = B
@@ -27,25 +31,36 @@ var _click: AudioStreamPlayer
 var _hit: Node3D
 
 
-func build(m: Node3D) -> void:
+func build(m: Node3D, i := 0) -> void:
 	main = m
+	idx = i
 	gun = Node3D.new()
-	gun.name = "LightGun"
+	gun.name = "LightGun%d" % (idx + 1)
 	var mi := MeshInstance3D.new()
 	mi.name = "Model"
 	mi.mesh = load(MESH) if ResourceLoader.exists(MESH) else null
 	gun.add_child(mi)
+	if mi.mesh != null:
+		for sfi in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(sfi)
+			var mt: Material = src
+			if idx > 0 and src is BaseMaterial3D:
+				var b := (src as BaseMaterial3D).duplicate() as BaseMaterial3D
+				b.albedo_color = b.albedo_color * TINT[idx] * 1.6
+				mt = b
+			_mats.append(mt)
+			mi.set_surface_override_material(sfi, mt)
 	# lying on its side on the rug beside the console, the muzzle toward the front
 	var con: Node3D = main.console_root
 	_rest_parent = con
-	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT + Vector3(0.0, 0.016, 0.0))
+	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT[idx] + Vector3(0.0, 0.016, 0.0))
 	con.add_child(gun)
 	gun.transform = _rest_xf
 	_hit = Node3D.new()
-	_hit.position = REST_AT + Vector3(0.0, 0.03, 0.0)
+	_hit.position = REST_AT[idx] + Vector3(0.0, 0.03, 0.0)
 	con.add_child(_hit)
-	main.interactables.append({"node": _hit, "half": Vector3(0.11, 0.04, 0.08), "egg_lock": true, "group": "games",
-		"label": func() -> String: return "PICK UP THE LIGHT GUN",
+	main.interactables.append({"node": _hit, "half": Vector3(0.05, 0.04, 0.1), "egg_lock": true, "group": "games",
+		"label": func() -> String: return "PICK UP LIGHT GUN %d" % (idx + 1),
 		"when": func() -> bool: return not held and not main.game_mode,
 		"cb": pick_up})
 	_click = AudioStreamPlayer.new()
@@ -57,12 +72,16 @@ func build(m: Node3D) -> void:
 
 # (for keeping the carts out of the way)
 func rest_point() -> Vector3:
-	return main.console_root.to_global(REST_AT)
+	return main.console_root.to_global(REST_AT[idx])
 
 
 func pick_up() -> void:
 	if held or main.game_mode:
 		return
+	if not main.xr_active:
+		for g in main.lightguns:              # (on the desktop you hold one at a time: the other goes back)
+			if g != self and g.held:
+				g.put_down()
 	held = true
 	_kick = 0.0
 	if main.xr_active:
@@ -73,11 +92,11 @@ func pick_up() -> void:
 	else:
 		hand = -1
 		gun.reparent(main.desktop_cam, false)
-		main._draw_on_top(gun)
+		_on_top(true)
 		gun.transform = Transform3D(Basis(Vector3.UP, 0.08), Vector3(0.14, -0.13, -0.34))
 	if main.emu != null:
 		main.emu.set_pad(true)
-		main.emu.set_gun(true)
+		main.emu.set_gun(idx, true)
 
 
 func put_down() -> void:
@@ -89,12 +108,25 @@ func put_down() -> void:
 	_aux = 0
 	gun.reparent(_rest_parent, false)
 	gun.transform = _rest_xf
-	var mi := gun.get_node("Model") as MeshInstance3D
-	mi.material_override = null                   # (back from drawn-on-top)
+	_on_top(false)
 	if main.emu != null:
-		main.emu.set_gun(false)
-		main.emu.set_pad(false)
-		main.emu.set_buttons(0)
+		main.emu.set_gun(idx, false)
+		if not main.emu.gun_on:                   # (the other gun still in a hand keeps the pad going)
+			main.emu.set_pad(false)
+			main.emu.set_buttons(0)
+
+
+# in front of everything while it's in the desktop view (its own colours, surface by surface)
+func _on_top(on: bool) -> void:
+	var mi := gun.get_node("Model") as MeshInstance3D
+	for sfi in _mats.size():
+		var mt: Material = _mats[sfi]
+		if on and mt is BaseMaterial3D:
+			var b := (mt as BaseMaterial3D).duplicate() as BaseMaterial3D
+			b.no_depth_test = true
+			b.render_priority = 10 + sfi
+			mt = b
+		mi.set_surface_override_material(sfi, mt)
 
 
 # the trigger: shoots (and kicks), or picks the highlighted game in the menu
@@ -176,9 +208,15 @@ func _process(delta: float) -> void:
 	var start := (mask & Emu.B_START) != 0
 	var b := (1 if _trigger else 0) | (2 if off else 0) | (4 if _reload else 0) | (8 if (_aux & 1) or start else 0) \
 		| (16 if (_aux & 2) else 0) | (32 if start else 0)
-	e.gun_aim(p, b)
+	e.gun_aim(idx, p, b)
 	if e.state != Emu.State.RUNNING and _trigger:
 		mask |= Emu.B_A
+	for g in main.lightguns:                    # (two guns held: the pad keys go out once, the trigger of either picks)
+		if g != self and g.held:
+			if g.idx < idx:
+				return
+			if e.state != Emu.State.RUNNING and g._trigger:
+				mask |= Emu.B_A
 	e.set_buttons(mask)
 
 

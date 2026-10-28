@@ -97,7 +97,7 @@ var arcade_vol_label: Label3D
 var emu: Node                         # NES / SNES games (emu.gd)
 var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo", "ps" (the disc console) or "egg" (the secret one)
 var ps_kit: Node                       # ps_kit.gd: the disc slot in the console's front, and the long-box case
-var lightgun: Node                     # lightgun.gd: the light gun on top of the disc console
+var lightguns: Array = []              # lightgun.gd: the two light guns on the rug beside the console
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
 var drawer_node: Node3D               # the nightstand drawer
 var drawer_open := false
@@ -2151,7 +2151,7 @@ func _process(delta: float) -> void:
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
 			_cancel_leave()          # walked away or waited too long: the sign goes
 	if reticle != null:
-		reticle.visible = reticle_on and not xr_active and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or pad_in_use) and not game_mode and (not _aim_at_playing_tv() or (lightgun != null and lightgun.held)) and not (hover_screen != null and hover_screen.cursor_allowed) and not hover_item.get("no_reticle", false)
+		reticle.visible = reticle_on and not xr_active and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or pad_in_use) and not game_mode and (not _aim_at_playing_tv() or _gun_in(-1) != null) and not (hover_screen != null and hover_screen.cursor_allowed) and not hover_item.get("no_reticle", false)
 		reticle.hot = not hover_item.is_empty() or (hover_screen != null and hover_screen.cursor_allowed)
 	_room_pad_tick(delta)
 	_update_held_pad(delta)
@@ -2369,12 +2369,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_A: ksym = "A"
 		if ksym != "":
 			_konami_feed(ksym)
-		if lightgun != null and lightgun.held and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_BACKSPACE]:
-			lightgun.aux(0 if event.keycode != KEY_BACKSPACE else 1, true)
+		if _gun_in(-1) != null and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_BACKSPACE]:
+			_gun_in(-1).aux(0 if event.keycode != KEY_BACKSPACE else 1, true)
 			return
 		if event.keycode == KEY_E:
-			if lightgun != null and lightgun.held:
-				lightgun.put_down()
+			if _gun_in(-1) != null:
+				_gun_in(-1).put_down()
 			elif game_mode:
 				_put_pad()
 			else:
@@ -2408,19 +2408,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		return
-	if event is InputEventKey and not event.pressed and lightgun != null and lightgun.held and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_BACKSPACE]:
-		lightgun.aux(0 if event.keycode != KEY_BACKSPACE else 1, false)
+	if event is InputEventKey and not event.pressed and _gun_in(-1) != null and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_BACKSPACE]:
+		_gun_in(-1).aux(0 if event.keycode != KEY_BACKSPACE else 1, false)
 		return
 	if event is InputEventMouseButton:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			if event.pressed:
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			return
-		if lightgun != null and lightgun.held and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+		if _gun_in(-1) != null and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			if event.button_index == MOUSE_BUTTON_LEFT:
-				lightgun.trigger(event.pressed)
+				_gun_in(-1).trigger(event.pressed)
 			else:
-				lightgun.reload(event.pressed)
+				_gun_in(-1).reload(event.pressed)
 			return
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
@@ -3064,12 +3064,13 @@ func _on_button(button_name: String, hand: int) -> void:
 		if button_name == "grip_click":
 			_put_pad()
 		return
-	if lightgun != null and lightgun.held and hand == lightgun.hand:
+	var g := _gun_in(hand)
+	if g != null:
 		match button_name:
-			"trigger_click": lightgun.trigger(true)
-			"grip_click": lightgun.put_down()
-			"ax_button": lightgun.aux(0, true)
-			"by_button": lightgun.aux(1, true)
+			"trigger_click": g.trigger(true)
+			"grip_click": g.put_down()
+			"ax_button": g.aux(0, true)
+			"by_button": g.aux(1, true)
 		return
 	if diary != null and diary.open_book and button_name == "grip_click":
 		put_diary()
@@ -3099,11 +3100,12 @@ func _on_button(button_name: String, hand: int) -> void:
 
 
 func _on_button_released(button_name: String, hand: int) -> void:
-	if lightgun != null and lightgun.held and hand == lightgun.hand:
+	var g := _gun_in(hand)
+	if g != null:
 		match button_name:
-			"trigger_click": lightgun.trigger(false)
-			"ax_button": lightgun.aux(0, false)
-			"by_button": lightgun.aux(1, false)
+			"trigger_click": g.trigger(false)
+			"ax_button": g.aux(0, false)
+			"by_button": g.aux(1, false)
 		return
 	if button_name == "trigger_click":
 		_pointer_release(hand)
@@ -3664,6 +3666,14 @@ func _set_lid(open: bool) -> void:
 		_lid_tween.kill()
 	_lid_tween = create_tween()
 	_lid_tween.tween_property(console_lid, "rotation:x", -1.9 if open else 0.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+# the light gun held in that hand (VR: 0 left, 1 right; -1 = the desktop view), or null
+func _gun_in(hand: int) -> Node:
+	for g in lightguns:
+		if g.held and g.hand == hand:
+			return g
+	return null
 
 
 func _console_label() -> String:
@@ -4305,7 +4315,10 @@ func _scatter_carts() -> void:
 	var centre := Vector2(-2.60, 1.45 + LOUNGE_DZ)                # the console
 	var console_rect := Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55)
 	if ps_kit != null:                                               # (and where the disc case opens, and the light gun)
-		for at in [ps_kit.stage_point(), lightgun.rest_point() if lightgun != null else ps_kit.stage_point()]:
+		var spots: Array = [ps_kit.stage_point()]
+		for lg in lightguns:
+			spots.append(lg.rest_point())
+		for at in spots:
 			var pc := lounge.to_local(at)
 			console_rect = console_rect.merge(Rect2(pc.x - 0.22, pc.z - 0.22, 0.44, 0.44))
 	var tv_rect := Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7)
@@ -4359,10 +4372,12 @@ func _build_carts() -> void:
 	add_child(ps_kit)
 	ps_kit.build(self)
 	game_kit.add_child(ps_kit.case_node)
-	lightgun = load("res://lightgun.gd").new()
-	lightgun.name = "LightGunKit"
-	add_child(lightgun)
-	lightgun.build(self)
+	for i in 2:
+		var lg: Node = load("res://lightgun.gd").new()
+		lg.name = "LightGunKit%d" % (i + 1)
+		add_child(lg)
+		lg.build(self, i)
+		lightguns.append(lg)
 	_scatter_carts()
 	carts["nes"] = {"node": nes, "name": "NES CART", "busy": false,
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["nes"]}
