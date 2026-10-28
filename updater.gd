@@ -13,7 +13,9 @@ const COMMIT_API := "https://api.github.com/repos/Ozyman515/lofi-room/commits/ma
 var _src := ""     # where this check reads from: the newest commit when GitHub tells us (no stale web cache), else main
 # .godot/imported (and the small .godot/*.cfg files) ARE updated: the exe build runs the loose project and needs them;
 # the editor just regenerates identical ones. Only the editor's own caches stay out.
-const SKIP_PREFIXES := ["carts/", ".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/"]
+const SKIP_PREFIXES := ["carts/", ".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/",
+	"cores/dolphin-emu/Sys/", "cores/dolphin-emu/Sys.unpacking/", "cores/dolphin-emu/Sys.old/"]
+# (Dolphin's data folder is unpacked on each PC from cores/dolphin-emu/Sys.zip, which is what the update carries)
 
 var state := "idle"            # idle, checking, current, available, downloading, done, error
 var message := ""

@@ -7,9 +7,12 @@ pcsx_rearmed_libretro (PlayStation)   GPL-2.0   https://github.com/libretro/pcsx
 fceumm_libretro (NES)                 GPL-2.0   https://github.com/libretro/libretro-fceumm
 snes9x2010_libretro (SNES)            non-commercial (Snes9x licence)  https://github.com/libretro/snes9x2010
 mgba_libretro (Game Boy / GBC / GBA)  MPL-2.0   https://github.com/libretro/mgba
+dolphin_libretro (GameCube / Wii)     GPL-2.0+  https://github.com/libretro/dolphin  (the RetroArch nightly from EmuDeck, 2026-07)
+    Its data folder ships as cores/dolphin-emu/Sys.zip (Data/Sys of that repository at commit 3aac3f0, without the
+    UI themes); the room unpacks it to cores/dolphin-emu/Sys the first time a GameCube game starts.
 genesis_plus_gx_libretro (Genesis)    non-commercial (Genesis Plus GX licence)  https://github.com/libretro/Genesis-Plus-GX
 fbneo_neogeo_libretro (Neo Geo)       non-commercial (FBNeo licence)  https://github.com/libretro/FBNeo
 
 The host program that runs them (bin/retro_host.exe, bin/retro_host_linux) is ours: its source is in
-bin/retro_host_src (build: gcc -O2 -o retro_host_linux retro_host.c -ldl; Windows:
-x86_64-w64-mingw32-clang -O2 -o retro_host.exe retro_host.c -lws2_32 -lwinmm -static).
+bin/retro_host_src (build: gcc -O2 -o retro_host_linux retro_host.c -ldl -lpthread; Windows:
+x86_64-w64-mingw32-clang -O2 -o retro_host.exe retro_host.c -lws2_32 -lwinmm -lopengl32 -lgdi32 -luser32 -static).

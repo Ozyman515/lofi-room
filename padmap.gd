@@ -199,6 +199,39 @@ func mask(xr: bool, lh: Node, rh: Node) -> int:
 	return m
 
 
+# The analog parts of the pad (for GameCube games): both sticks (-1..1, y down), both analog triggers (0..1) and Z on
+# a VR controller (clicking the right stick: the VR triggers are L and R there, and the grip puts the pad down).
+# On a keyboard the R key is a full R press (E puts the pad down).
+func analog(xr: bool, lh: Node, rh: Node) -> Dictionary:
+	var out := {"ls": Vector2.ZERO, "rs": Vector2.ZERO, "lt": 0.0, "rt": 0.0, "z": false}
+	if xr:
+		if lh != null:
+			var l: Vector2 = lh.get_vector2("primary")
+			out["ls"] = Vector2(l.x, -l.y)                         # (OpenXR sticks point up for +y)
+			out["lt"] = clampf(float(lh.get_float("trigger")), 0.0, 1.0)
+		if rh != null:
+			var r: Vector2 = rh.get_vector2("primary")
+			out["rs"] = Vector2(r.x, -r.y)
+			out["rt"] = clampf(float(rh.get_float("trigger")), 0.0, 1.0)
+			out["z"] = rh.is_button_pressed("primary_click")
+	else:
+		var d := pad_device()
+		if d >= 0:
+			out["ls"] = Vector2(Input.get_joy_axis(d, JOY_AXIS_LEFT_X), Input.get_joy_axis(d, JOY_AXIS_LEFT_Y))
+			out["rs"] = Vector2(Input.get_joy_axis(d, JOY_AXIS_RIGHT_X), Input.get_joy_axis(d, JOY_AXIS_RIGHT_Y))
+			out["lt"] = clampf(Input.get_joy_axis(d, JOY_AXIS_TRIGGER_LEFT), 0.0, 1.0)
+			out["rt"] = clampf(Input.get_joy_axis(d, JOY_AXIS_TRIGGER_RIGHT), 0.0, 1.0)
+		if Input.is_physical_key_pressed(KEY_R):
+			out["rt"] = 1.0
+	for k in ["ls", "rs"]:                                         # a small round dead zone, then the full range again
+		var v: Vector2 = out[k]
+		var m := v.length()
+		out[k] = Vector2.ZERO if m < 0.12 else v / m * minf((m - 0.12) / 0.88, 1.0)
+	for k in ["lt", "rt"]:
+		out[k] = 0.0 if float(out[k]) < 0.05 else float(out[k])
+	return out
+
+
 # Fixed controls for the menus: they work whatever the bindings are, so a wrong binding can never lock you out.
 # Returns libretro bits: d-pad / stick, any face button or START = A, BACK / stick click = SELECT.
 func nav_mask(xr: bool, lh: Node, rh: Node) -> int:

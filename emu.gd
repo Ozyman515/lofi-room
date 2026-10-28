@@ -1,7 +1,7 @@
 extends Node
 const Plat := preload("res://platform.gd")
 const Diary := preload("res://diary.gd")
-## Plays NES and SNES games on the room's TV.
+## Plays the console games (NES, SNES, Game Boy, Genesis, Neo Geo, PlayStation, GameCube) on the room's TV.
 ##
 ## The emulator itself runs in a small separate program (bin/retro_host.exe on Windows) that loads a libretro core from
 ## cores/. This script starts it, talks to it over a loopback socket, shows its picture on the TV, plays its sound and
@@ -22,6 +22,9 @@ const SYSTEMS := {
 	"neo": {"title": "NEO GEO", "core": "fbneo_neogeo_libretro", "ext": ["zip", "7z"]},
 	"gen": {"title": "GENESIS", "core": "genesis_plus_gx_libretro", "ext": ["md", "gen", "smd", "bin", "sms", "gg", "sg"]},
 	"ps": {"title": "PLAYSTATION", "core": "pcsx_rearmed_libretro", "ext": ["cue", "chd", "pbp", "m3u", "bin", "iso", "img", "exe"]},
+	# GameCube through Dolphin (it draws with the graphics card; retro_host gives it an OpenGL context). Its Sys folder
+	# lives in cores/dolphin-emu/Sys, memory cards in carts/gc/saves/User. Wii discs boot too, with the pad as a Wii Remote.
+	"gc": {"title": "GAMECUBE", "core": "dolphin_libretro", "ext": ["iso", "gcm", "gcz", "rvz", "wia", "ciso", "tgc", "dol", "elf", "m3u", "wbfs"]},
 }
 # libretro joypad bits
 const B_B := 1 << 0
@@ -36,6 +39,9 @@ const B_A := 1 << 8
 const B_X := 1 << 9
 const B_L := 1 << 10
 const B_R := 1 << 11
+const B_L2 := 1 << 12
+const B_R2 := 1 << 13
+const B_DPAD := B_UP | B_DOWN | B_LEFT | B_RIGHT
 
 const ROWS := 9
 
@@ -72,6 +78,9 @@ var streaming := false              # host with guests: publish picture and soun
 var remote := false                 # guest: the game runs on the host, we only show its picture and sound
 var local_port := 0                 # which libretro port the pad in your hand drives: 0 = player 1 (left), 1 = player 2 (right)
 var _remote_mask := 0               # the other player's buttons (a guest in the room), on the other port
+var _analog := {}                   # GameCube: the sticks and triggers of the pad in your hand (padmap.analog)
+var _analog_vr := false
+var _sent_axes := [PackedByteArray(), PackedByteArray()]
 var _rep_t := 0.0
 var _combo_t := 0.0
 var resume_games := true         # keep the place in each game (set from the Settings window)
@@ -90,6 +99,8 @@ var _plug_wait: Array[int] = []     # ports whose 'I' answer is still to come
 var gun_on: bool:
 	get: return not gun_order.is_empty()
 var custom_active := false      # the room is drawing its own screen (the controls screen) over the menu
+var _unpack_thread: Thread          # GameCube: Dolphin's Sys folder ships as one zip, unpacked the first time
+var _unpack_rom := ""
 var _ctop := 0
 
 
@@ -105,6 +116,8 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_stop_host()
+	if _unpack_thread != null:
+		_unpack_thread.wait_to_finish()
 
 
 func _find_base() -> String:
@@ -126,7 +139,7 @@ func _ensure_dirs() -> void:
 	if not FileAccess.file_exists(readme):
 		var f := FileAccess.open(readme, FileAccess.WRITE)
 		if f != null:
-			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
+			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n  gc/roms      GameCube discs: .iso, .gcm, .rvz, .gcz or .ciso (the GameCube cart; PC only, needs a graphics card with OpenGL 3.3)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
 
 
 # ---------------------------------------------------------------- the text screen (menu, messages)
@@ -272,7 +285,7 @@ func _lone_bin(dir: String, bin: String) -> bool:
 
 # ---------------------------------------------------------------- called by the room
 
-# "" = no cart, "nes", "snes", "sgb", "gen", "neo". Anything else (the secret cart) is not ours.
+# "" = no cart, "nes", "snes", "sgb", "gen", "gc", "neo", "ps". Anything else (the secret cart) is not ours.
 func set_system(sys: String) -> void:
 	if sys == system:
 		return
@@ -302,6 +315,7 @@ func set_pad(held: bool) -> void:
 	pad_held = held
 	if not held:
 		_prev_mask = 0
+		_analog = {}
 		_send_buttons(0)
 	if state == State.MENU:
 		_refresh_screen()
@@ -420,6 +434,12 @@ func gun_aim(idx: int, p: Vector2, buttons: int) -> void:
 		_gun_sent[port] = pkt
 
 
+# GameCube: the sticks and analog triggers of the pad in your hand (call before set_buttons, every frame)
+func set_analog(a: Dictionary, vr: bool) -> void:
+	_analog = a
+	_analog_vr = vr
+
+
 func set_buttons(mask: int) -> void:
 	var pressed := mask & ~_prev_mask
 	_prev_mask = mask
@@ -480,6 +500,17 @@ func _launch(rom_file: String) -> void:
 		return _fail("The game file is gone.")
 	if not win:
 		OS.execute("chmod", ["+x", host])
+	if system == "gc":
+		var dol := base.path_join("cores").path_join("dolphin-emu")
+		var zip := dol.path_join("Sys.zip")
+		var have := DirAccess.dir_exists_absolute(dol.path_join("Sys"))
+		if FileAccess.file_exists(zip):
+			# unpacked again whenever an update brings a different Sys.zip (the folder remembers which zip it came from)
+			var stamp := FileAccess.get_file_as_string(dol.path_join("Sys").path_join("from_zip.txt")).strip_edges() if have else ""
+			if not have or stamp != FileAccess.get_sha256(zip):
+				return _unpack_sys(zip, rom_file)
+		elif not have:
+			return _fail("Dolphin's data folder is missing:\ncores/dolphin-emu/Sys")
 	var port := 0
 	for i in 60:
 		var p := 47000 + randi() % 3000
@@ -498,10 +529,82 @@ func _launch(rom_file: String) -> void:
 	_rx.clear()
 	_speed = 100
 	_sent_mask = -1
+	_sent_axes = [PackedByteArray(), PackedByteArray()]
 	_combo_t = 0.0
 	_t_start = Time.get_ticks_msec()
 	state = State.STARTING
 	_refresh_screen()
+
+
+# Dolphin's data (game fixes, fonts, shaders: about 2,000 small files) comes as cores/dolphin-emu/Sys.zip so updates
+# stay one file. The first GameCube game unpacks it on a thread (the room keeps running), then starts.
+func _unpack_sys(zip: String, rom_file: String) -> void:
+	if _unpack_thread != null:
+		return
+	_unpack_rom = rom_file
+	_game_name = "SETTING UP THE GAMECUBE..."
+	state = State.STARTING
+	_t_start = Time.get_ticks_msec()
+	_refresh_screen()
+	_unpack_thread = Thread.new()
+	_unpack_thread.start(_unzip_sys.bind(zip, zip.get_base_dir()))
+
+
+static func _unzip_sys(zip: String, dest: String) -> bool:
+	var r := ZIPReader.new()
+	if r.open(zip) != OK:
+		return false
+	var tmp := dest.path_join("Sys.unpacking")
+	if DirAccess.dir_exists_absolute(tmp):
+		_rm_tree(tmp)                                        # (left over from an unpack that was cut short)
+	for f in r.get_files():
+		if f.ends_with("/") or not f.begins_with("Sys/") or f.contains(".."):
+			continue                                         # (only files inside Sys/, nothing that climbs out of it)
+		var out := tmp.path_join(f.trim_prefix("Sys/"))
+		DirAccess.make_dir_recursive_absolute(out.get_base_dir())
+		var fa := FileAccess.open(out, FileAccess.WRITE)
+		if fa == null:
+			r.close()
+			return false
+		fa.store_buffer(r.read_file(f))
+		fa.close()
+	r.close()
+	var st := FileAccess.open(tmp.path_join("from_zip.txt"), FileAccess.WRITE)
+	if st != null:
+		st.store_string(FileAccess.get_sha256(zip))
+		st.close()
+	# swap the new folder in; an older one is moved aside first and then deleted
+	var live := dest.path_join("Sys")
+	var old := dest.path_join("Sys.old")
+	if DirAccess.dir_exists_absolute(old):
+		_rm_tree(old)
+	if DirAccess.dir_exists_absolute(live) and DirAccess.rename_absolute(live, old) != OK:
+		return false
+	if DirAccess.rename_absolute(tmp, live) != OK:
+		return false
+	if DirAccess.dir_exists_absolute(old):
+		_rm_tree(old)
+	return true
+
+
+static func _rm_tree(dir: String) -> void:
+	for d in DirAccess.get_directories_at(dir):
+		_rm_tree(dir.path_join(d))
+	for f in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(f))
+	DirAccess.remove_absolute(dir)
+
+
+func _unpack_done() -> void:
+	var ok: bool = _unpack_thread.wait_to_finish()
+	_unpack_thread = null
+	if state != State.STARTING or system != "gc" or _pid > 0:
+		return                                              # (the cart came out meanwhile)
+	state = State.MENU
+	if ok:
+		_launch(_unpack_rom)
+	else:
+		_fail("Could not unpack cores/dolphin-emu/Sys.zip.")
 
 
 func _fail(text: String) -> void:
@@ -534,7 +637,8 @@ func _stop_host() -> void:
 	_server.stop()
 	if _pid > 0:
 		var pid := _pid
-		get_tree().create_timer(2.0).timeout.connect(func():
+		# (Dolphin writes a big saved position and shuts its threads down: it gets longer before it is stopped)
+		get_tree().create_timer(2.0 if system != "gc" else 12.0).timeout.connect(func():
 			if OS.is_process_running(pid):
 				OS.kill(pid))
 		_pid = -1
@@ -546,15 +650,60 @@ func _stop_host() -> void:
 
 
 func _send_buttons(mask: int) -> void:
-	var key := mask | (_remote_mask << 16) | (local_port << 32)
-	if state != State.RUNNING or _peer == null or key == _sent_mask:
+	if state != State.RUNNING or _peer == null:
 		return
-	_sent_mask = key
 	var p := [0, 0]
 	p[local_port] = mask
 	p[1 - local_port] = _remote_mask
+	if system == "gc":
+		var mine: Dictionary = _analog if pad_held else {}
+		_send_axes(local_port, mask, mine)
+		_send_axes(1 - local_port, _remote_mask, {})          # (a guest's pad: its d-pad drives the stick)
+		p[local_port] = _gc_buttons(mask, mine, _analog_vr)
+		p[1 - local_port] = _gc_buttons(_remote_mask, {}, false)
+	var key: int = p[0] | (p[1] << 16)
+	if key == _sent_mask:
+		return
+	_sent_mask = key
 	var b := PackedByteArray([66, p[0] & 255, (p[0] >> 8) & 255, p[1] & 255, (p[1] >> 8) & 255])
 	_peer.put_data(b)
+
+
+# The room's pad as a GameCube pad. L is L; on a gamepad or keyboard the R button is Z (the analog triggers are L and R),
+# in VR the triggers are L and R and clicking the right stick is Z. While the stick is pushed its d-pad copy is dropped,
+# so walking doesn't also press the d-pad.
+func _gc_buttons(m: int, a: Dictionary, vr: bool) -> int:
+	var out := m & ~(B_L | B_R | B_DPAD)
+	var ls: Vector2 = a.get("ls", Vector2.ZERO)
+	if ls.length() < 0.25:
+		out |= m & B_DPAD
+	if m & B_L:
+		out |= B_L2
+	if vr:
+		if m & B_R:
+			out |= B_R2
+		if a.get("z", false):
+			out |= B_R
+	elif m & B_R:
+		out |= B_R                                            # (libretro's R is the GameCube's Z)
+	return out
+
+
+# 'X': the sticks and triggers of one port, only when they change. With no stick (keyboard, a guest) the d-pad pushes it.
+func _send_axes(port: int, m: int, a: Dictionary) -> void:
+	var ls: Vector2 = a.get("ls", Vector2.ZERO)
+	var rs: Vector2 = a.get("rs", Vector2.ZERO)
+	if ls == Vector2.ZERO and m & B_DPAD:
+		ls = Vector2(float((m & B_RIGHT) != 0) - float((m & B_LEFT) != 0), float((m & B_DOWN) != 0) - float((m & B_UP) != 0)).normalized()
+	var pkt := PackedByteArray([88, port, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	var vals := [ls.x, ls.y, rs.x, rs.y]
+	for i in 4:
+		pkt.encode_s16(2 + i * 2, clampi(int(round(float(vals[i]) * 32767.0)), -32767, 32767))
+	pkt.encode_u16(10, clampi(int(round(float(a.get("lt", 0.0)) * 32767.0)), 0, 32767))
+	pkt.encode_u16(12, clampi(int(round(float(a.get("rt", 0.0)) * 32767.0)), 0, 32767))
+	if pkt != _sent_axes[port]:
+		_sent_axes[port] = pkt
+		_peer.put_data(pkt)
 
 
 # the buttons of the second person (a guest): they drive the port you are not using
@@ -575,6 +724,10 @@ func _process(delta: float) -> void:
 			if _rep_t >= 0.09:
 				_rep_t = 0.0
 				_menu_press(_prev_mask & (B_UP | B_DOWN))
+	if _unpack_thread != null:
+		if not _unpack_thread.is_alive():
+			_unpack_done()
+		return
 	if state == State.STARTING:
 		_process_starting()
 	elif state == State.RUNNING:
@@ -592,7 +745,7 @@ func _process_starting() -> void:
 		return
 	if Time.get_ticks_msec() - _t_start > 1500 and _pid > 0 and not OS.is_process_running(_pid):
 		_fail("The emulator program stopped at once.\nSee carts/emulator.log")
-	elif Time.get_ticks_msec() - _t_start > 12000:
+	elif Time.get_ticks_msec() - _t_start > (12000 if system != "gc" else 30000):     # (Dolphin sets up its graphics first)
 		_fail("The emulator program did not answer.\nSee carts/emulator.log")
 
 
@@ -738,6 +891,7 @@ func _on_hello() -> void:
 	_pb = _audio.get_stream_playback() as AudioStreamGeneratorPlayback
 	_cap = maxi(_pb.get_frames_available(), 1)          # the buffer's real size (Godot rounds it up)
 	_sent_mask = -1
+	_sent_axes = [PackedByteArray(), PackedByteArray()]
 	if not powered:
 		_peer.put_data(PackedByteArray([80, 1]))
 	if pad_held:

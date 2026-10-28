@@ -95,7 +95,7 @@ var arcade_glow: Array = []            # [material, lit energy]: the buttons and
 var arcade_volume := 7                 # 0..10, the cabinet's own volume (the TV's buttons set the console's)
 var arcade_vol_label: Label3D
 var emu: Node                         # NES / SNES games (emu.gd)
-var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "neo", "ps" (the disc console) or "egg" (the secret one)
+var slot_cart := ""                   # the cart in the console: "", "nes", "snes", "sgb", "gen", "gc", "neo", "ps" (the disc console) or "egg" (the secret one)
 var ps_kit: Node                       # ps_kit.gd: the disc slot in the console's front, and the long-box case
 var lightguns: Array = []              # lightgun.gd: the two light guns on the rug beside the console
 var carts: Dictionary = {}            # id -> {node, name, home (Callable returning a Transform3D), busy}
@@ -3966,6 +3966,31 @@ func _gen_cart_mesh() -> Node3D:
 	return n
 
 
+# GameCube: a chunky indigo cart with a carry handle on top (like the console's), the cube label and a name strip.
+# (It plays GameCube discs from carts/gc/roms through the Dolphin core.)
+func _gc_cart_mesh() -> Node3D:
+	var n := _cart_node(0.063, 0.03)
+	var indigo := Color(0.30, 0.25, 0.62)
+	var body := _tm(func(w: bool) -> Color: return _wc(indigo, 0.22, w), 0.45)
+	var dark := _tm(func(w: bool) -> Color: return _wc(indigo, 0.22, w).darkened(0.40), 0.65)
+	var light := _tm(func(w: bool) -> Color: return _wc(indigo, 0.22, w).lightened(0.12), 0.4)
+	var t := 0.024
+	_extrude_poly([Vector2(-0.07, -0.055), Vector2(0.07, -0.055), Vector2(0.07, 0.046), Vector2(0.062, 0.054),
+		Vector2(-0.062, 0.054), Vector2(-0.07, 0.046)], -t / 2.0, t / 2.0, body, n)
+	for sx in [-1.0, 1.0]:                                                                                       # the handle: two posts and a bar
+		_box(Vector3(sx * 0.047, 0.060, 0), Vector3(0.012, 0.012, t * 0.8), body, n)
+	_box(Vector3(0, 0.0705, 0), Vector3(0.106, 0.009, t * 0.8), light, n)
+	_box(Vector3(0, 0.060, 0), Vector3(0.082, 0.012, t * 0.5), dark, n)                                           # (the gap under the bar)
+	for sx in [-1.0, 1.0]:                                                                                       # rounded side ribs
+		_box(Vector3(sx * 0.0655, -0.004, t / 2.0 + 0.0004), Vector3(0.006, 0.086, 0.0012), light, n)
+	_box(Vector3(0, -0.059, 0), Vector3(0.11, 0.008, 0.012), _mat(GOLD, 0.4), n)                                # contacts
+	_box(Vector3(0, 0.0115, t / 2.0 + 0.0002), Vector3(0.1162, 0.0670, 0.0004), dark, n)                         # label pocket
+	_label_quad(CartArt.gc_label(), Vector2(0.112, 0.064), Vector3(0, 0.0115, t / 2.0 + 0.0008), n)
+	_box(Vector3(0, -0.0385, t / 2.0 + 0.0004), Vector3(0.104, 0.017, 0.0010), _mat(Color(0.08, 0.06, 0.16), 0.5), n)   # name strip
+	_cart_text("GAMECUBE", 30, 0.00042, Color(0.86, 0.82, 1.0), Vector3(0, -0.0385, t / 2.0 + 0.0012), n)
+	return n
+
+
 # ---- the standing arcade cabinet (right wall, beside the bookshelf). Local axes: x = out from the wall, y = up, z = across the front.
 const CAB_POS := Vector3(2.5, 0.0, 1.95)       # against the right wall, next to the bookshelf, facing into the room
 const CAB_W := 0.72
@@ -4349,7 +4374,7 @@ func _neo_cart_mesh() -> Node3D:
 # The carts lie on the floor around the console, somewhere new every visit: never inside the console, the TV,
 # the controllers, a wall or a beanbag spot, and never through each other.
 var cart_spots := {}                   # id -> Transform3D in lounge coordinates
-const CART_RADIUS := {"nes": 0.085, "snes": 0.085, "sgb": 0.08, "gen": 0.085, "neo": 0.14, "ps": 0.15}
+const CART_RADIUS := {"nes": 0.085, "snes": 0.085, "sgb": 0.08, "gen": 0.085, "gc": 0.085, "neo": 0.14, "ps": 0.15}
 
 
 const PAD_RADIUS := 0.12
@@ -4453,7 +4478,7 @@ func _scatter_carts() -> void:
 		lg.last_circles = best["circles"]
 		lg.set_rest(best["lp"], best["yaw"], best["flip"])
 	# and the carts, biggest first (it is the hardest to fit)
-	for id in ["ps", "neo", "nes", "snes", "gen", "sgb"]:
+	for id in ["ps", "neo", "nes", "snes", "gen", "gc", "sgb"]:
 		var r: float = CART_RADIUS[id]
 		var best: Vector2 = find.call(func(a: int) -> Variant:
 			var ang := rng.randf_range(0.0, TAU)
@@ -4478,6 +4503,7 @@ func _build_carts() -> void:
 	var snes := _snes_cart_mesh()
 	var sgb := _sgb_cart_mesh()
 	var gen := _gen_cart_mesh()
+	var gc := _gc_cart_mesh()
 	var neo := _neo_cart_mesh()
 	var egg_c := _nes_cart_mesh(true)
 	ps_kit = load("res://ps_kit.gd").new()
@@ -4500,18 +4526,20 @@ func _build_carts() -> void:
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["sgb"]}
 	carts["gen"] = {"node": gen, "name": "SEGA CART", "busy": false,
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["gen"]}
+	carts["gc"] = {"node": gc, "name": "GAMECUBE CART", "busy": false,
+		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["gc"]}
 	carts["neo"] = {"node": neo, "name": "NEO GEO CART", "busy": false,
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["neo"]}
 	carts["ps"] = {"node": ps_kit.case_node, "name": "DISC", "busy": false,
 		"home": func() -> Transform3D: return lounge.global_transform * cart_spots["ps"] * Transform3D(Basis.IDENTITY, Vector3(0, 0, ps_kit.CASE_T / 2.0 - 0.012))}
 	carts["egg"] = {"node": egg_c, "name": "CART", "busy": false,
 		"home": func() -> Transform3D: return drawer_node.global_transform * Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))}
-	for id in ["nes", "snes", "sgb", "gen", "neo", "ps"]:
+	for id in ["nes", "snes", "sgb", "gen", "gc", "neo", "ps"]:
 		var n: Node3D = carts[id]["node"]
 		n.global_transform = (carts[id]["home"] as Callable).call()
 	egg_c.reparent(drawer_node, false)
 	egg_c.transform = Transform3D(Basis(Vector3.UP, 0.15) * lay, Vector3(0, -0.053, -0.15))
-	for id in ["nes", "snes", "sgb", "gen", "neo", "egg", "ps"]:
+	for id in ["nes", "snes", "sgb", "gen", "gc", "neo", "egg", "ps"]:
 		interactables.append({"node": carts[id]["node"], "half": (Vector3(0.085, 0.065, 0.03) if id != "ps" else ps_kit.case_node.get_meta("half")), "egg_lock": true, "group": "games",
 			"label": _cart_label.bind(id), "cb": _cart_click.bind(id)})
 
@@ -4598,7 +4626,7 @@ func _cart_changed() -> void:
 			if slot_cart == "" or slot_cart == "neo" or slot_cart == "ps":
 				_set_lid(false))
 	if emu != null:
-		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen", "neo", "ps"]) else "")
+		emu.set_system(slot_cart if (slot_cart in ["nes", "snes", "sgb", "gen", "gc", "neo", "ps"]) else "")
 	_apply_console()
 
 
@@ -4929,6 +4957,8 @@ func _pad_tick(delta: float) -> void:
 	var sel_edge := all & ~_nav_prev & Emu.B_SELECT
 	_nav_prev = all
 	if emu.state == Emu.State.RUNNING:
+		if emu.system == "gc":                          # GameCube games want the sticks and analog triggers too
+			emu.set_analog(padmap.analog(xr_active, lh, rh), xr_active)
 		emu.set_buttons(mapped)
 	elif ctl_open:
 		_controls_tick(nav | (mapped & Emu.B_A), delta)

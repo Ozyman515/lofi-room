@@ -266,6 +266,36 @@ static func gen_grid() -> ImageTexture:
 	return tex(im)
 
 
+# ---------------------------------------------------------------- GameCube: an indigo cube floating over a dusk city
+
+static func gc_label() -> ImageTexture:
+	var im := _img(112, 64)
+	_grad(im, 0, 40, Color(0.10, 0.07, 0.30), Color(0.62, 0.24, 0.62))
+	_grad(im, 40, 64, Color(0.62, 0.24, 0.62), Color(0.98, 0.62, 0.52))
+	_ellipse(im, 92, 13, 7, 7, Color(1.0, 0.92, 0.80))                          # moon
+	_ellipse(im, 95, 11, 6, 6, Color(0.22, 0.12, 0.40))                         # (a crescent)
+	var city := Color(0.14, 0.08, 0.26)                                          # skyline along the bottom
+	for b in [[0, 50, 9], [9, 44, 7], [16, 53, 10], [26, 47, 8], [72, 46, 9], [81, 52, 8], [89, 42, 7], [96, 49, 16]]:
+		_rect(im, b[0], b[1], b[2], 64 - b[1], city)
+	_rect(im, 0, 63, 112, 1, MAG)
+	# the cube, seen from above a corner: a light top face and two shaded sides
+	var c := Vector2(49, 34)
+	var s := 17.0
+	var top := [c + Vector2(0, -s), c + Vector2(s * 0.87, -s * 0.5), c, c + Vector2(-s * 0.87, -s * 0.5)]
+	var left := [c + Vector2(-s * 0.87, -s * 0.5), c, c + Vector2(0, s), c + Vector2(-s * 0.87, s * 0.5)]
+	var right := [c, c + Vector2(s * 0.87, -s * 0.5), c + Vector2(s * 0.87, s * 0.5), c + Vector2(0, s)]
+	_poly(im, top, Color(0.66, 0.58, 0.98))
+	_poly(im, left, Color(0.36, 0.28, 0.72))
+	_poly(im, right, Color(0.24, 0.17, 0.52))
+	_line(im, top[0], top[1], 1.0, Color(0.86, 0.82, 1.0))                      # bright edges
+	_line(im, top[0], top[3], 1.0, Color(0.86, 0.82, 1.0))
+	_line(im, c, c + Vector2(0, s), 1.0, Color(0.50, 0.42, 0.90))
+	_ellipse(im, c.x, c.y + s + 6, 14, 2.2, Color(0.30, 0.12, 0.38))            # its soft shadow on the haze
+	_rect(im, 80, 30, 26, 2, CYAN)                                               # two speed lines on the right
+	_rect(im, 86, 35, 20, 1, MAG)
+	return tex(im)
+
+
 # ---------------------------------------------------------------- Neo Geo: lofi stripes
 
 static func neo_label() -> ImageTexture:

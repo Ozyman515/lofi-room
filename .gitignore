@@ -12,3 +12,8 @@ addons/godot-vlc/bin/
 carts/emulator.log
 __pycache__/
 books
+# Dolphin (GameCube): its data folder ships as one zip and is unpacked on each PC
+!cores/dolphin-emu/Sys.zip
+cores/dolphin-emu/Sys/
+cores/dolphin-emu/Sys.unpacking/
+cores/dolphin-emu/Sys.old/

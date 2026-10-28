@@ -12,6 +12,8 @@
  *   'G' port x y b   the gun: where it points (int16 each, -32767..32767 across the picture, like libretro's
  *                    SCREEN_X/Y) and its buttons (bit 0 trigger, 1 off the screen, 2 reload, 3 aux A, 4 aux B,
  *                    5 start, 6 select)
+ *   'X' port lx ly rx ry lt rt   analog sticks (int16 each, -32767..32767, y down) and analog triggers
+ *                    (uint16 0..32767) of port 0 or 1 (GameCube: control stick, C stick, L / R)
  *   'S'              write the battery save now
  *   'T'              write the resume state now
  *   'R'              reset the game
@@ -34,10 +36,20 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <windows.h>
+#include <GL/gl.h>
 typedef SOCKET sock_t;
 #define CLOSESOCK closesocket
+typedef CRITICAL_SECTION lock_t;
+#define LOCK_INIT(l) InitializeCriticalSection(&(l))
+#define LOCK(l) EnterCriticalSection(&(l))
+#define UNLOCK(l) LeaveCriticalSection(&(l))
 #else
 #include <dlfcn.h>
+#include <pthread.h>
+typedef pthread_mutex_t lock_t;
+#define LOCK_INIT(l) pthread_mutex_init(&(l), NULL)
+#define LOCK(l) pthread_mutex_lock(&(l))
+#define UNLOCK(l) pthread_mutex_unlock(&(l))
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -59,7 +71,16 @@ static size_t g_rgba_cap = 0;
 static int g_have_video = 0;
 static float *g_audio = NULL;
 static size_t g_audio_n = 0, g_audio_cap = 0;     /* in int16 values */
+/* Dolphin hands over its sound from its own CPU thread, so the sound buffer is shared under a lock */
+static lock_t g_audio_lock;
+static float *g_audio_out = NULL;
+static size_t g_audio_out_cap = 0;
 static uint16_t g_buttons[2] = {0, 0};
+static int16_t g_stick[2][4];                      /* lx ly rx ry */
+static uint16_t g_trig[2][2];                      /* L R, 0..32767 */
+static int g_want_frame = 1;                       /* Godot showed the last picture: read the next one back */
+static int g_heavy = 0;                            /* a big core (Dolphin): huge save states, no periodic ones */
+static double g_fps_now = 0.0;                     /* changed by SET_SYSTEM_AV_INFO (a PAL game switching to 60 Hz) */
 static int16_t g_gun_x[2] = {0, 0}, g_gun_y[2] = {0, 0};
 static uint8_t g_gun_b[2] = {0, 0};
 static int g_gun_px[2][2];                         /* where the core thinks a relative gun points (pixels) */
@@ -168,6 +189,235 @@ static void send_error(const char *text) {
 	logf_("ERROR: %s", text);
 }
 
+/* ---------------------------------------------------------------- hardware rendering (OpenGL, Windows)
+ *
+ * Cores like Dolphin draw with the GPU instead of handing over a picture. We give them an OpenGL context on a
+ * hidden window and a framebuffer to draw into, then read each finished frame back and send it like any other. */
+
+static struct retro_hw_render_callback g_hw;
+static int g_use_hw = 0;
+static unsigned g_fb_w = 0, g_fb_h = 0, g_fb_want_w = 0, g_fb_want_h = 0;
+static uint8_t *g_readback = NULL;
+static size_t g_readback_cap = 0;
+
+#ifdef _WIN32
+#define GL_FRAMEBUFFER 0x8D40
+#define GL_RENDERBUFFER 0x8D41
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#define GL_DEPTH_STENCIL_ATTACHMENT 0x821A
+#define GL_DEPTH24_STENCIL8 0x88F0
+#define GL_FRAMEBUFFER_COMPLETE 0x8CD5
+#define GL_FRAMEBUFFER_BINDING 0x8CA6
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#define GL_READ_FRAMEBUFFER_BINDING 0x8CAA
+#define GL_PIXEL_PACK_BUFFER 0x88EB
+#define GL_PIXEL_PACK_BUFFER_BINDING 0x88ED
+#define GL_PACK_ROW_LENGTH 0x0D02
+#define GL_RGBA8 0x8058
+#define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
+#define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x0001
+#define WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB 0x0002
+
+typedef void (APIENTRY *p_glGenFramebuffers)(GLsizei, GLuint *);
+typedef void (APIENTRY *p_glDeleteFramebuffers)(GLsizei, const GLuint *);
+typedef void (APIENTRY *p_glBindFramebuffer)(GLenum, GLuint);
+typedef void (APIENTRY *p_glFramebufferTexture2D)(GLenum, GLenum, GLenum, GLuint, GLint);
+typedef void (APIENTRY *p_glGenRenderbuffers)(GLsizei, GLuint *);
+typedef void (APIENTRY *p_glDeleteRenderbuffers)(GLsizei, const GLuint *);
+typedef void (APIENTRY *p_glBindRenderbuffer)(GLenum, GLuint);
+typedef void (APIENTRY *p_glRenderbufferStorage)(GLenum, GLenum, GLsizei, GLsizei);
+typedef void (APIENTRY *p_glFramebufferRenderbuffer)(GLenum, GLenum, GLenum, GLuint);
+typedef GLenum (APIENTRY *p_glCheckFramebufferStatus)(GLenum);
+typedef void (APIENTRY *p_glBindBuffer)(GLenum, GLuint);
+typedef HGLRC (WINAPI *p_wglCreateContextAttribsARB)(HDC, HGLRC, const int *);
+static p_glGenFramebuffers q_glGenFramebuffers;
+static p_glDeleteFramebuffers q_glDeleteFramebuffers;
+static p_glBindFramebuffer q_glBindFramebuffer;
+static p_glFramebufferTexture2D q_glFramebufferTexture2D;
+static p_glGenRenderbuffers q_glGenRenderbuffers;
+static p_glDeleteRenderbuffers q_glDeleteRenderbuffers;
+static p_glBindRenderbuffer q_glBindRenderbuffer;
+static p_glRenderbufferStorage q_glRenderbufferStorage;
+static p_glFramebufferRenderbuffer q_glFramebufferRenderbuffer;
+static p_glCheckFramebufferStatus q_glCheckFramebufferStatus;
+static p_glBindBuffer q_glBindBuffer;
+
+static HWND g_gl_wnd = NULL;
+static HDC g_gl_dc = NULL;
+static HGLRC g_gl_rc = NULL;
+static HMODULE g_gl_lib = NULL;
+static GLuint g_fbo = 0, g_fb_tex = 0, g_fb_depth = 0;
+
+static retro_proc_address_t RETRO_CALLCONV gl_proc(const char *name) {
+	PROC p = wglGetProcAddress(name);
+	if (p == NULL || p == (PROC)1 || p == (PROC)2 || p == (PROC)3 || p == (PROC)-1)
+		p = GetProcAddress(g_gl_lib, name);         /* the OpenGL 1.1 functions live in opengl32.dll itself */
+	return (retro_proc_address_t)p;
+}
+static uintptr_t RETRO_CALLCONV gl_current_fb(void) { return (uintptr_t)g_fbo; }
+
+static int gl_create(int core_profile, unsigned want_major, unsigned want_minor) {
+	WNDCLASSW wc;
+	PIXELFORMATDESCRIPTOR pfd;
+	HGLRC tmp;
+	p_wglCreateContextAttribsARB create_attribs;
+	int pf;
+	memset(&wc, 0, sizeof(wc));
+	wc.lpfnWndProc = DefWindowProcW;
+	wc.hInstance = GetModuleHandleW(NULL);
+	wc.lpszClassName = L"retro_host_gl";
+	RegisterClassW(&wc);
+	g_gl_wnd = CreateWindowExW(0, L"retro_host_gl", L"retro_host", WS_POPUP, 0, 0, 16, 16, NULL, NULL, wc.hInstance, NULL);
+	if (!g_gl_wnd) { logf_("GL: no window"); return 0; }
+	g_gl_dc = GetDC(g_gl_wnd);
+	memset(&pfd, 0, sizeof(pfd));
+	pfd.nSize = sizeof(pfd);
+	pfd.nVersion = 1;
+	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cColorBits = 32;
+	pfd.cDepthBits = 24;
+	pfd.cStencilBits = 8;
+	pf = ChoosePixelFormat(g_gl_dc, &pfd);
+	if (!pf || !SetPixelFormat(g_gl_dc, pf, &pfd)) { logf_("GL: no pixel format"); return 0; }
+	tmp = wglCreateContext(g_gl_dc);
+	if (!tmp || !wglMakeCurrent(g_gl_dc, tmp)) { logf_("GL: no context"); return 0; }
+	g_gl_lib = GetModuleHandleW(L"opengl32.dll");
+	create_attribs = (p_wglCreateContextAttribsARB)wglGetProcAddress("wglCreateContextAttribsARB");
+	if (create_attribs) {
+		/* the newest version the driver gives us, but at least what the core asked for */
+		static const int versions[][2] = {{4, 6}, {4, 5}, {4, 3}, {4, 0}, {3, 3}, {3, 2}, {3, 1}, {3, 0}};
+		unsigned i;
+		for (i = 0; i < sizeof(versions) / sizeof(versions[0]); i++) {
+			int attr[16], n = 0;
+			HGLRC rc;
+			if ((unsigned)versions[i][0] < want_major || ((unsigned)versions[i][0] == want_major && (unsigned)versions[i][1] < want_minor)) break;
+			attr[n++] = WGL_CONTEXT_MAJOR_VERSION_ARB; attr[n++] = versions[i][0];
+			attr[n++] = WGL_CONTEXT_MINOR_VERSION_ARB; attr[n++] = versions[i][1];
+			if (versions[i][0] * 10 + versions[i][1] >= 32) {
+				attr[n++] = WGL_CONTEXT_PROFILE_MASK_ARB;
+				attr[n++] = core_profile ? WGL_CONTEXT_CORE_PROFILE_BIT_ARB : WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+			}
+			attr[n] = 0;
+			rc = create_attribs(g_gl_dc, NULL, attr);
+			if (rc) {
+				wglMakeCurrent(g_gl_dc, rc);
+				wglDeleteContext(tmp);
+				g_gl_rc = rc;
+				logf_("GL: OpenGL %d.%d %s context (%s)", versions[i][0], versions[i][1], core_profile ? "core" : "compatibility",
+					(const char *)glGetString(GL_RENDERER));
+				break;
+			}
+		}
+	}
+	if (!g_gl_rc) {
+		if (core_profile) { logf_("GL: the driver has no core OpenGL %u.%u", want_major, want_minor); wglMakeCurrent(NULL, NULL); wglDeleteContext(tmp); return 0; }
+		g_gl_rc = tmp;
+	}
+#define GLP(n) do { *(void **)&q_##n = (void *)gl_proc(#n); if (!q_##n) { logf_("GL: missing " #n); return 0; } } while (0)
+	GLP(glGenFramebuffers); GLP(glDeleteFramebuffers); GLP(glBindFramebuffer); GLP(glFramebufferTexture2D);
+	GLP(glGenRenderbuffers); GLP(glDeleteRenderbuffers); GLP(glBindRenderbuffer); GLP(glRenderbufferStorage);
+	GLP(glFramebufferRenderbuffer); GLP(glCheckFramebufferStatus); GLP(glBindBuffer);
+#undef GLP
+	return 1;
+}
+
+/* (re)make the framebuffer the core draws into, at least w x h */
+static int gl_make_fb(unsigned w, unsigned h) {
+	GLenum st;
+	if (w == 0) w = 640;
+	if (h == 0) h = 528;
+	if (g_fbo && w <= g_fb_w && h <= g_fb_h) return 1;
+	if (g_fbo) { q_glDeleteFramebuffers(1, &g_fbo); glDeleteTextures(1, &g_fb_tex); q_glDeleteRenderbuffers(1, &g_fb_depth); }
+	glGenTextures(1, &g_fb_tex);
+	glBindTexture(GL_TEXTURE_2D, g_fb_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)w, (GLsizei)h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	q_glGenRenderbuffers(1, &g_fb_depth);
+	q_glBindRenderbuffer(GL_RENDERBUFFER, g_fb_depth);
+	q_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, (GLsizei)w, (GLsizei)h);
+	q_glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	q_glGenFramebuffers(1, &g_fbo);
+	q_glBindFramebuffer(GL_FRAMEBUFFER, g_fbo);
+	q_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_fb_tex, 0);
+	q_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, g_fb_depth);
+	st = q_glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	q_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	if (st != GL_FRAMEBUFFER_COMPLETE) { logf_("GL: framebuffer not complete (0x%x)", (unsigned)st); return 0; }
+	g_fb_w = w;
+	g_fb_h = h;
+	logf_("GL: framebuffer %ux%u", w, h);
+	return 1;
+}
+
+/* copy the finished frame out of the GPU into g_rgba (top row first), without disturbing the core's GL state */
+static void gl_read_frame(unsigned w, unsigned h) {
+	GLint old_read = 0, old_pack = 0, old_align = 4, old_row = 0;
+	size_t row = (size_t)w * 4;
+	unsigned y;
+	if (w > g_fb_w) w = g_fb_w;
+	if (h > g_fb_h) h = g_fb_h;
+	if (w == 0 || h == 0) return;
+	row = (size_t)w * 4;
+	if (row * h > g_readback_cap) { g_readback_cap = row * h; g_readback = (uint8_t *)realloc(g_readback, g_readback_cap); }
+	if (row * h > g_rgba_cap) { g_rgba_cap = row * h; g_rgba = (uint8_t *)realloc(g_rgba, g_rgba_cap); }
+	glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &old_read);
+	glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &old_pack);
+	glGetIntegerv(GL_PACK_ALIGNMENT, &old_align);
+	glGetIntegerv(GL_PACK_ROW_LENGTH, &old_row);
+	q_glBindFramebuffer(GL_READ_FRAMEBUFFER, g_fbo);
+	q_glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+	glReadPixels(0, 0, (GLsizei)w, (GLsizei)h, GL_RGBA, GL_UNSIGNED_BYTE, g_readback);
+	glPixelStorei(GL_PACK_ALIGNMENT, old_align);
+	glPixelStorei(GL_PACK_ROW_LENGTH, old_row);
+	q_glBindBuffer(GL_PIXEL_PACK_BUFFER, (GLuint)old_pack);
+	q_glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)old_read);
+	for (y = 0; y < h; y++) {
+		const uint8_t *src = g_readback + (size_t)(g_hw.bottom_left_origin ? h - 1 - y : y) * row;
+		uint8_t *dst = g_rgba + (size_t)y * row;
+		size_t i;
+		memcpy(dst, src, row);
+		for (i = 3; i < row; i += 4) dst[i] = 255;
+	}
+	g_frame_w = w;
+	g_frame_h = h;
+	g_have_video = 1;
+}
+#endif
+
+/* the core asks for a GPU context (inside retro_load_game) */
+static bool hw_request(struct retro_hw_render_callback *cb) {
+#ifdef _WIN32
+	int core_profile;
+	if (cb->context_type != RETRO_HW_CONTEXT_OPENGL_CORE && cb->context_type != RETRO_HW_CONTEXT_OPENGL) {
+		logf_("GL: the core asked for render type %d (only OpenGL here)", (int)cb->context_type);
+		return false;
+	}
+	if (g_use_hw) {                  /* asked again: same context */
+		cb->get_current_framebuffer = gl_current_fb;
+		cb->get_proc_address = gl_proc;
+		g_hw = *cb;
+		return true;
+	}
+	core_profile = cb->context_type == RETRO_HW_CONTEXT_OPENGL_CORE;
+	if (!gl_create(core_profile, core_profile ? cb->version_major : 0, core_profile ? cb->version_minor : 0)) return false;
+	cb->get_current_framebuffer = gl_current_fb;
+	cb->get_proc_address = gl_proc;
+	g_hw = *cb;
+	g_use_hw = 1;
+	return true;
+#else
+	(void)cb;
+	return false;
+#endif
+}
+
 /* ---------------------------------------------------------------- libretro side */
 
 static void (*c_set_environment)(retro_environment_t);
@@ -239,14 +489,56 @@ static bool RETRO_CALLCONV env_cb(unsigned cmd, void *data) {
 		case RETRO_ENVIRONMENT_SET_MEMORY_MAPS:
 		case RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS:
 		case RETRO_ENVIRONMENT_SET_GEOMETRY:
-		case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
 			return true;
+		case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO: {
+			/* new timing or a bigger picture (the core changed its resolution): the framebuffer grows before the next frame */
+			const struct retro_system_av_info *ai = (const struct retro_system_av_info *)data;
+			if (ai) {
+				if (ai->timing.fps > 1.0) g_fps_now = ai->timing.fps;
+				if (ai->geometry.max_width > g_fb_want_w) g_fb_want_w = ai->geometry.max_width;
+				if (ai->geometry.max_height > g_fb_want_h) g_fb_want_h = ai->geometry.max_height;
+			}
+			return true;
+		}
+		/* ---- what GPU cores (Dolphin) ask for */
+		case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
+#ifdef _WIN32
+			*(unsigned *)data = RETRO_HW_CONTEXT_OPENGL_CORE;
+			return true;
+#else
+			return false;
+#endif
+		case RETRO_ENVIRONMENT_SET_HW_RENDER:
+			return hw_request((struct retro_hw_render_callback *)data);
+		case RETRO_ENVIRONMENT_SET_HW_SHARED_CONTEXT:
+			return true;
+		case RETRO_ENVIRONMENT_GET_JIT_CAPABLE:
+			*(bool *)data = true;
+			return true;
+		case RETRO_ENVIRONMENT_GET_FASTFORWARDING:
+			*(bool *)data = false;
+			return true;
+		case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
+			return true;
+		case RETRO_ENVIRONMENT_SET_MESSAGE: {
+			const struct retro_message *m = (const struct retro_message *)data;
+			if (m && m->msg) logf_("[core message] %s", m->msg);
+			return true;
+		}
 		case RETRO_ENVIRONMENT_GET_VARIABLE: {
 			/* a few core options of our own; the rest stay at the core's defaults */
 			static const char *opts[][2] = {
 				/* PCSX ReARMed's recompiler crashes after a saved position is loaded, and the
 				   interpreter is quick enough on a PC */
 				{ "pcsx_rearmed_drc", "disabled" },
+				/* Dolphin: draw with the GPU, at the console's own resolution (640 x 528; it is a TV in a room,
+				   and every frame is copied back from the GPU), compile shaders in the background with
+				   ubershaders meanwhile (no hitches when a new effect shows up, which feels bad in VR), and no
+				   text drawn over the game */
+				{ "dolphin_renderer", "Hardware" },
+				{ "dolphin_efb_scale", "1" },
+				{ "dolphin_shader_compilation_mode", "2" },
+				{ "dolphin_osd_enabled", "disabled" },
 			};
 			struct retro_variable *v = (struct retro_variable *)data;
 			unsigned i;
@@ -270,6 +562,14 @@ static void RETRO_CALLCONV video_cb(const void *data, unsigned w, unsigned h, si
 	unsigned x, y;
 	uint8_t *o;
 	if (!data || w == 0 || h == 0) return;     /* a repeated frame */
+#ifdef _WIN32
+	if (data == RETRO_HW_FRAME_BUFFER_VALID) {  /* drawn on the GPU: read it back only when Godot wants a picture */
+		if (g_use_hw && g_fbo && g_want_frame) gl_read_frame(w, h);
+		return;
+	}
+#else
+	if (data == RETRO_HW_FRAME_BUFFER_VALID) return;
+#endif
 	if ((size_t)w * h * 4 > g_rgba_cap) {
 		g_rgba_cap = (size_t)w * h * 4;
 		g_rgba = (uint8_t *)realloc(g_rgba, g_rgba_cap);
@@ -302,13 +602,35 @@ static void RETRO_CALLCONV video_cb(const void *data, unsigned w, unsigned h, si
 }
 
 static void audio_push(const int16_t *d, size_t frames) {
-	size_t need = g_audio_n + frames * 2, i;
+	size_t need, i;
+	LOCK(g_audio_lock);
+	need = g_audio_n + frames * 2;
+	if (need > 400000) {                 /* nobody is taking it (paused): drop the oldest rather than grow forever */
+		g_audio_n = 0;
+		need = frames * 2;
+	}
 	if (need > g_audio_cap) {
 		g_audio_cap = need * 2;
 		g_audio = (float *)realloc(g_audio, g_audio_cap * sizeof(float));
 	}
 	for (i = 0; i < frames * 2; i++) g_audio[g_audio_n + i] = (float)d[i] * (1.0f / 32768.0f);
 	g_audio_n += frames * 2;
+	UNLOCK(g_audio_lock);
+}
+
+/* take everything gathered so far (from whichever thread made it); returns the number of float values */
+static size_t audio_take(void) {
+	size_t n;
+	LOCK(g_audio_lock);
+	n = g_audio_n;
+	if (n > g_audio_out_cap) {
+		g_audio_out_cap = n * 2;
+		g_audio_out = (float *)realloc(g_audio_out, g_audio_out_cap * sizeof(float));
+	}
+	if (n) memcpy(g_audio_out, g_audio, n * sizeof(float));
+	g_audio_n = 0;
+	UNLOCK(g_audio_lock);
+	return n;
 }
 static void RETRO_CALLCONV audio_cb(int16_t l, int16_t r) { int16_t s[2]; s[0] = l; s[1] = r; audio_push(s, 1); }
 static size_t RETRO_CALLCONV audio_batch_cb(const int16_t *d, size_t frames) { audio_push(d, frames); return frames; }
@@ -317,7 +639,24 @@ static int16_t RETRO_CALLCONV input_state_cb(unsigned port, unsigned device, uns
 	unsigned base = device & RETRO_DEVICE_MASK;
 	(void)index;
 	if (port > 1) return 0;
-	if (base == RETRO_DEVICE_JOYPAD) return id > 15 ? 0 : (g_buttons[port] >> id) & 1;
+	if (base == RETRO_DEVICE_JOYPAD) {
+		if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return (int16_t)g_buttons[port];
+		return id > 15 ? 0 : (g_buttons[port] >> id) & 1;
+	}
+	if (base == RETRO_DEVICE_ANALOG) {
+		if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT || index == RETRO_DEVICE_INDEX_ANALOG_RIGHT) {
+			int k = (index == RETRO_DEVICE_INDEX_ANALOG_RIGHT ? 2 : 0) + (id == RETRO_DEVICE_ID_ANALOG_Y ? 1 : 0);
+			return g_stick[port][k];
+		}
+		if (index == RETRO_DEVICE_INDEX_ANALOG_BUTTON) {
+			/* analog L / R; a pad with only digital ones (or any other button) reads full when pressed */
+			int dig = id <= 15 ? (g_buttons[port] >> id) & 1 : 0;
+			if (id == RETRO_DEVICE_ID_JOYPAD_L2 && g_trig[port][0]) return (int16_t)g_trig[port][0];
+			if (id == RETRO_DEVICE_ID_JOYPAD_R2 && g_trig[port][1]) return (int16_t)g_trig[port][1];
+			return dig ? 0x7FFF : 0;
+		}
+		return 0;
+	}
 	if (base == RETRO_DEVICE_LIGHTGUN || base == RETRO_DEVICE_MOUSE) {
 		uint8_t b = g_gun_b[port];
 		switch (id) {
@@ -444,19 +783,46 @@ static void save_srm(void) {
 
 /* A "resume" state: where the game was left, written when the game ends, the power goes off or every so often. */
 static char g_state_path[2048];
+static char g_core_id[160] = "";      /* core name + version, kept next to each saved position */
+static int g_resume_pending = 0;      /* the saved position is not loaded yet: don't write over it */
+
+static int replace_file(const char *from, const char *to) {
+#ifdef _WIN32
+	wchar_t *a = to_wide(from), *b = to_wide(to);
+	int ok = MoveFileExW(a, b, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+	free(a); free(b);
+	return ok;
+#else
+	return rename(from, to) == 0;
+#endif
+}
 
 static void save_state(void) {
 	size_t n;
 	void *buf;
 	FILE *f;
-	if (g_state_path[0] == 0) return;
+	char tmp[2100];
+	if (g_state_path[0] == 0 || g_resume_pending) return;
 	n = c_serialize_size();
 	if (n == 0) return;
 	buf = malloc(n);
 	if (!buf) return;
 	if (c_serialize(buf, n)) {
-		f = open_file(g_state_path, "wb");
-		if (f) { fwrite(buf, 1, n, f); fclose(f); }
+		/* written next to it first, then swapped in: a game closed half way through never leaves a broken file */
+		snprintf(tmp, sizeof(tmp), "%s.tmp", g_state_path);
+		f = open_file(tmp, "wb");
+		if (f) {
+			int ok = fwrite(buf, 1, n, f) == n;
+			ok = (fclose(f) == 0) && ok;
+			if (!ok || !replace_file(tmp, g_state_path)) logf_("cannot write %s", g_state_path);
+			else {
+				/* which core wrote it: a newer core (an update) may not read an older one's positions safely */
+				FILE *c;
+				snprintf(tmp, sizeof(tmp), "%s.core", g_state_path);
+				c = open_file(tmp, "wb");
+				if (c) { fputs(g_core_id, c); fclose(c); }
+			}
+		}
 		else logf_("cannot write %s", g_state_path);
 	}
 	free(buf);
@@ -464,10 +830,36 @@ static void save_state(void) {
 
 static void load_state(void) {
 	size_t n, got;
+	long fsize;
 	void *buf;
-	FILE *f = open_file(g_state_path, "rb");
+	FILE *f;
+	g_resume_pending = 0;
+	{
+		/* written by a different version of the core (an update came in between)? Dolphin, for one, can crash on
+		   those, so the game starts fresh instead. (Positions from before this check have no note: they are tried.) */
+		char note[2100], was[160];
+		FILE *c;
+		snprintf(note, sizeof(note), "%s.core", g_state_path);
+		c = open_file(note, "rb");
+		if (c) {
+			size_t k = fread(was, 1, sizeof(was) - 1, c);
+			fclose(c);
+			was[k] = 0;
+			if (strcmp(was, g_core_id) != 0) {
+				logf_("the saved position is from another core version (%s), starting fresh", was);
+				return;
+			}
+		}
+	}
+	f = open_file(g_state_path, "rb");
 	if (!f) return;
 	n = c_serialize_size();
+	if (g_heavy) {                    /* (Dolphin's size can differ a little between runs: read the whole file) */
+		fseek(f, 0, SEEK_END);
+		fsize = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		if (fsize > 0) n = (size_t)fsize;
+	}
 	buf = n ? malloc(n) : NULL;
 	if (!buf) { fclose(f); return; }
 	got = fread(buf, 1, n, f);
@@ -513,6 +905,7 @@ int main(int argc, char **argv) {
 	if (argc > 6) g_log = open_file(argv[6], "w");
 	g_system_dir = argv[5];
 	g_save_dir = argv[4];
+	LOCK_INIT(g_audio_lock);
 	logf_("retro_host starting: core=%s rom=%s", argv[2], argv[3]);
 #ifdef _WIN32
 	WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -566,6 +959,15 @@ int main(int argc, char **argv) {
 	if (c_api_version() != RETRO_API_VERSION) { send_error("wrong libretro version"); return 6; }
 	memset(&si, 0, sizeof(si));
 	c_get_system_info(&si);
+	if (si.library_name) {
+		char low[64];
+		unsigned i;
+		for (i = 0; i < sizeof(low) - 1 && si.library_name[i]; i++) low[i] = (char)tolower((unsigned char)si.library_name[i]);
+		low[i] = 0;
+		g_heavy = strstr(low, "dolphin") != NULL;
+		snprintf(g_core_id, sizeof(g_core_id), "%s %s", si.library_name, si.library_version ? si.library_version : "");
+		logf_("core: %s %s", si.library_name, si.library_version ? si.library_version : "");
+	}
 	c_set_environment(env_cb);
 	c_init();
 	c_set_video_refresh(video_cb);
@@ -598,6 +1000,15 @@ int main(int argc, char **argv) {
 	c_get_system_av_info(&av);
 	if (av.geometry.base_width > 0) g_geo_w = av.geometry.base_width;
 	if (av.geometry.base_height > 0) g_geo_h = av.geometry.base_height;
+#ifdef _WIN32
+	if (g_use_hw) {
+		/* the GPU core gets its framebuffer now, then is told its context is ready */
+		if (av.geometry.max_width > g_fb_want_w) g_fb_want_w = av.geometry.max_width;
+		if (av.geometry.max_height > g_fb_want_h) g_fb_want_h = av.geometry.max_height;
+		if (!gl_make_fb(g_fb_want_w, g_fb_want_h)) { send_error("the graphics card could not make a picture for this core"); return 9; }
+		if (g_hw.context_reset) g_hw.context_reset();
+	}
+#endif
 	snprintf(g_srm_path, sizeof(g_srm_path), "%s/%s.srm", g_save_dir, base_name(argv[3]));
 	load_srm();
 	g_state_path[0] = 0;
@@ -621,6 +1032,9 @@ int main(int argc, char **argv) {
 		double speed = 1.0, next = now_s();
 		int paused = 0, credit = 1;
 		int resume = (argc > 8 && argv[8][0] == '1' && g_state_path[0] != 0);
+		unsigned resume_tries = 0;
+		g_resume_pending = resume && g_heavy;
+		g_fps_now = av.timing.fps > 1.0 ? av.timing.fps : 60.0;
 		while (running) {
 			double t = now_s();
 			if (paused || next > t) {
@@ -657,6 +1071,16 @@ int main(int argc, char **argv) {
 						g_gun_x[port] = (int16_t)(v[1] | (v[2] << 8));
 						g_gun_y[port] = (int16_t)(v[3] | (v[4] << 8));
 						g_gun_b[port] = v[5];
+					} else if (cmd == 'X') {
+						uint8_t v[13];
+						unsigned port, k;
+						if (!recv_all(v, 13)) break;
+						port = v[0] & 1;
+						for (k = 0; k < 4; k++) g_stick[port][k] = (int16_t)(v[1 + k * 2] | (v[2 + k * 2] << 8));
+						g_trig[port][0] = (uint16_t)(v[9] | (v[10] << 8));
+						g_trig[port][1] = (uint16_t)(v[11] | (v[12] << 8));
+						if (g_trig[port][0] > 0x7FFF) g_trig[port][0] = 0x7FFF;
+						if (g_trig[port][1] > 0x7FFF) g_trig[port][1] = 0x7FFF;
 					} else if (cmd == 'S') {
 						save_srm();
 					} else if (cmd == 'T') {
@@ -681,10 +1105,20 @@ int main(int argc, char **argv) {
 				continue;
 			}
 			g_have_video = 0;
-			g_audio_n = 0;
+			g_want_frame = credit;
 			c_run();
 			frame_counter++;
-			if (resume) { resume = 0; load_state(); }
+#ifdef _WIN32
+			if (g_use_hw && (g_fb_want_w > g_fb_w || g_fb_want_h > g_fb_h)) gl_make_fb(g_fb_want_w, g_fb_want_h);
+#endif
+			if (resume) {
+				if (!g_heavy) { resume = 0; load_state(); }
+				/* Dolphin boots over its first frames and only takes a saved position once it is really running */
+				else if (frame_counter >= 30 && (frame_counter % 15) == 0) {
+					if (c_serialize_size() > 0) { resume = 0; load_state(); }
+					else if (++resume_tries > 40) { resume = 0; g_resume_pending = 0; logf_("the game never got ready for its saved position"); }
+				}
+			}
 			if (g_have_video && credit) {
 				uint8_t hdr[9];
 				uint32_t w = g_frame_w, h = g_frame_h;
@@ -694,12 +1128,15 @@ int main(int argc, char **argv) {
 				credit = 0;
 				if (!send_all(hdr, 9) || !send_all(g_rgba, (size_t)w * h * 4)) break;
 			}
-			if (g_audio_n > 0) {
-				uint8_t hdr[5];
-				uint32_t cnt = (uint32_t)(g_audio_n / 2);
-				hdr[0] = 'A';
-				memcpy(hdr + 1, &cnt, 4);
-				if (!send_all(hdr, 5) || !send_all(g_audio, g_audio_n * sizeof(float))) break;
+			{
+				size_t an = audio_take();
+				if (an > 0) {
+					uint8_t hdr[5];
+					uint32_t cnt = (uint32_t)(an / 2);
+					hdr[0] = 'A';
+					memcpy(hdr + 1, &cnt, 4);
+					if (!send_all(hdr, 5) || !send_all(g_audio_out, an * sizeof(float))) break;
+				}
 			}
 			{
 				uint8_t k[5];
@@ -709,9 +1146,12 @@ int main(int argc, char **argv) {
 			}
 			if (frame_counter - saved_at > 900) {   /* about every 15 seconds */
 				save_srm();
-				save_state();
+				/* (a Dolphin state is tens of MB and stalls the game: only when the power goes off or the game ends.
+				   Its memory cards it writes itself, all the time.) */
+				if (!g_heavy) save_state();
 				saved_at = frame_counter;
 			}
+			if (g_fps_now > 1.0) period = 1.0 / g_fps_now;
 			next += period / speed;
 			t = now_s();
 			if (t - next > 0.1) next = t;           /* fell far behind (a hitch): do not race to catch up */

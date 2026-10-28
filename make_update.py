@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Writes update.json (SHA-256 of every updatable file). Run before each release:  python3 make_update.py <version>"""
 import hashlib, json, os, sys
-SKIP = (".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "carts/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/")
+SKIP = (".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "carts/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/",
+        "cores/dolphin-emu/Sys/", "cores/dolphin-emu/Sys.unpacking/", "cores/dolphin-emu/Sys.old/")   # (Dolphin's data: unpacked on each PC from Sys.zip)
 SKIP_FILES = {"update.json", "update.json.sig", "update_key.pub", "make_update.py", ".gitattributes", ".gitignore", "project.godot", "CLAUDE.md"}  # project.godot: the editor rewrites it; the key only changes with a fresh install
 ver = int(sys.argv[1])
 open("version.txt", "w").write("%d\n" % ver)
