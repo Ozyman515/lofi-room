@@ -1,5 +1,5 @@
 {
- "version": 133,
+ "version": 134,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -146,11 +146,11 @@
    "size": 16288
   },
   "bin/retro_host.exe": {
-   "sha": "4a2dee97a082ba0e792d611d5b8d37454582078c406ea228297f1a51fc0a6f0e",
-   "size": 88064
+   "sha": "ad67b22e1e8ae66cc077efaf348629f64de1579c00b0cd98ef37f654e57cd641",
+   "size": 84992
   },
   "bin/retro_host_linux": {
-   "sha": "20027400e62de02d958146c21fa01c879a9d5b8796d26b03a3157fdfdcac726b",
+   "sha": "8c64e1523c378fd8d0168cd0b80be7bbc4efdcd72309b62a66f7a31f43a72482",
    "size": 36856
   },
   "bin/retro_host_src/libretro.h": {
@@ -158,8 +158,8 @@
    "size": 342023
   },
   "bin/retro_host_src/retro_host.c": {
-   "sha": "2d0ee3dbec14851854d3bf391fac91746dc4029e1e0a3fd740fe0d0ad8b431a7",
-   "size": 43331
+   "sha": "6f2aff00f85e1ddafe915cd2bf2a4af5187ab2a6beeff05c5d824e128bb62849",
+   "size": 44691
   },
   "black_kaiju_model.gd": {
    "sha": "d72b18f7eafb12a3bf7f3ddfbbbc5ecad35bf2352cc1f8945fb1e374db02525d",
@@ -742,7 +742,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "49453b5778ba23c77e35a6b10436f27867635c679b926429b4a9fd2ebce2c6c9",
+   "sha": "e726b440cc164001999e718b51780d80314709efe06e7857282377be9111127b",
    "size": 4
   },
   "weather.gd": {
