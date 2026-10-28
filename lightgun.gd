@@ -1,6 +1,6 @@
 extends Node
 ## A light gun (Pistol 6 from Quaternius's CC0 Ultimate Gun Pack); there are two, lying on the rug beside the console,
-## the second one tinted. Pick one up
+## each in its own lofi colours. Pick one up
 ## and it plays the console's own light-gun games: NES Zapper, SNES Super Scope, Genesis Menacer, PlayStation GunCon
 ## (emu.gd plugs the core's gun into the right port: the first gun picked up gets the console's usual gun port,
 ## the second the other one, and a gun put down gives its port back to the pad). Aim at the TV and pull the trigger: where it points on the
@@ -21,8 +21,18 @@ var gun: Node3D                    # the model (on its rest, or in your hand / v
 var _rest_parent: Node3D
 var _rest_xf := Transform3D()
 var _kick := 0.0
-const REST_AT := [Vector3(0.25, 0.0, -0.10), Vector3(0.36, 0.0, -0.10)]   # where each lies, in the console's frame (beside its right side)
-const TINT := [Color(1, 1, 1), Color(1.0, 0.45, 0.28)]                  # the second gun is a warm orange
+const REST_AT := [Vector3(0.25, 0.0, -0.10), Vector3(0.375, 0.0, -0.10)]   # where each lies, in the console's frame (beside its right side)
+const SCALE := 1.15
+# the lofi colours, per part of the model (its surfaces are named Black = grip and frame, Metal = the body,
+# LightMetal = the top of the slide and its trim): [albedo, metallic, roughness, glow]
+const SCHEMES := [
+	{"Black": [Color(0.20, 0.11, 0.40), 0.1, 0.6, 0.0],          # gun 1, "midnight": deep violet,
+	 "Metal": [Color(0.10, 0.30, 0.95), 0.15, 0.5, 0.0],          # an electric blue body,
+	 "LightMetal": [Color(0.22, 0.62, 1.00), 0.1, 0.45, 0.35]},  # a softly glowing sky-blue slide top
+	{"Black": [Color(0.36, 0.07, 0.30), 0.1, 0.6, 0.0],          # gun 2, "neon": dark plum,
+	 "Metal": [Color(0.62, 0.10, 0.72), 0.15, 0.5, 0.0],          # a purple body,
+	 "LightMetal": [Color(1.00, 0.36, 0.82), 0.1, 0.45, 0.35]},  # a softly glowing pink slide top
+]
 var _mats: Array[Material] = []    # its own colours, per surface
 var _trigger := false
 var _reload := false
@@ -40,20 +50,28 @@ func build(m: Node3D, i := 0) -> void:
 	mi.name = "Model"
 	mi.mesh = load(MESH) if ResourceLoader.exists(MESH) else null
 	gun.add_child(mi)
+	mi.scale = Vector3.ONE * SCALE
 	if mi.mesh != null:
 		for sfi in mi.mesh.get_surface_count():
 			var src := mi.mesh.surface_get_material(sfi)
 			var mt: Material = src
-			if idx > 0 and src is BaseMaterial3D:
-				var b := (src as BaseMaterial3D).duplicate() as BaseMaterial3D
-				b.albedo_color = b.albedo_color * TINT[idx] * 1.6
+			var sc: Array = SCHEMES[idx].get(src.resource_name if src != null else "", [])
+			if not sc.is_empty():
+				var b := StandardMaterial3D.new()
+				b.albedo_color = sc[0]
+				b.metallic = sc[1]
+				b.roughness = sc[2]
+				if sc[3] > 0.0:
+					b.emission_enabled = true
+					b.emission = sc[0]
+					b.emission_energy_multiplier = sc[3]
 				mt = b
 			_mats.append(mt)
 			mi.set_surface_override_material(sfi, mt)
 	# lying on its side on the rug beside the console, the muzzle toward the front
 	var con: Node3D = main.console_root
 	_rest_parent = con
-	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT[idx] + Vector3(0.0, 0.016, 0.0))
+	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT[idx] + Vector3(0.0, 0.0125 * SCALE + 0.002, 0.0))
 	con.add_child(gun)
 	gun.transform = _rest_xf
 	_hit = Node3D.new()
@@ -124,6 +142,7 @@ func _on_top(on: bool) -> void:
 		if on and mt is BaseMaterial3D:
 			var b := (mt as BaseMaterial3D).duplicate() as BaseMaterial3D
 			b.no_depth_test = true
+			b.disable_fog = true                  # (the room's fog would wash it out, drawn over everything)
 			b.render_priority = 10 + sfi
 			mt = b
 		mi.set_surface_override_material(sfi, mt)
