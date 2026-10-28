@@ -1,5 +1,5 @@
 {
- "version": 135,
+ "version": 136,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "e05635b7651a63de89cdd60ee42673dbd4e176317e30ba25e786336f924b4fab",
-   "size": 18416
+   "sha": "b4e77f1daca92a0d8eaa386039a14ca2c3b80087f15e9d19ab678299103d1fa0",
+   "size": 18522
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -266,8 +266,8 @@
    "size": 4237
   },
   "emu.gd": {
-   "sha": "dd29da34c588202de50a751342d4e2203d36adf53ca64474f57720a510c2a9ef",
-   "size": 35319
+   "sha": "27c2470b6bd883854acba964b0103c81027806899bb6e84a1ad81a9c3883d56f",
+   "size": 36068
   },
   "fight.gd": {
    "sha": "488edd22e79533ec90ad1da696c1ca13e0ca50b7d31a309bc118855ca7573796",
@@ -466,8 +466,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "cc6b891d58aa52e13005261c92cc6ad525482729794babb7b277056708d55881",
-   "size": 239868
+   "sha": "f4334bdcd4dc6372e64c7669b21f5e8332e3ca87b7554a9eb7553eddf5c7f62f",
+   "size": 240695
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -742,7 +742,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "35696336da00b304d91bb78c4be84c0e975baa9ee85d1b26d4a0168203c19288",
+   "sha": "748ea33db356501af68a9e37a1583cfa57192a894aab2a692c5475f031d1e81a",
    "size": 4
   },
   "weather.gd": {
