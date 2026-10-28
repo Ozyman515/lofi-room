@@ -167,12 +167,16 @@ func _process(delta: float) -> void:
 	var aim = _aim()
 	var off := aim == null
 	var p: Vector2 = Vector2.ZERO if off else aim
-	var b := (1 if _trigger else 0) | (2 if off else 0) | (4 if _reload else 0) | (8 if (_aux & 1) else 0) | (16 if (_aux & 2) else 0)
-	e.gun_aim(p, b)
 	# the menus: the pad keys / stick as usual, and the trigger picks
 	var lh: Node = main.left_hand if main.xr_active else null
 	var rh: Node = main.right_hand if main.xr_active else null
 	var mask: int = main.padmap.mask(main.xr_active, lh, rh) | main.padmap.nav_mask(main.xr_active, lh, rh)
+	# any START (keyboard, gamepad, the VR menu button) is the gun's START too: with the gun in the first port
+	# (the GunCon) the game doesn't hear the pad at all, and the GunCon's START is its A button
+	var start := (mask & Emu.B_START) != 0
+	var b := (1 if _trigger else 0) | (2 if off else 0) | (4 if _reload else 0) | (8 if (_aux & 1) or start else 0) \
+		| (16 if (_aux & 2) else 0) | (32 if start else 0)
+	e.gun_aim(p, b)
 	if e.state != Emu.State.RUNNING and _trigger:
 		mask |= Emu.B_A
 	e.set_buttons(mask)
