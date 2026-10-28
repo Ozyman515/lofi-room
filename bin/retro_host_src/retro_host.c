@@ -537,7 +537,11 @@ static bool RETRO_CALLCONV env_cb(unsigned cmd, void *data) {
 				   text drawn over the game */
 				{ "dolphin_renderer", "Hardware" },
 				{ "dolphin_efb_scale", "1" },
-				{ "dolphin_shader_compilation_mode", "2" },
+				/* (its background shader workers can't start on Windows with OpenGL, and without them "async
+				   ubershaders" draws everything with the slow ubershaders: plain shaders, kept on disk and loaded
+				   at boot, run much better on a laptop GPU; a new effect hitches only the first time it's seen) */
+				{ "dolphin_shader_compilation_mode", "0" },
+				{ "dolphin_wait_for_shaders", "enabled" },
 				{ "dolphin_osd_enabled", "disabled" },
 			};
 			struct retro_variable *v = (struct retro_variable *)data;
@@ -888,6 +892,8 @@ int main(int argc, char **argv) {
 	uint8_t *rom;
 	long rom_size;
 	unsigned frame_counter = 0, saved_at = 0;
+	double st_t0 = 0.0, st_run = 0.0, st_max = 0.0;      /* speed report */
+	unsigned st_frames = 0, st_sent = 0, st_report = 0;
 	int running = 1;
 	int port;
 	struct sockaddr_in addr;
@@ -996,6 +1002,9 @@ int main(int argc, char **argv) {
 		gi.size = (size_t)rom_size;
 	}
 	if (!c_load_game(&gi)) { send_error("the core does not accept this game"); return 8; }
+	/* a standard pad in both ports, as RetroArch does after loading: Dolphin leaves its ports empty until told */
+	c_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
+	c_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 	memset(&av, 0, sizeof(av));
 	c_get_system_av_info(&av);
 	if (av.geometry.base_width > 0) g_geo_w = av.geometry.base_width;
@@ -1026,6 +1035,7 @@ int main(int argc, char **argv) {
 		send_all(hello, sizeof(hello));
 	}
 	logf_("game running");
+	st_t0 = now_s();
 
 	{
 		double period = 1.0 / (av.timing.fps > 1.0 ? av.timing.fps : 60.0);
@@ -1106,8 +1116,22 @@ int main(int argc, char **argv) {
 			}
 			g_have_video = 0;
 			g_want_frame = credit;
-			c_run();
+			{
+				double t0 = now_s(), dt;
+				c_run();
+				dt = now_s() - t0;
+				st_run += dt;
+				if (dt > st_max) st_max = dt;
+			}
 			frame_counter++;
+			st_frames++;
+			/* how it is keeping up, in the log (the first two minutes, every 10 s) */
+			if (st_report < 12 && now_s() - st_t0 >= 10.0) {
+				double span = now_s() - st_t0;
+				logf_("speed: %.1f frames/s (wants %.1f), each frame %.1f ms on average, slowest %.0f ms; %.1f pictures/s sent",
+					st_frames / span, av.timing.fps, st_frames ? st_run * 1000.0 / st_frames : 0.0, st_max * 1000.0, st_sent / span);
+				st_t0 = now_s(); st_frames = 0; st_sent = 0; st_run = 0.0; st_max = 0.0; st_report++;
+			}
 #ifdef _WIN32
 			if (g_use_hw && (g_fb_want_w > g_fb_w || g_fb_want_h > g_fb_h)) gl_make_fb(g_fb_want_w, g_fb_want_h);
 #endif
@@ -1126,6 +1150,7 @@ int main(int argc, char **argv) {
 				memcpy(hdr + 1, &w, 4);
 				memcpy(hdr + 5, &h, 4);
 				credit = 0;
+				st_sent++;
 				if (!send_all(hdr, 9) || !send_all(g_rgba, (size_t)w * h * 4)) break;
 			}
 			{
