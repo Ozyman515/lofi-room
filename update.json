@@ -1,5 +1,5 @@
 {
- "version": 132,
+ "version": 133,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "67b5ea81252969a09a65faffb2b71a64fbcb496738969ec4411989f667b3682e",
-   "size": 17580
+   "sha": "e05635b7651a63de89cdd60ee42673dbd4e176317e30ba25e786336f924b4fab",
+   "size": 18416
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -146,20 +146,20 @@
    "size": 16288
   },
   "bin/retro_host.exe": {
-   "sha": "919c9311fd8e5e98a69f52f33e4df5a39399b2d73fba8d6c3297e50c1a4046ad",
-   "size": 74752
+   "sha": "4a2dee97a082ba0e792d611d5b8d37454582078c406ea228297f1a51fc0a6f0e",
+   "size": 88064
   },
   "bin/retro_host_linux": {
-   "sha": "86add40aa8f63bb904b2c681f7b418ae4c84aa925f52af598c6f36f33152a3a9",
-   "size": 31984
+   "sha": "20027400e62de02d958146c21fa01c879a9d5b8796d26b03a3157fdfdcac726b",
+   "size": 36856
   },
   "bin/retro_host_src/libretro.h": {
    "sha": "036ddffc995ad116c3081ca0a7515d09c2a116f3483e4f5012fe0c29a885da76",
    "size": 342023
   },
   "bin/retro_host_src/retro_host.c": {
-   "sha": "d278e70ec33ccbe95cdef28d37de262676eadc2778f1d7e4457ee6789f6a1153",
-   "size": 24121
+   "sha": "2d0ee3dbec14851854d3bf391fac91746dc4029e1e0a3fd740fe0d0ad8b431a7",
+   "size": 43331
   },
   "black_kaiju_model.gd": {
    "sha": "d72b18f7eafb12a3bf7f3ddfbbbc5ecad35bf2352cc1f8945fb1e374db02525d",
@@ -174,8 +174,8 @@
    "size": 2500
   },
   "cart_art.gd": {
-   "sha": "e6a4b35c85f7becde478ad51ee4b9633965363cecd3a0ad32d375e25a9e96ea5",
-   "size": 14999
+   "sha": "ce00a7f9a209b1bf06209d59d7ed905fd3452d95a8000f273b0d3845f7959a92",
+   "size": 16823
   },
   "cat_frames.gd": {
    "sha": "232f999a0f4a381e15a20045578ba823701078af6d27533f27548ceae0ec2002",
@@ -190,8 +190,16 @@
    "size": 35543
   },
   "cores/CORES.txt": {
-   "sha": "6dcafdfe833a2cd364735fe6c0d05b2d75726f4cf03ba3c4e57fcbb042b7b0a0",
-   "size": 1191
+   "sha": "cb00dbdfd64329af779906bc0c1e3847ef3d0ff672e83161b7d8be9569219dc0",
+   "size": 1575
+  },
+  "cores/dolphin-emu/Sys.zip": {
+   "sha": "dc7f92c259804001928ee0386ddff59202a6d1b2f53b360fd8ca7e64ef4b46ac",
+   "size": 2034212
+  },
+  "cores/dolphin_libretro.dll": {
+   "sha": "f977af176e3bea9f82c92efc6aac184df74a3ecb80ccb4e66200b1b995a83eda",
+   "size": 16822406
   },
   "cores/fbneo_neogeo_libretro.dll": {
    "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
@@ -258,8 +266,8 @@
    "size": 4237
   },
   "emu.gd": {
-   "sha": "06e97ac782599b2cc815ac2112cc07a5927481e90669a53fd0003dc6ba057768",
-   "size": 26890
+   "sha": "a12623bdfbc216f221ad1a23a22d0a0a2225d62e68e52494325e493115fbfcf4",
+   "size": 33653
   },
   "fight.gd": {
    "sha": "488edd22e79533ec90ad1da696c1ca13e0ca50b7d31a309bc118855ca7573796",
@@ -458,8 +466,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "fe483850555c6ad26f9dc07794df8261f2f301961afa76971eae114da5277f99",
-   "size": 237478
+   "sha": "cc6b891d58aa52e13005261c92cc6ad525482729794babb7b277056708d55881",
+   "size": 239868
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -578,8 +586,8 @@
    "size": 56337
   },
   "padmap.gd": {
-   "sha": "4da375def134a30bfbe257c595af543a2a2cdcef7c51dcd379abefdb43208cb8",
-   "size": 12297
+   "sha": "cedb0ae6194b93d6baaf97db25fe0385f56f15465c28b58bcf17eb40aa4487da",
+   "size": 13989
   },
   "page_renderer.gd": {
    "sha": "b8ae3b2d3958a7e876a92544b563bf3f1d96a6fac3ff3b1846a1fb811a75bf2f",
@@ -726,15 +734,15 @@
    "size": 8263
   },
   "updater.gd": {
-   "sha": "6b9b8f9066409262357be9c2b0c00c63a0e61fdce4f48f5d7480755748b3e0aa",
-   "size": 11286
+   "sha": "189dafc96e31e7c157f2e1b6f33e089471aafa42dd200003141a925669e13f75",
+   "size": 11493
   },
   "vcr.gd": {
    "sha": "06f7b20e6b1af8aa291e98b5583c530b439eb8e1289eef1982403dbe7f4eca15",
    "size": 44163
   },
   "version.txt": {
-   "sha": "586900065999e00dfd03caec2bd5eb43dd939f082db4718edecd72fabfdcdbec",
+   "sha": "49453b5778ba23c77e35a6b10436f27867635c679b926429b4a9fd2ebce2c6c9",
    "size": 4
   },
   "weather.gd": {
