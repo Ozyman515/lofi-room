@@ -21,8 +21,11 @@ var gun: Node3D                    # the model (on its rest, or in your hand / v
 var _rest_parent: Node3D
 var _rest_xf := Transform3D()
 var _kick := 0.0
-const REST_AT := [Vector3(0.25, 0.0, -0.10), Vector3(0.375, 0.0, -0.10)]   # where each lies, in the console's frame (beside its right side)
-const SCALE := 1.15
+const REST_AT := [Vector3(0.28, 0.0, -0.22), Vector3(0.50, 0.0, -0.22)]   # where each lies, in the console's frame (beside its right side)
+const SCALE := 2.0                 # (the model is 19 cm long; this makes it about 38 cm, a chunky arcade gun)
+const GRIP := Vector3(0.0, -0.069, 0.069)   # the middle of the grip, model space (unscaled)
+const HAND_AT := Vector3(0.0, -0.015, 0.02)  # VR: where the grip sits in the controller's frame
+const VIEW_AT := Vector3(0.2, -0.3, -0.37)  # desktop: where the grip sits in the camera's frame
 # the lofi colours, per part of the model (its surfaces are named Black = grip and frame, Metal = the body,
 # LightMetal = the top of the slide and its trim): [albedo, metallic, roughness, glow]
 const SCHEMES := [
@@ -77,7 +80,7 @@ func build(m: Node3D, i := 0) -> void:
 	_hit = Node3D.new()
 	_hit.position = REST_AT[idx] + Vector3(0.0, 0.03, 0.0)
 	con.add_child(_hit)
-	main.interactables.append({"node": _hit, "half": Vector3(0.05, 0.04, 0.1), "egg_lock": true, "group": "games",
+	main.interactables.append({"node": _hit, "half": Vector3(0.11, 0.06, 0.2), "egg_lock": true, "group": "games",
 		"label": func() -> String: return "PICK UP LIGHT GUN %d" % (idx + 1),
 		"when": func() -> bool: return not held and not main.game_mode,
 		"cb": pick_up})
@@ -106,12 +109,14 @@ func pick_up() -> void:
 		hand = main.hover_hand
 		var h: Node3D = main.left_hand if hand == 0 else main.right_hand
 		gun.reparent(h, false)
-		gun.transform = Transform3D(Basis(Vector3.RIGHT, -0.35), Vector3(0.0, 0.02, 0.02))   # (the controller's grip angle)
+		var b := Basis(Vector3.RIGHT, -0.35)                # (the controller's grip angle)
+		gun.transform = Transform3D(b, HAND_AT - b * (GRIP * SCALE))
 	else:
 		hand = -1
 		gun.reparent(main.desktop_cam, false)
 		_on_top(true)
-		gun.transform = Transform3D(Basis(Vector3.UP, 0.08), Vector3(0.14, -0.13, -0.34))
+		var b := Basis(Vector3.UP, 0.1) * Basis(Vector3.RIGHT, 0.06)
+		gun.transform = Transform3D(b, VIEW_AT - b * (GRIP * SCALE))
 	if main.emu != null:
 		main.emu.set_pad(true)
 		main.emu.set_gun(idx, true)
@@ -211,7 +216,7 @@ func _process(delta: float) -> void:
 	var k := _kick * _kick
 	var mi := gun.get_node("Model") as Node3D
 	mi.rotation.x = 0.45 * k
-	mi.position = Vector3(0.0, 0.01 * k, 0.035 * k)
+	mi.position = Vector3(0.0, 0.01 * k, 0.035 * k) * SCALE
 	var e = main.emu
 	if e == null:
 		return
