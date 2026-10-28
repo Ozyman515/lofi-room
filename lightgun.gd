@@ -1,5 +1,6 @@
 extends Node
-## A light gun (Pistol 6 from Quaternius's CC0 Ultimate Gun Pack); there are two, lying on the rug beside the console,
+## A light gun (Pistol 6 from Quaternius's CC0 Ultimate Gun Pack); there are two, lying on the rug near the console
+## (somewhere new every visit, like the carts),
 ## each in its own lofi colours. Pick one up
 ## and it plays the console's own light-gun games: NES Zapper, SNES Super Scope, Genesis Menacer, PlayStation GunCon
 ## (emu.gd plugs the core's gun into the right port: the first gun picked up gets the console's usual gun port,
@@ -21,13 +22,7 @@ var gun: Node3D                    # the model (on its rest, or in your hand / v
 var _rest_parent: Node3D
 var _rest_xf := Transform3D()
 var _kick := 0.0
-const REST_AT := [Vector3(0.28, 0.0, -0.22), Vector3(0.60, 0.0, -0.01)]   # where each lies, in the console's frame (beside its right side)
-# how each lies there: gun 1 on its side, muzzle to the console's front and grip out; gun 2 further out the other
-# way round, its grip toward the console and the muzzle toward the TV (the two make a loose L)
-const REST_BASIS := [
-	Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0),
-	Basis(Vector3.UP, -0.15) * Basis(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)),
-]
+const REST_AT := [Vector3(0.28, 0.0, -0.22), Vector3(0.60, 0.0, -0.01)]   # (until main.gd scatters them: set_rest)
 const SCALE := 2.0                 # (the model is 19 cm long; this makes it about 38 cm, a chunky arcade gun)
 const GRIP := Vector3(0.0, -0.069, 0.069)   # the middle of the grip, model space (unscaled)
 const HAND_AT := Vector3(0.0, -0.015, 0.02)  # VR: where the grip sits in the controller's frame
@@ -43,6 +38,7 @@ const SCHEMES := [
 	 "LightMetal": [Color(1.00, 0.36, 0.82), 0.1, 0.45, 0.35]},  # a softly glowing pink slide top
 ]
 var _mats: Array[Material] = []    # its own colours, per surface
+var last_circles: Array = []       # (the floor main.gd kept for it: [Vector2 lounge x z, r])
 var _trigger := false
 var _reload := false
 var _aux := 0                      # bit 0 = A, bit 1 = B
@@ -80,11 +76,11 @@ func build(m: Node3D, i := 0) -> void:
 	# lying on its side on the rug beside the console, the muzzle toward the front
 	var con: Node3D = main.console_root
 	_rest_parent = con
-	_rest_xf = Transform3D(REST_BASIS[idx], REST_AT[idx] + Vector3(0.0, 0.0125 * SCALE + 0.002, 0.0))
+	_rest_xf = Transform3D(Basis(Vector3.UP, PI - 0.35) * Basis(Vector3.FORWARD, PI / 2.0), REST_AT[idx] + Vector3(0.0, 0.0125 * SCALE + 0.002, 0.0))
 	con.add_child(gun)
 	gun.transform = _rest_xf
 	_hit = Node3D.new()
-	_hit.position = _rest_xf * (Vector3(0.0, -0.04, 0.0) * SCALE)      # (the middle of the gun, a little into the grip)
+	_hit.position = _rest_xf * HIT_AT
 	con.add_child(_hit)
 	main.interactables.append({"node": _hit, "half": Vector3(0.11, 0.06, 0.2), "egg_lock": true, "group": "games",
 		"label": func() -> String: return "PICK UP LIGHT GUN %d" % (idx + 1),
@@ -99,7 +95,30 @@ func build(m: Node3D, i := 0) -> void:
 
 # (for keeping the carts out of the way)
 func rest_point() -> Vector3:
-	return main.console_root.to_global(REST_AT[idx])
+	return main.console_root.to_global(_rest_xf.origin)
+
+
+const HIT_AT := Vector3(0.0, -0.04 * SCALE, 0.0)     # the middle of the gun, a little into the grip (model space)
+
+
+# the floor it covers lying like that (console frame): two circles along it, toward the grip side, [Vector2 x z, r]
+static func footprint(at: Vector3, yaw: float, flip: bool) -> Array:
+	var b := Basis(Vector3.UP, yaw) * Basis(Vector3.FORWARD, PI / 2.0 if not flip else -PI / 2.0)
+	var along := b * Vector3(0, 0, 1)
+	var grip := b * Vector3(0, -1, 0)
+	var c := Vector2(at.x, at.z) + Vector2(grip.x, grip.z) * 0.06 * SCALE / 2.0
+	var d := Vector2(along.x, along.z) * 0.1
+	return [[c + d, 0.12], [c - d, 0.12]]
+
+
+# where it lies when nobody holds it (main.gd scatters the guns with the carts): a spot on the rug in the console's
+# frame, which way it points, and which side is down
+func set_rest(at: Vector3, yaw: float, flip: bool) -> void:
+	var b := Basis(Vector3.UP, yaw) * Basis(Vector3.FORWARD, PI / 2.0 if not flip else -PI / 2.0)
+	_rest_xf = Transform3D(b, Vector3(at.x, 0.0125 * SCALE + 0.002, at.z))
+	_hit.transform = Transform3D(Basis(Vector3.UP, yaw), _rest_xf * HIT_AT)     # (the pick-up box turns with it)
+	if not held:
+		gun.transform = _rest_xf
 
 
 func pick_up() -> void:

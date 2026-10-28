@@ -4352,55 +4352,124 @@ var cart_spots := {}                   # id -> Transform3D in lounge coordinates
 const CART_RADIUS := {"nes": 0.085, "snes": 0.085, "sgb": 0.08, "gen": 0.085, "neo": 0.14, "ps": 0.15}
 
 
+const PAD_RADIUS := 0.12
+const GUN_RADIUS := 0.21
+const PORTS_AT := [Vector3(-0.004, 0.03, 0.185), Vector3(0.094, 0.03, 0.185)]   # the controller ports (console frame)
+
+
 func _scatter_carts() -> void:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var centre := Vector2(-2.60, 1.45 + LOUNGE_DZ)                # the console
 	var console_rect := Rect2(-2.75, 1.15 + LOUNGE_DZ, 0.4, 0.55)
-	if ps_kit != null:                                               # (and where the disc case opens, and the light gun)
-		var spots: Array = [ps_kit.stage_point()]
-		for lg in lightguns:
-			spots.append(lg.rest_point())
-		for at in spots:
-			var pc := lounge.to_local(at)
-			console_rect = console_rect.merge(Rect2(pc.x - 0.22, pc.z - 0.22, 0.44, 0.44))
+	if ps_kit != null:                                               # (and where the disc case opens)
+		var pc := lounge.to_local(ps_kit.stage_point())
+		console_rect = console_rect.merge(Rect2(pc.x - 0.22, pc.z - 0.22, 0.44, 0.44))
 	var tv_rect := Rect2(-4.0, 0.1 + LOUNGE_DZ, 1.2, 1.7)
-	var pads := [Vector2(-2.0, 2.58), Vector2(-2.25, 2.25)]
-	var placed: Array = []                                           # [Vector2, radius]
-	var ids := ["ps", "neo", "nes", "snes", "gen", "sgb"]            # biggest first, it is the hardest to fit
-	for id in ids:
-		var r: float = CART_RADIUS[id]
-		var best := Vector2.ZERO
-		var found := false
-		for attempt in 800:
-			var ang := rng.randf_range(0.0, TAU)
-			var dist := rng.randf_range(0.42, 0.78) if attempt < 400 else rng.randf_range(0.5, 1.05)   # (then a wider ring)
-			var p := centre + Vector2(cos(ang), sin(ang)) * dist
-			if console_rect.grow(r + 0.03).has_point(p) or tv_rect.grow(r + 0.02).has_point(p):
+	var placed: Array = []                                           # [Vector2 (lounge x, z), radius]
+	# how much room a spot has: < 0 overlaps something already placed (by that much), -INF can't be used at all
+	var room := func(p: Vector2, r: float) -> float:
+		if console_rect.grow(r + 0.03).has_point(p) or tv_rect.grow(r + 0.02).has_point(p):
+			return -INF
+		var w := lounge.to_global(Vector3(p.x, 0.0, p.y))
+		if w.x < -3.9 + r + 0.05 or w.z > FRONT_Z - r - 0.05 or not _walkable(w.x, w.z):
+			return -INF
+		for layout in BEANBAG_LAYOUTS:
+			for sp in layout:
+				if Vector2(w.x, w.z).distance_to(sp) < r + 0.6:
+					return -INF
+		var m := 1.0
+		for o in placed:
+			m = minf(m, p.distance_to(o[0]) - r - float(o[1]) - 0.01)
+		return m
+	# try spots from pick (a Callable returning a candidate) until one is clear; if none is, the roomiest one tried
+	var find := func(pick: Callable, r: float, tries: int) -> Vector2:
+		var best := Vector2.INF
+		var best_m := -INF
+		for attempt in tries:
+			var p: Variant = pick.call(attempt)
+			if p == null:
 				continue
-			var ok := true
-			for pd in pads:
-				if p.distance_to(pd) < r + 0.17:
-					ok = false
-			for o in placed:
-				if p.distance_to(o[0]) < r + float(o[1]) + 0.01:
-					ok = false
-			var w := lounge.to_global(Vector3(p.x, 0.0, p.y))
-			if w.x < -3.9 + r + 0.05 or w.z > FRONT_Z - r - 0.05 or not _walkable(w.x, w.z):
-				ok = false
-			for layout in BEANBAG_LAYOUTS:
-				for sp in layout:
-					if Vector2(w.x, w.z).distance_to(sp) < r + 0.6:
-						ok = false
-			if ok:
+			var m: float = room.call(p, r)
+			if m >= 0.0:
+				return p
+			if m > best_m:
+				best_m = m
 				best = p
-				found = true
+		return best
+	var to_lounge := func(local: Vector3) -> Vector2:
+		var l: Vector3 = console_root.transform * local
+		return Vector2(l.x, l.z)
+	# the controllers first: in front of the console within reach of their cables, the left port's one on the left
+	var pad_spots: Array = []
+	for i in pad_nodes.size():
+		var best: Vector2 = find.call(func(_a: int) -> Variant:
+			var local := Vector3(rng.randf_range(-0.5, 0.6), 0.0, rng.randf_range(0.4, 0.85))
+			var reach: float = Vector2(local.x - PORTS_AT[i].x, local.z - PORTS_AT[i].z).length()
+			if reach < 0.3 or reach > 0.75:
+				return null
+			return to_lounge.call(local), PAD_RADIUS, 600)
+		if best == Vector2.INF:
+			best = to_lounge.call(Vector3(-0.1 + 0.35 * i, 0.0, 0.55))
+		placed.append([best, PAD_RADIUS])
+		pad_spots.append(best)
+	if pad_spots.size() == 2:                                        # (so the two cables don't cross)
+		var a: Vector3 = console_root.transform.affine_inverse() * Vector3(pad_spots[0].x, 0, pad_spots[0].y)
+		var b: Vector3 = console_root.transform.affine_inverse() * Vector3(pad_spots[1].x, 0, pad_spots[1].y)
+		if a.x > b.x:
+			pad_spots.reverse()
+	for i in pad_spots.size():
+		var port: Vector3 = console_root.transform * PORTS_AT[i]
+		var d := Vector2(port.x, port.z) - (pad_spots[i] as Vector2)
+		_place_pad(i, pad_spots[i], atan2(-d.x, -d.y) + rng.randf_range(-0.4, 0.4))      # its cable end toward the console
+	# then the light guns: anywhere around the console, any way round, either side down
+	for lg in lightguns:
+		var inv := console_root.transform.affine_inverse()
+		var best := {}
+		var best_m := -INF
+		for a in 1500:
+			var ang := rng.randf_range(0.0, TAU)
+			var p := centre + Vector2(cos(ang), sin(ang)) * rng.randf_range(0.45, 0.85 + 0.6 * a / 1500.0)   # (a wider ring the longer it looks)
+			var lp: Vector3 = inv * Vector3(p.x, 0.0, p.y)
+			if lp.z < -0.15:
+				continue                                                 # (not behind the console, by the wall)
+			var yaw := rng.randf_range(-PI, PI)
+			var flip := rng.randf() < 0.5
+			var circles: Array = []
+			var m := INF
+			for fc in lg.footprint(lp, yaw, flip):
+				var cp: Vector2 = to_lounge.call(Vector3(fc[0].x, 0.0, fc[0].y))
+				circles.append([cp, fc[1]])
+				m = minf(m, room.call(cp, fc[1]))
+			if m > best_m:
+				best_m = m
+				best = {"lp": lp, "yaw": yaw, "flip": flip, "circles": circles}
+			if m >= 0.0:
 				break
-		if not found:
-			best = centre + Vector2(0.55, 0.0).rotated(float(placed.size()) * 1.2)     # the fallback keeps them apart at least
+		if best.is_empty():
+			best = {"lp": Vector3(0.45, 0.0, 0.0), "yaw": 0.0, "flip": false, "circles": []}
+		placed.append_array(best["circles"])
+		lg.last_circles = best["circles"]
+		lg.set_rest(best["lp"], best["yaw"], best["flip"])
+	# and the carts, biggest first (it is the hardest to fit)
+	for id in ["ps", "neo", "nes", "snes", "gen", "sgb"]:
+		var r: float = CART_RADIUS[id]
+		var best: Vector2 = find.call(func(a: int) -> Variant:
+			var ang := rng.randf_range(0.0, TAU)
+			return centre + Vector2(cos(ang), sin(ang)) * rng.randf_range(0.42, 0.78 + 0.6 * a / 1500.0), r, 1500)   # (a wider ring the longer it looks)
+		if best == Vector2.INF:
+			best = centre + Vector2(0.55, 0.0).rotated(float(placed.size()) * 1.2)
 		placed.append([best, r])
 		cart_spots[id] = Transform3D(Basis(Vector3.UP, rng.randf_range(-PI, PI)) * lay, Vector3(best.x, 0.034, best.y))
+
+
+# a controller onto its spot on the rug (lounge x, z), turned so its cable end points that way
+func _place_pad(idx: int, at: Vector2, yaw: float) -> void:
+	var root := pad_nodes[idx]
+	root.position = Vector3(at.x, 0.022, at.y)
+	root.rotation.y = yaw
+	ctrl_exits[idx] = root.to_global(Vector3(0, 0.014, -0.052))
 
 
 func _build_carts() -> void:
@@ -5309,8 +5378,17 @@ func _build_power() -> void:
 	_cord([av_from, _lm(Vector3(-2.78, 0.034, 0.4 + dz)), _lm(Vector3(-2.86, 0.06, 0.37 + dz)), av_to], 0.004, yellow)
 	var port_a := console_root.to_global(Vector3(-0.004, 0.03, 0.185))
 	var port_b := console_root.to_global(Vector3(0.094, 0.03, 0.185))
-	_cord([port_a, _lm(Vector3(-2.3, 0.034, 0.27 + dz)), _lm(Vector3(-2.2, 0.034, 0.2 + dz)), ctrl_exits[0]], 0.004, black)
-	_cord([port_b, _lm(Vector3(-2.3, 0.034, 0.5 + dz)), _lm(Vector3(-2.15, 0.034, 0.65 + dz)), ctrl_exits[1]], 0.004, black)
+	# (the controllers lie somewhere new every visit: each cable leaves its port straight out, then curves over to it)
+	for i in 2:
+		var port: Vector3 = [port_a, port_b][i]
+		var out := console_root.to_global(PORTS_AT[i] + Vector3(0.0, 0.0, 0.07))
+		out.y = port.y - 0.01
+		var end: Vector3 = ctrl_exits[i]
+		var mid := out.lerp(end, 0.5)
+		mid.y = lounge.global_position.y + 0.034
+		var back := end - (pad_nodes[i] as Node3D).global_transform.basis.z * 0.06    # (a little out from its cable end, in line with the pad)
+		back.y = mid.y
+		_cord([port, out, mid, back, end], 0.004, black)
 
 	# VCR on top of the TV: power cord down the back of the TV to the strip, video cable to the TV
 	var tl := func(p: Vector3) -> Vector3: return tv_root.to_global(p)
