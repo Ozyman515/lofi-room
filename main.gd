@@ -273,6 +273,50 @@ func _ready() -> void:
 	_load_prefs()
 	_apply_below_view()
 	pc.play_random_default()
+	_keep_fog_outside.call_deferred()
+
+
+# Fog is only for the city outside: the weather's fog (thick and pale in heavy snow) turned anything inside the
+# apartment white if its material didn't opt out. Everything indoors opts out here, now and whenever it's added later.
+const _FOG_OUTSIDE := ["Outside", "Weather", "UFO", "Kaiju", "KingGaboon", "KaijuFight", "TornadoEvent", "Exterior", "Balcony"]
+
+func _keep_fog_outside() -> void:
+	_no_fog_in(self)
+	get_tree().node_added.connect(func(n: Node) -> void:
+		if n is GeometryInstance3D and is_ancestor_of(n):
+			_no_fog_in.call_deferred(n))           # (its materials usually come right after it is added)
+
+
+func _fog_is_outside(n: Node) -> bool:
+	var a := n
+	while a != null and a != self:
+		if a.get_parent() == self or a.get_parent() == apartment:
+			return _FOG_OUTSIDE.has(String(a.name))
+		a = a.get_parent()
+	return false
+
+
+func _no_fog_in(n: Node) -> void:
+	if not is_instance_valid(n) or (n != self and n.get_parent() != null and _fog_is_outside(n)):
+		return
+	if n is GeometryInstance3D:
+		var g := n as GeometryInstance3D
+		_no_fog_mat(g.material_override)
+		if g is MeshInstance3D:
+			var mi := g as MeshInstance3D
+			if mi.mesh != null:
+				for i in mi.mesh.get_surface_count():
+					_no_fog_mat(mi.get_surface_override_material(i))
+					_no_fog_mat(mi.mesh.surface_get_material(i))
+	for c in n.get_children():
+		_no_fog_in(c)
+
+
+func _no_fog_mat(m: Material) -> void:
+	while m != null:
+		if m is BaseMaterial3D:
+			(m as BaseMaterial3D).disable_fog = true
+		m = m.next_pass
 
 
 # ---------------------------------------------------------------- multiplayer
