@@ -1,5 +1,5 @@
 {
- "version": 139,
+ "version": 140,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -8,6 +8,514 @@
   ".godot/global_script_class_cache.cfg": {
    "sha": "a439164fada1559568ff1d65f69f13eaae4a28901915c9aee5753c33d796eb13",
    "size": 204
+  },
+  ".godot/imported/AC.gltf-b921567711cb6d8305f1105a0b605856.md5": {
+   "sha": "c25a5ee83b974771d5b21bd80088d430f6afcdf0f1490467d5ca367b4ed4629c",
+   "size": 91
+  },
+  ".godot/imported/AC.gltf-b921567711cb6d8305f1105a0b605856.scn": {
+   "sha": "5d4f66d5d77bcb52070f3c68368af030a6027d64d0196a8c21b02d9d9cf115f1",
+   "size": 23525
+  },
+  ".godot/imported/AC_Side.gltf-3380d00320ccc7f28493497f9025179f.md5": {
+   "sha": "6e7fad4753f8d28ed526d11a65ea31d305d9bd845574746a6c97f8ed73d3c86f",
+   "size": 91
+  },
+  ".godot/imported/AC_Side.gltf-3380d00320ccc7f28493497f9025179f.scn": {
+   "sha": "b4f825d75c5070097af5f7717028fa17d6231ccd95b494593cffcc7c4b3dd4bd",
+   "size": 22044
+  },
+  ".godot/imported/AC_Stacked.gltf-6b88b9cf8aff80777ee302abc9033b1f.md5": {
+   "sha": "3242e75ec23b181020548518e9bcf54acf89c76ab70d2d5725d1e086b66dc25b",
+   "size": 91
+  },
+  ".godot/imported/AC_Stacked.gltf-6b88b9cf8aff80777ee302abc9033b1f.scn": {
+   "sha": "9c95b0a55eef041cb7a6e056766c8c2d4ce762a72f85069cdfbb41e806bf9390",
+   "size": 22517
+  },
+  ".godot/imported/AC_Stacked_Sign.png-b128d4533951728af1fb0944483ef94b.ctex": {
+   "sha": "3b1491daf86afe6f7a1cf04d74ed1aa8ac769826c4ce32e6c268191bfa5317cb",
+   "size": 322802
+  },
+  ".godot/imported/AC_Stacked_Sign.png-b128d4533951728af1fb0944483ef94b.md5": {
+   "sha": "b7e1bdee26d4331ac170e306d5c580d8e483b371cb90de6091dc0aeda0975c8f",
+   "size": 91
+  },
+  ".godot/imported/Antenna_1.gltf-9ce5251b41f673cfc35c8d4ec04733c1.md5": {
+   "sha": "4472ef17e7058be24f8e3aee34fbbd38b82b5ca826973bdfab8486146506a707",
+   "size": 91
+  },
+  ".godot/imported/Antenna_1.gltf-9ce5251b41f673cfc35c8d4ec04733c1.scn": {
+   "sha": "55a80e99df8f5ac941f1e18ce95c506e609c605f66782e8dc4befe391950fd98",
+   "size": 3684
+  },
+  ".godot/imported/Antenna_2.gltf-1552c7c0e534816d390da5eeea379784.md5": {
+   "sha": "00961378bea4ee420defc8f1dcf18840e5f6f970b8b4fefbd69c904084dbcd8c",
+   "size": 91
+  },
+  ".godot/imported/Antenna_2.gltf-1552c7c0e534816d390da5eeea379784.scn": {
+   "sha": "e2fe321021ce208fa4c0cb67aa989a61ab399969cccfa76f9f9e7b97fd147ae3",
+   "size": 12965
+  },
+  ".godot/imported/Building_Large_2.gltf-98b34fac24951259577a6dda1f4ce8d6.md5": {
+   "sha": "cb16c9f1c322ab176838b4703c6c4ca0957c5673f0c8dff07a72f382138f5cb9",
+   "size": 91
+  },
+  ".godot/imported/Building_Large_2.gltf-98b34fac24951259577a6dda1f4ce8d6.scn": {
+   "sha": "4880d88956164cd0f5bbc33399f5ddce5d4183a1df0d686a49124c42d19facb3",
+   "size": 1004662
+  },
+  ".godot/imported/Building_Medium_2_001.gltf-ce2ab16fa835a4552a160dac8b370c83.md5": {
+   "sha": "120d8bd1ff363ba78635fe92f90118dfee0b826e88a3bc70781de1ef795be3b3",
+   "size": 91
+  },
+  ".godot/imported/Building_Medium_2_001.gltf-ce2ab16fa835a4552a160dac8b370c83.scn": {
+   "sha": "8e38ff400e2eff74dd28a0dd6b7caee2479ab956993742173f6a033e96437a76",
+   "size": 704765
+  },
+  ".godot/imported/Building_Small_1.gltf-df6a26ce8152ce25e4606370dde977c9.md5": {
+   "sha": "a6310279fb6bcc774677836001d8ae9881f0807fa7876e146be3cf4e3902ef20",
+   "size": 91
+  },
+  ".godot/imported/Building_Small_1.gltf-df6a26ce8152ce25e4606370dde977c9.scn": {
+   "sha": "cc6a4e9a55687434fe2aacd49a2c435585b9538b0e27939d9d31800234112343",
+   "size": 435216
+  },
+  ".godot/imported/Croissant.fbx-9136beae6b49450878a8315e61eec080.md5": {
+   "sha": "ae34c877e4c694623fee66cbae566475d81917b3c80fdd61318ef703d489bd52",
+   "size": 91
+  },
+  ".godot/imported/Croissant.fbx-9136beae6b49450878a8315e61eec080.scn": {
+   "sha": "07b39cb7c5274f44818d3cc83b71b701954c65f9da4b4225e77ae12efb2a1734",
+   "size": 5536
+  },
+  ".godot/imported/CupOfCoffee.obj-c19c2443b1df778ab935082e6e160bcf.md5": {
+   "sha": "ccd6e4684737fae0da28c3a38cabb76aaad1fca48d4f5916bff64d62a64be80d",
+   "size": 91
+  },
+  ".godot/imported/CupOfCoffee.obj-c19c2443b1df778ab935082e6e160bcf.mesh": {
+   "sha": "f6392d99970d885329ae5f8f40f1f80ed38a2e2c965dbc4b30fe9344d04104be",
+   "size": 34344
+  },
+  ".godot/imported/Houseplant_1.fbx-4d018473801f6192697d97cab49747b3.md5": {
+   "sha": "b56f207802fd8e3205d729028fc3fcbad2fae25ae5fd8824b873f3ed2daa0e95",
+   "size": 91
+  },
+  ".godot/imported/Houseplant_1.fbx-4d018473801f6192697d97cab49747b3.scn": {
+   "sha": "d6a6e408bbf494ffbea83ab2e8cf8fc60e442e2bd03eb798ac209a8d99bf7e74",
+   "size": 10748
+  },
+  ".godot/imported/Houseplant_7.fbx-4a191482a3c73bbf89752cfd54e3b852.md5": {
+   "sha": "04a9665bf6f32bdec974ab26b4f7ed41484c9a6d56b2f4e3c1f301d532088864",
+   "size": 91
+  },
+  ".godot/imported/Houseplant_7.fbx-4a191482a3c73bbf89752cfd54e3b852.scn": {
+   "sha": "85baea9c9dc29ed80e7b35cb45ff4e9eb8fb5d92c477016e7f23c98a82eecbd5",
+   "size": 17964
+  },
+  ".godot/imported/Light_Floor1.fbx-a3e7dcfe524562b06f9c3960ae123ec5.md5": {
+   "sha": "e889af38e2563eea5f5dcb31650c2c404693827ad49c66144e970d97644a5c09",
+   "size": 91
+  },
+  ".godot/imported/Light_Floor1.fbx-a3e7dcfe524562b06f9c3960ae123ec5.scn": {
+   "sha": "004213b2c8cd4651b5a9abc5309db1337c9c1bee3dfe63ab172290b0ab998f0e",
+   "size": 8494
+  },
+  ".godot/imported/Light_Street_1.gltf-1c41d028e42f465dba957ace768b0b79.md5": {
+   "sha": "a2f5ccd2e9a189a6beaee8a0e9d38f8f863866cf6f6cec41acf3144a26f009ef",
+   "size": 91
+  },
+  ".godot/imported/Light_Street_1.gltf-1c41d028e42f465dba957ace768b0b79.scn": {
+   "sha": "ffab92935f3f2e46f8b81dca883b1860bc36d9d0dec53c87b7dc6c5ca8da9f48",
+   "size": 15004
+  },
+  ".godot/imported/Matchbox.fbx-4ffe62bbb343765cc420b33cd10c9453.md5": {
+   "sha": "8808bde9417bc0cb39403ee45927a8a7883651913e542663b8b508c7ce8a7a04",
+   "size": 91
+  },
+  ".godot/imported/Matchbox.fbx-4ffe62bbb343765cc420b33cd10c9453.scn": {
+   "sha": "322a34a7792904bc657acbc28583f0166d243c677539e9f5806d49a436f368ef",
+   "size": 12230
+  },
+  ".godot/imported/NormalCar1.fbx-e3a5b9803d808ea4fa837a6ab465c290.md5": {
+   "sha": "1ef93ed0e7b95009e7ce5eab53cf5235f668087c7c591918e51fc2b342af67f7",
+   "size": 91
+  },
+  ".godot/imported/NormalCar1.fbx-e3a5b9803d808ea4fa837a6ab465c290.scn": {
+   "sha": "20bc45def62ec5f67e757007c43a7151b820e3756827933efb8e3f34168a5eab",
+   "size": 92320
+  },
+  ".godot/imported/NormalCar2.fbx-6cfc30a4306338294c45dcc4441de9f2.md5": {
+   "sha": "5dbac4d78f2f6b82a06a995aa1761c133628b0c6e576aa405803f55f7021a0d6",
+   "size": 91
+  },
+  ".godot/imported/NormalCar2.fbx-6cfc30a4306338294c45dcc4441de9f2.scn": {
+   "sha": "227ba6a5d1e8594205914c8f445b715e93dec90ff9dcf2b149cd07e167d53188",
+   "size": 99966
+  },
+  ".godot/imported/Pipe_1.gltf-bd7edbd5debc97cf9c3c20bd96fc7d7e.md5": {
+   "sha": "2d402e520d0d8e912dfe47fd4a0a0f66b4397b03f2f6ddce0483fb340a5a5094",
+   "size": 91
+  },
+  ".godot/imported/Pipe_1.gltf-bd7edbd5debc97cf9c3c20bd96fc7d7e.scn": {
+   "sha": "e03dcc54ab3ecc5221272b4ab460418c2a8908e29c04af653647024790468437",
+   "size": 8030
+  },
+  ".godot/imported/Prop_ACUnit.gltf-1590ea5f9db92410a11ba501ab46ca46.md5": {
+   "sha": "ac1c68bbd6f221095132d2b13486afbd227d17bcf77fef4373b1264844d51c65",
+   "size": 91
+  },
+  ".godot/imported/Prop_ACUnit.gltf-1590ea5f9db92410a11ba501ab46ca46.scn": {
+   "sha": "09ce47defdf66895aa18f1782e3046d04d6ace24072a48a76ef00da3f720fd54",
+   "size": 6425
+  },
+  ".godot/imported/Radio.fbx-f5415a9a46b05ae45e02864cc0c02dd0.md5": {
+   "sha": "b8972f0ed3f47ad75e58701715c4984af10a43273fc3241e4ada60dac194e542",
+   "size": 91
+  },
+  ".godot/imported/Radio.fbx-f5415a9a46b05ae45e02864cc0c02dd0.scn": {
+   "sha": "a58fa87f63083eb6ffef3418a320e7069621efb8b9d264150cab881ae0a54196",
+   "size": 13464
+  },
+  ".godot/imported/SUV.fbx-4692c50468d5fae04ff122d340bc05ac.md5": {
+   "sha": "c8c37bac2862289dbf21ad98591931b2722bc8d950ec6ad851fa6e35c14187f9",
+   "size": 91
+  },
+  ".godot/imported/SUV.fbx-4692c50468d5fae04ff122d340bc05ac.scn": {
+   "sha": "81ca1cdc1ce87679ef79da9f9b04f0620fa8656a0ead928067c1c6f33a692255",
+   "size": 106468
+  },
+  ".godot/imported/ShibaInu.gltf-648fc5f7b133ae805f6d1426c869db9d.md5": {
+   "sha": "c581e857fb8896b3cade77be688c509d168afa89be064325d9d7e78100624308",
+   "size": 91
+  },
+  ".godot/imported/ShibaInu.gltf-648fc5f7b133ae805f6d1426c869db9d.scn": {
+   "sha": "746a04bec8a0a8daef0a35383fc41607d9e484b2a656565bac2e4a0c8abb637b",
+   "size": 269826
+  },
+  ".godot/imported/SodaCan.fbx-861820a7d361bcee1dc5b18fee732541.md5": {
+   "sha": "1f0414603aadbef8d96b481565f0307b1f3fac636d725408f7e874298a5b117b",
+   "size": 91
+  },
+  ".godot/imported/SodaCan.fbx-861820a7d361bcee1dc5b18fee732541.scn": {
+   "sha": "049af9bf9b092ed5379016fe9ed8b2ab2704fd8f62049c9a15e62a634fe8e16c",
+   "size": 16850
+  },
+  ".godot/imported/SportsCar.fbx-f7ca17c8995ac61182fc611615873e0d.md5": {
+   "sha": "d7b1cb6f54580aae8d7a24c752033237b19083822bd95ea8eb5c92c8ea1cc639",
+   "size": 91
+  },
+  ".godot/imported/SportsCar.fbx-f7ca17c8995ac61182fc611615873e0d.scn": {
+   "sha": "cd128df514062a1062bd4710c138be3ee9d852864aab72a703e0f557ff2d9847",
+   "size": 97163
+  },
+  ".godot/imported/T_Concrete_Asphalt_BaseColor.png-ff0f5b2cb60586749fda095d270fe025.etc2.ctex": {
+   "sha": "892bc9cc8315d99098d70d0078e1fc7d1e009b40a8a33116a668f6a396a4f388",
+   "size": 699116
+  },
+  ".godot/imported/T_Concrete_Asphalt_BaseColor.png-ff0f5b2cb60586749fda095d270fe025.md5": {
+   "sha": "4c8db19c9aa57e0be6c3c0518085c73b68cb47db9e8b1ebcc274d8fa39a7b80c",
+   "size": 91
+  },
+  ".godot/imported/T_Concrete_Asphalt_BaseColor.png-ff0f5b2cb60586749fda095d270fe025.s3tc.ctex": {
+   "sha": "f5191db6f2752d8f1db8cdb34b21f15255a809b9fc87fdb35b10577d85c469ac",
+   "size": 699116
+  },
+  ".godot/imported/T_Concrete_BaseColor.png-480e6dc2f31a009f0b0c505f7c9d93f4.etc2.ctex": {
+   "sha": "c7e0649911030ce8cff86b69067920b56a6f376c583195a9c6fd18cc0587cc75",
+   "size": 699116
+  },
+  ".godot/imported/T_Concrete_BaseColor.png-480e6dc2f31a009f0b0c505f7c9d93f4.md5": {
+   "sha": "84333c0f7d35d153b63af1534e58056a1e2b49df69e5262dd2f7b62dfd3b945a",
+   "size": 91
+  },
+  ".godot/imported/T_Concrete_BaseColor.png-480e6dc2f31a009f0b0c505f7c9d93f4.s3tc.ctex": {
+   "sha": "3edb3e95b4123b8fe6e65c4cf2cb1ab1055dce547a29a058e2744ec6fb080595",
+   "size": 699116
+  },
+  ".godot/imported/T_Concrete_Normal.png-fcb5a7aa5b50fb0feea51ba90c9e1576.etc2.ctex": {
+   "sha": "e74aedf719ea357ff0093de511ed440207278978adbba370fc2ddb2ac48cd11d",
+   "size": 349604
+  },
+  ".godot/imported/T_Concrete_Normal.png-fcb5a7aa5b50fb0feea51ba90c9e1576.md5": {
+   "sha": "46125f0ac06c744033e3ce45ed4680acc5ec2370b09c963f8b3516ece5d2f05b",
+   "size": 91
+  },
+  ".godot/imported/T_Concrete_Normal.png-fcb5a7aa5b50fb0feea51ba90c9e1576.s3tc.ctex": {
+   "sha": "a62849d877f5745d103e1bc35b278e6fd282957ccba8209a6688f7438b8f81c8",
+   "size": 349604
+  },
+  ".godot/imported/T_Concrete_ORM.png-1f5c6cad73487d14fd5ef2e9f92fa631.etc2.ctex": {
+   "sha": "9c7e511a806e71f9866d7ec5590408ba30866d0aa539ce8c7f1ce29235918ec5",
+   "size": 748
+  },
+  ".godot/imported/T_Concrete_ORM.png-1f5c6cad73487d14fd5ef2e9f92fa631.md5": {
+   "sha": "b5ad6014e7b1153465eec3b1f7d87d4cf08e6ebedb654add0ba9a11ee582586e",
+   "size": 91
+  },
+  ".godot/imported/T_Concrete_ORM.png-1f5c6cad73487d14fd5ef2e9f92fa631.s3tc.ctex": {
+   "sha": "1dab8874496494be299c68b547e5fa0905ac125297f76dae5ce00170f31bb451",
+   "size": 748
+  },
+  ".godot/imported/T_Dirt_BaseColor.png-1920f67a8f7a50e51a260e88e5f85e01.etc2.ctex": {
+   "sha": "bfe114f355fa38a80cc79162eda873b07b6d0b972b5327f8b6fa9fecb2f4cd91",
+   "size": 699116
+  },
+  ".godot/imported/T_Dirt_BaseColor.png-1920f67a8f7a50e51a260e88e5f85e01.md5": {
+   "sha": "e0e4fc3dfcc2811199ac89b6bf4a9e06ee03979c703c26033a32d303fad6c0e1",
+   "size": 91
+  },
+  ".godot/imported/T_Dirt_BaseColor.png-1920f67a8f7a50e51a260e88e5f85e01.s3tc.ctex": {
+   "sha": "b6b801b0878e5f6ba4a6b695c36f46f4121362991d9e4aa41add0c720ec2c40d",
+   "size": 699116
+  },
+  ".godot/imported/T_Dirt_Normal.png-07f042cfc134060a94c31a64cd4bb4e4.etc2.ctex": {
+   "sha": "cff7d6b40a1733aa9f675540447db13c84a4a45ba61dc2817a8644652f3700d4",
+   "size": 349604
+  },
+  ".godot/imported/T_Dirt_Normal.png-07f042cfc134060a94c31a64cd4bb4e4.md5": {
+   "sha": "806b42d2f50833cb7771a7410f26d88bd682ad05d1d9f0ca4fdabf4fbcf09ba3",
+   "size": 91
+  },
+  ".godot/imported/T_Dirt_Normal.png-07f042cfc134060a94c31a64cd4bb4e4.s3tc.ctex": {
+   "sha": "2e9f635de411eac1c10024c9b08594f32fc88a5e43d3e32e9aac52f2226dfb2b",
+   "size": 349604
+  },
+  ".godot/imported/T_Dirt_ORM.png-d3963df3d6f8550fe65339aeaee83576.etc2.ctex": {
+   "sha": "47bcfdccf4fb0d57ceb6037c3eae7330650cfb895c5b91bc958ad70c63cc54bd",
+   "size": 748
+  },
+  ".godot/imported/T_Dirt_ORM.png-d3963df3d6f8550fe65339aeaee83576.md5": {
+   "sha": "4aefe60b577a240fb4970bbb329a0579ab827bf5763021e094c0e3c4ea43ac6c",
+   "size": 91
+  },
+  ".godot/imported/T_Dirt_ORM.png-d3963df3d6f8550fe65339aeaee83576.s3tc.ctex": {
+   "sha": "d29d374e00ac372e303e65ab666331a27c5a7a3b3f340e22b1af94e3ee830dd4",
+   "size": 748
+  },
+  ".godot/imported/T_MarbleFloor_BaseColor.png-c30c3d925b08f62454c7706c2a1b103f.etc2.ctex": {
+   "sha": "cdf01599a860d0a409b03b39c2cb5c1e0a269b4db4115c2f76a5228540c37f4e",
+   "size": 699116
+  },
+  ".godot/imported/T_MarbleFloor_BaseColor.png-c30c3d925b08f62454c7706c2a1b103f.md5": {
+   "sha": "bcd0c8b97212c1797662dfb37017c8db3b5bba288d187297c7838b2d42b8ab12",
+   "size": 91
+  },
+  ".godot/imported/T_MarbleFloor_BaseColor.png-c30c3d925b08f62454c7706c2a1b103f.s3tc.ctex": {
+   "sha": "612141cfcc0c31185bf18c3a16ce5f794c1e2af3bb0f8c6598a6589bd2ce0ffa",
+   "size": 699116
+  },
+  ".godot/imported/T_MarbleFloor_Normal.png-76e2991bada7e9a5c6cc0986ca281b38.etc2.ctex": {
+   "sha": "a987401291d0bcd659b98af29984bab724e9a2e8b5b135f63de0f29bbdddd687",
+   "size": 349604
+  },
+  ".godot/imported/T_MarbleFloor_Normal.png-76e2991bada7e9a5c6cc0986ca281b38.md5": {
+   "sha": "31558ed207e3278e5b35cf708dccf64eba4311898ca2822d71b03fc8d4ada3a4",
+   "size": 91
+  },
+  ".godot/imported/T_MarbleFloor_Normal.png-76e2991bada7e9a5c6cc0986ca281b38.s3tc.ctex": {
+   "sha": "30d27fce6363fcb825d9eeb23b8ca276ac692c693b5bb9d3fe9446805b40fb9f",
+   "size": 349604
+  },
+  ".godot/imported/T_MarbleFloor_ORM.png-e94c15b4650f82787d83d4a351b83758.etc2.ctex": {
+   "sha": "c6f066813901fc676d671de9ce756938f8fd563df18770714be447d31636330b",
+   "size": 748
+  },
+  ".godot/imported/T_MarbleFloor_ORM.png-e94c15b4650f82787d83d4a351b83758.md5": {
+   "sha": "0b8c6b96c9e718f92dacbb1af9fb82bb6e508c8546ef385d9a50c065b89e99b0",
+   "size": 91
+  },
+  ".godot/imported/T_MarbleFloor_ORM.png-e94c15b4650f82787d83d4a351b83758.s3tc.ctex": {
+   "sha": "4a35a93a561162d1d47eeffa2a8f2b1e06cc8a9d372997128ffdc31a61fe0242",
+   "size": 748
+  },
+  ".godot/imported/T_MetalConcrete_BaseColor.png-6c79aa7062434bad1a889ee38e063aa1.etc2.ctex": {
+   "sha": "ff446376ac21f6e8eec04e46c25201dcf8c48567729aa484317c689fcee6ab86",
+   "size": 699116
+  },
+  ".godot/imported/T_MetalConcrete_BaseColor.png-6c79aa7062434bad1a889ee38e063aa1.md5": {
+   "sha": "19b2fdc6d5953df4410e14e275e19ab504f3d3ac722f861288102be0f22e5d7d",
+   "size": 91
+  },
+  ".godot/imported/T_MetalConcrete_BaseColor.png-6c79aa7062434bad1a889ee38e063aa1.s3tc.ctex": {
+   "sha": "10445a357e7f5ca1ff94461c4ea35168622ffea51dabf88fab5588c5cf3a9e90",
+   "size": 699116
+  },
+  ".godot/imported/T_MetalConcrete_Normal.png-215567d1b523ec43242d354954d84d73.etc2.ctex": {
+   "sha": "fd367b1aed2cc82062b8b0988caa17ef82368e1459133aae062ec3490235fbc3",
+   "size": 349604
+  },
+  ".godot/imported/T_MetalConcrete_Normal.png-215567d1b523ec43242d354954d84d73.md5": {
+   "sha": "8b3c26e590c0e1a2014fcd44fd3ebe29a80dfc3935a0ebb8d95b4bc429846d8a",
+   "size": 91
+  },
+  ".godot/imported/T_MetalConcrete_Normal.png-215567d1b523ec43242d354954d84d73.s3tc.ctex": {
+   "sha": "54b3fa6c8e8e90d6c560330eef8d9fe7c081c317bf7bc3fffecfe3304a7e4639",
+   "size": 349604
+  },
+  ".godot/imported/T_MetalConcrete_ORM.png-b484783001327a387e7a30256ee91c23.etc2.ctex": {
+   "sha": "b28a8ee88ef8adffaa8e0ae65a83b775362b248471595700ee8308f29fef4b5a",
+   "size": 748
+  },
+  ".godot/imported/T_MetalConcrete_ORM.png-b484783001327a387e7a30256ee91c23.md5": {
+   "sha": "9df872475afdec1c2dfbe185a20faefa28ec6b0f45c7e8cc9e52852712147cfc",
+   "size": 91
+  },
+  ".godot/imported/T_MetalConcrete_ORM.png-b484783001327a387e7a30256ee91c23.s3tc.ctex": {
+   "sha": "98790211061e42aafba9a6ffac33296771ccc2a78d7b1971cd1b3561332d5f84",
+   "size": 748
+  },
+  ".godot/imported/T_Ornaments_BaseColor.png-ab4dae3e023ede1fd42e6495d98d8f85.etc2.ctex": {
+   "sha": "9b5bc7d1f6ac78d47fc8842950e6c32d221efa39e9bbf8f5966928b668e0a7a5",
+   "size": 699116
+  },
+  ".godot/imported/T_Ornaments_BaseColor.png-ab4dae3e023ede1fd42e6495d98d8f85.md5": {
+   "sha": "ef30c06fdefd8f5e30218df3b597c65ef466ed9fdd80b811279e34d124259155",
+   "size": 91
+  },
+  ".godot/imported/T_Ornaments_BaseColor.png-ab4dae3e023ede1fd42e6495d98d8f85.s3tc.ctex": {
+   "sha": "180aa0ab78aff83296021daf60ca77f32ba4a035bfd219127a0d449c40c11636",
+   "size": 699116
+  },
+  ".godot/imported/T_Ornaments_Normal.png-fcbdc0e444e9b647ddc38a210f6e9f98.etc2.ctex": {
+   "sha": "06711136e2c1e356de2f86ce7b1054a4a1b6f1123b34783effea6946abd7b424",
+   "size": 349604
+  },
+  ".godot/imported/T_Ornaments_Normal.png-fcbdc0e444e9b647ddc38a210f6e9f98.md5": {
+   "sha": "d53915f4f8b3cd2d4d8dc940a5e3a724b81bcf9956a9d0927a3d53fec6841904",
+   "size": 91
+  },
+  ".godot/imported/T_Ornaments_Normal.png-fcbdc0e444e9b647ddc38a210f6e9f98.s3tc.ctex": {
+   "sha": "efe3cac411170039616b83c7696ed95e75790d943e492fc5532f1346bc08bd5c",
+   "size": 349604
+  },
+  ".godot/imported/T_Ornaments_ORM.png-0569f63f0524bbbf3bbae345b22a7dc6.etc2.ctex": {
+   "sha": "3bf1fe27b426f2131dfa2ff0bb3a0605315e36d727c36352b7802da2989331b3",
+   "size": 748
+  },
+  ".godot/imported/T_Ornaments_ORM.png-0569f63f0524bbbf3bbae345b22a7dc6.md5": {
+   "sha": "4dfe244158854284de91fe48fba020b6c6fb6e5a775ad5bf81eebadc6f8a9e22",
+   "size": 91
+  },
+  ".godot/imported/T_Ornaments_ORM.png-0569f63f0524bbbf3bbae345b22a7dc6.s3tc.ctex": {
+   "sha": "9cf6fbcd1ae8e4dfb450c5e1803ecb8ebc80b16604956e1f1d8bdc93cc25b0a6",
+   "size": 748
+  },
+  ".godot/imported/T_RedBrick_BaseColor.png-0ae9e39e6c10d108927333246f4b5574.etc2.ctex": {
+   "sha": "ed73b5aff777f0823664b3b143a73d16bc1d6cee924246e3e01a47eaf720d96d",
+   "size": 699116
+  },
+  ".godot/imported/T_RedBrick_BaseColor.png-0ae9e39e6c10d108927333246f4b5574.md5": {
+   "sha": "9e65b090a7242386a86ee44410b2f5b95c7fc49bb1a78e0099d9449bc8ea9583",
+   "size": 91
+  },
+  ".godot/imported/T_RedBrick_BaseColor.png-0ae9e39e6c10d108927333246f4b5574.s3tc.ctex": {
+   "sha": "94d8e44078d05bc3019da77982120cb111b38c79514f409b95c05265b7f22bfc",
+   "size": 699116
+  },
+  ".godot/imported/T_RedBrick_Normal.png-b2bf2e660b847507cac0e97cce447e3b.etc2.ctex": {
+   "sha": "d7e778e5748c1befaa1b74ede2e52a347f3920543f1b7d35fe74cfee147ea97a",
+   "size": 349604
+  },
+  ".godot/imported/T_RedBrick_Normal.png-b2bf2e660b847507cac0e97cce447e3b.md5": {
+   "sha": "c686ee8152e8733dd534bb5a12b851448b2cf40b032d6aedfb773a76f9bebcb8",
+   "size": 91
+  },
+  ".godot/imported/T_RedBrick_Normal.png-b2bf2e660b847507cac0e97cce447e3b.s3tc.ctex": {
+   "sha": "8ecc6ec2181186d632ca9db7f05ce9f3f3b39c362f2ae9e988f8bcee395a9303",
+   "size": 349604
+  },
+  ".godot/imported/T_RedBrick_ORM.png-3f4de2f006408c377ff4837271cdb9b8.etc2.ctex": {
+   "sha": "210b5633084ebd6aa6b26ca11f655e15cc06575dfa66ba79ead8771f461d506e",
+   "size": 748
+  },
+  ".godot/imported/T_RedBrick_ORM.png-3f4de2f006408c377ff4837271cdb9b8.md5": {
+   "sha": "81813bd155d8a93dcaf86ff208b33d319dba0e5e88ab4d1af847d7edb460f94e",
+   "size": 91
+  },
+  ".godot/imported/T_RedBrick_ORM.png-3f4de2f006408c377ff4837271cdb9b8.s3tc.ctex": {
+   "sha": "e8f43f2e7db905a6aca6077f80bc6bebaec12aacef468afdc40071a423277063",
+   "size": 748
+  },
+  ".godot/imported/T_Trim_BaseColor.png-f863d60f7ac0f102a404a0669c97ceae.etc2.ctex": {
+   "sha": "c1499edb140c985e42b1f04078e4011bff31ea0f51b55bbf00dad5011647c21a",
+   "size": 699116
+  },
+  ".godot/imported/T_Trim_BaseColor.png-f863d60f7ac0f102a404a0669c97ceae.md5": {
+   "sha": "9e866a4ed2e9eeb2c5f543daa02cc44e98730177e786611c207a88343fc4c208",
+   "size": 91
+  },
+  ".godot/imported/T_Trim_BaseColor.png-f863d60f7ac0f102a404a0669c97ceae.s3tc.ctex": {
+   "sha": "e4fcf34212590dd458239c707dc8eda1109f93e3f34a2edd168103afe5f039a5",
+   "size": 699116
+  },
+  ".godot/imported/T_Trim_Normal.png-3a54a2540252cde8cf643d9b785e7e43.etc2.ctex": {
+   "sha": "442144e703c9aa01f0aaff5699b44a73e08120a5d15d87400ff82a1631e8fff3",
+   "size": 349604
+  },
+  ".godot/imported/T_Trim_Normal.png-3a54a2540252cde8cf643d9b785e7e43.md5": {
+   "sha": "bce0d0c278d717628d2bdcfa40bb4b72823684f56683147ebf56d30a3b1fdb33",
+   "size": 91
+  },
+  ".godot/imported/T_Trim_Normal.png-3a54a2540252cde8cf643d9b785e7e43.s3tc.ctex": {
+   "sha": "5b18af895334c39d488dcc8689b001b825bfbb5dd6370c70d5cddc1921bf0996",
+   "size": 349604
+  },
+  ".godot/imported/T_Trim_ORM.png-25bf81b0e8bd2a4dbe83c3239b1ceae0.etc2.ctex": {
+   "sha": "5b0dde30f9defdca5623d59e1a2fc988f5a344bfb24a88b4044b21317a3bc18e",
+   "size": 748
+  },
+  ".godot/imported/T_Trim_ORM.png-25bf81b0e8bd2a4dbe83c3239b1ceae0.md5": {
+   "sha": "22cd91987e5d2a50d112862c2858d8693855846ffb843ed2a69c88001b857633",
+   "size": 91
+  },
+  ".godot/imported/T_Trim_ORM.png-25bf81b0e8bd2a4dbe83c3239b1ceae0.s3tc.ctex": {
+   "sha": "4ba9334843854ec23d936e1efd5bf678dc4976fc562d573e73fcf18a5aa61888",
+   "size": 748
+  },
+  ".godot/imported/T_dark_interior.png-75a9079ff68b037d03bd9193a7d99025.etc2.ctex": {
+   "sha": "f9424848ac08201af70c5cb65d282a8649c1fa64cdd046bee8f70b4904ed4c6a",
+   "size": 43756
+  },
+  ".godot/imported/T_dark_interior.png-75a9079ff68b037d03bd9193a7d99025.md5": {
+   "sha": "144ea4221ac59e95b7815a8cf89049d2fef2cce3ffa00ec5553b99bc5c8000f1",
+   "size": 91
+  },
+  ".godot/imported/T_dark_interior.png-75a9079ff68b037d03bd9193a7d99025.s3tc.ctex": {
+   "sha": "cd0074d812d0385ec6b1e6f3a97de23c1041edd5da4c51ec37a7f51b356056c4",
+   "size": 43756
+  },
+  ".godot/imported/T_lit_interior_1.png-baf29990fe661bdc8291afcc25d9c341.etc2.ctex": {
+   "sha": "3fb5b5029cb10b744550b1e1d952af90d2b9010c26ec1b38b76a40b138eca0d0",
+   "size": 43756
+  },
+  ".godot/imported/T_lit_interior_1.png-baf29990fe661bdc8291afcc25d9c341.md5": {
+   "sha": "b791cc076804789585819e701d3edc2caf77cb01f19219751a70bfacc05c3fa3",
+   "size": 91
+  },
+  ".godot/imported/T_lit_interior_1.png-baf29990fe661bdc8291afcc25d9c341.s3tc.ctex": {
+   "sha": "3ee3b8988708b9c2d4a1636e988b1f2b5ed63f0e477b2e33271235db4a50cfed",
+   "size": 43756
+  },
+  ".godot/imported/T_lit_interior_2.png-91b82cbf279859fdb6d04eb47cd68f48.etc2.ctex": {
+   "sha": "e99fe693b020158ce9ef6ac16c8e7268e81febd13a69ab0e03efcf8f625f8bf1",
+   "size": 43756
+  },
+  ".godot/imported/T_lit_interior_2.png-91b82cbf279859fdb6d04eb47cd68f48.md5": {
+   "sha": "a6bc2f786802148be1ca9d5474d7751a85ce94276ce4bc98bc54e3d1f7fbbfee",
+   "size": 91
+  },
+  ".godot/imported/T_lit_interior_2.png-91b82cbf279859fdb6d04eb47cd68f48.s3tc.ctex": {
+   "sha": "324ccc84760f6caba582a71a03e53b42d47a9ea3a4eb0848f9e8b498193d1843",
+   "size": 43756
+  },
+  ".godot/imported/Taxi.fbx-f1f16a276dcdbb3fc29a5dd31e4ba142.md5": {
+   "sha": "60a49e3b53fd29dcbd26eecf59ec78e0964fafbf2165dd9df28340d00b13f3aa",
+   "size": 91
+  },
+  ".godot/imported/Taxi.fbx-f1f16a276dcdbb3fc29a5dd31e4ba142.scn": {
+   "sha": "8e35c41492f38ec0f8b8065b78ab918d740c0770c870cdc0e5627d6ed253b082",
+   "size": 103535
   },
   ".godot/imported/VLCMedia.svg-78a447e1b7c3343f152a0aa6a65c3d3a.ctex": {
    "sha": "aa093b037e1c08369de1790280e66298a77679732abf15cc8575e8308f5fafd4",
@@ -58,12 +566,12 @@
    "size": 91
   },
   ".godot/uid_cache.bin": {
-   "sha": "faa9ce9264aa5b4e6bad00c6f228079849db942880ada586e5c35cc8da2a8812",
-   "size": 1448
+   "sha": "ff81fba6f6076742d7e5b46d02b579350b3d9cf0ff709c365812c113149e03df",
+   "size": 14198
   },
   "README.md": {
-   "sha": "7795cd55301a461537df4aa6a54ab65088980316d52ced4e5eeb52a7d5c92362",
-   "size": 20162
+   "sha": "d8967a5e4ea096ddb94a5e8fc99c6adce6486b1e01da3bd6c7718f6a3b167b1a",
+   "size": 20699
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -136,6 +644,438 @@
   "assets/PUT_MODELS_HERE.txt": {
    "sha": "6e63424636cb360a4f00af4ab95c2653ac7a3f74ed674af8ecdbd910ca4476c4",
    "size": 155
+  },
+  "assets/quaternius/LICENSE_Quaternius_CC0.txt": {
+   "sha": "4a59bef3ed7b24f27049c9059ed25421ddf123c37c5f2bf4c13b40c4735d9d57",
+   "size": 470
+  },
+  "assets/quaternius/cars/NormalCar1.fbx": {
+   "sha": "61ae9bd52c3217738ae633444eec3435f244690d95ae0807d4dd7ca8d3be14fb",
+   "size": 72732
+  },
+  "assets/quaternius/cars/NormalCar1.fbx.import": {
+   "sha": "e2d2c267da1d7eef0285521ecaf2a39ced5a6bf471658076b8cb0f16aafdd88f",
+   "size": 1194
+  },
+  "assets/quaternius/cars/NormalCar2.fbx": {
+   "sha": "323865fe92ab7ef0a83394aa08ab2c00019a5134998466809210e3754768a09f",
+   "size": 75596
+  },
+  "assets/quaternius/cars/NormalCar2.fbx.import": {
+   "sha": "71ae201301997dc9f4c473ec2b06bf5b611d17a7b345fa53ed4407bfe8531c9a",
+   "size": 1194
+  },
+  "assets/quaternius/cars/SUV.fbx": {
+   "sha": "7c3769a955ab0cb628d4225a6a1695593d5e011649e8e0455c79014aa7691749",
+   "size": 78076
+  },
+  "assets/quaternius/cars/SUV.fbx.import": {
+   "sha": "d50e9e77ab9041c65d18149068bb31d76ff1aa4dce3cd17d80c7a76dac72a407",
+   "size": 1173
+  },
+  "assets/quaternius/cars/SportsCar.fbx": {
+   "sha": "bd09dc9e7e1ab36a7b7868ae47c7202038fce83006bf00d2816c4273aaae6899",
+   "size": 75180
+  },
+  "assets/quaternius/cars/SportsCar.fbx.import": {
+   "sha": "ed166ca08bfde9c7f5f5629888ee37c8eebba3a99ac8eea19a7bcc59abcef725",
+   "size": 1191
+  },
+  "assets/quaternius/cars/Taxi.fbx": {
+   "sha": "45196b14ec0f17181a63227dcf666b7065911b3e5d98c5aa9f74293fc1fdf21f",
+   "size": 79612
+  },
+  "assets/quaternius/cars/Taxi.fbx.import": {
+   "sha": "a460b07f2bfac499fe121f07e817de1e4cdef377148d690d7f4ae385ad8c2c83",
+   "size": 1175
+  },
+  "assets/quaternius/city/Building_Large_2.bin": {
+   "sha": "e25636464da7b96a346f89314e498099ce33d3b0e9b1f8d9cba3eee94b63fac3",
+   "size": 3345228
+  },
+  "assets/quaternius/city/Building_Large_2.gltf": {
+   "sha": "903209b63ad4e151190dce32ccab47a2c0dc256c09d999835984a0459ef2bd91",
+   "size": 22880
+  },
+  "assets/quaternius/city/Building_Large_2.gltf.import": {
+   "sha": "f04719b99b0c7fd31afd8d30894827210ac53498264451b888a79337a571c956",
+   "size": 1189
+  },
+  "assets/quaternius/city/Building_Medium_2_001.bin": {
+   "sha": "8a8bd4462ff5f784e0ea7fbe753b009713f4017192c9d82b467f445eae88a35d",
+   "size": 2443288
+  },
+  "assets/quaternius/city/Building_Medium_2_001.gltf": {
+   "sha": "423f4b3e709ef5633eac4a94a8a1ce25750aa42fe34e3b983d7aac39846f9a1c",
+   "size": 25244
+  },
+  "assets/quaternius/city/Building_Medium_2_001.gltf.import": {
+   "sha": "0ca53e802c68424b96451ace75a00078fd24208a2cf005161e875baf7e31dc72",
+   "size": 1204
+  },
+  "assets/quaternius/city/Building_Small_1.bin": {
+   "sha": "a5fb691fe7ab0d93d5d47eef51af576f2d65bd78103c92c9e714215b26d679a2",
+   "size": 1556100
+  },
+  "assets/quaternius/city/Building_Small_1.gltf": {
+   "sha": "3c864724fffd016ca440191bca169d6ba486e14617bb3cafa09ddbac7532f3d7",
+   "size": 27435
+  },
+  "assets/quaternius/city/Building_Small_1.gltf.import": {
+   "sha": "2e1b7ac68dbb35a23b066fffcd544690be2b2d9c6803cf62ff6c6ae6dc0fed59",
+   "size": 1189
+  },
+  "assets/quaternius/city/Prop_ACUnit.bin": {
+   "sha": "71c8dcc458ec8fa31ca7c3f391b1b95dc17864c6bb5c1addbdde899849c3324a",
+   "size": 6256
+  },
+  "assets/quaternius/city/Prop_ACUnit.gltf": {
+   "sha": "f81fae2b49804312d23cc5c56fdf36f6bec89f342df9d135c1565ed31a7e968d",
+   "size": 2376
+  },
+  "assets/quaternius/city/Prop_ACUnit.gltf.import": {
+   "sha": "e19499df5851dc4131805f4bff0676e6fd2a5171cb172b068d7e8343ff9a6410",
+   "size": 1174
+  },
+  "assets/quaternius/city/T_Concrete_Asphalt_BaseColor.png": {
+   "sha": "e13ae99c58a2bde6021bb583fe8e8f42034434d153d184fad58b7b6bf821b685",
+   "size": 320627
+  },
+  "assets/quaternius/city/T_Concrete_Asphalt_BaseColor.png.import": {
+   "sha": "c6b0aad7c0fee14b7c1d972953fa151dbafe3cd575b3d841c4ce34da302892a2",
+   "size": 1283
+  },
+  "assets/quaternius/city/T_Concrete_BaseColor.png": {
+   "sha": "f6b323a6d3dd6c57e40c8f20e7152056908106b6ee21bce41440235233bce94f",
+   "size": 447155
+  },
+  "assets/quaternius/city/T_Concrete_BaseColor.png.import": {
+   "sha": "8120914a74c0e478248acf92b4e0ef167336a9a124b9a714c2e47bccb9e2de82",
+   "size": 1242
+  },
+  "assets/quaternius/city/T_Concrete_Normal.png": {
+   "sha": "3034593aefabc55a9eed37d4105d6b8fb117d89f6384930c99bb8e14e760bd9a",
+   "size": 321352
+  },
+  "assets/quaternius/city/T_Concrete_Normal.png.import": {
+   "sha": "e7a06a8bb3630930b5525157831a5801801c6f2aa3b3671a00aef9fa1c920643",
+   "size": 1228
+  },
+  "assets/quaternius/city/T_Concrete_ORM.png": {
+   "sha": "122fd6c4ce7fa6bc247a26a879445ff6ca1457e4a972854e7c3fd1b0424607d0",
+   "size": 959
+  },
+  "assets/quaternius/city/T_Concrete_ORM.png.import": {
+   "sha": "d668ba7490380417ab3d99b4608a4f92a046dd08df922a2002e6efe828016e86",
+   "size": 1212
+  },
+  "assets/quaternius/city/T_Dirt_BaseColor.png": {
+   "sha": "54900d1cb566d6814255306000ede4c8c8f6b8b320d47af8a285f635145726b9",
+   "size": 462758
+  },
+  "assets/quaternius/city/T_Dirt_BaseColor.png.import": {
+   "sha": "305733a54b4da403c71a1f62f839f283cd981d801065a06f8a1872b71fd7000a",
+   "size": 1222
+  },
+  "assets/quaternius/city/T_Dirt_Normal.png": {
+   "sha": "d8b1e109043249456aa14f1bb9ed45bcb9884dc5a64a581218c05f0b1c315104",
+   "size": 599656
+  },
+  "assets/quaternius/city/T_Dirt_Normal.png.import": {
+   "sha": "87356b727cf2a35fb8270db1572013cb1e8e7dacbb6af37b56755208bbb2abab",
+   "size": 1208
+  },
+  "assets/quaternius/city/T_Dirt_ORM.png": {
+   "sha": "0bda493c8d0c650def4d7dcfd147b1c255416471ab10b25137e1be3266e1464a",
+   "size": 1053
+  },
+  "assets/quaternius/city/T_Dirt_ORM.png.import": {
+   "sha": "4b4c236e73a91024ec0fe496818457577777f81f40832b797be4f13ac25d1941",
+   "size": 1193
+  },
+  "assets/quaternius/city/T_MarbleFloor_BaseColor.png": {
+   "sha": "a0c8b8f7af1f6651f70ffac04873f15d82d6080a8773f5fa345c2686311cc050",
+   "size": 851569
+  },
+  "assets/quaternius/city/T_MarbleFloor_BaseColor.png.import": {
+   "sha": "8a2e33ed05527c276e574b0553e7be076cd349edd95c5b93fa08dca8662b04e7",
+   "size": 1258
+  },
+  "assets/quaternius/city/T_MarbleFloor_Normal.png": {
+   "sha": "ced0d4e6cdde8515b3ed24a0da6c1ef89e99391b95fc2f2f2103c90cd26472c2",
+   "size": 157461
+  },
+  "assets/quaternius/city/T_MarbleFloor_Normal.png.import": {
+   "sha": "fa5d494f397a600d1e2e1e1b2d6ca01611e329a9adb8c92a81647fae4ca7b811",
+   "size": 1243
+  },
+  "assets/quaternius/city/T_MarbleFloor_ORM.png": {
+   "sha": "28f1e9408ec097e9c4324d5d68204f521973561839245fa65802eea3b139b85f",
+   "size": 931
+  },
+  "assets/quaternius/city/T_MarbleFloor_ORM.png.import": {
+   "sha": "14c7d901729f353fb97140c7f836c3ba6b27d9d80267fd58091565fa91ad3d78",
+   "size": 1227
+  },
+  "assets/quaternius/city/T_MetalConcrete_BaseColor.png": {
+   "sha": "f893fe094258143acccd7e8d844955fdaf268c7b1d2e38bb17056bae9150a7b3",
+   "size": 471467
+  },
+  "assets/quaternius/city/T_MetalConcrete_BaseColor.png.import": {
+   "sha": "b69b76b102865f64417a6c0fff45309180d5f3d728a096bea7cffbde3c47c52a",
+   "size": 1268
+  },
+  "assets/quaternius/city/T_MetalConcrete_Normal.png": {
+   "sha": "f7d14448d14a1d0c5dac586d8dbe2ce30ef3e3e79fe2b4bdbefd639228d0c164",
+   "size": 329273
+  },
+  "assets/quaternius/city/T_MetalConcrete_Normal.png.import": {
+   "sha": "2c3e1033302d89896636e07747cb91f50c8fc04b64c38af6dce72c8e70f08960",
+   "size": 1253
+  },
+  "assets/quaternius/city/T_MetalConcrete_ORM.png": {
+   "sha": "47d4bf81a370fcef1be1afc8698925c3e2ac034ddc5a33255e5b4c2906d2f9f3",
+   "size": 1308
+  },
+  "assets/quaternius/city/T_MetalConcrete_ORM.png.import": {
+   "sha": "65aaf6a575a30adc0f62d776e015aba062aff79964c5c87806d24ca97fff610f",
+   "size": 1238
+  },
+  "assets/quaternius/city/T_Ornaments_BaseColor.png": {
+   "sha": "fe83815137cfb2f47e50eb91783b1c9f08ed606f453a9af019e9179a865c80bd",
+   "size": 1133074
+  },
+  "assets/quaternius/city/T_Ornaments_BaseColor.png.import": {
+   "sha": "9a9212e12a9414dc51cbb122b1e29ff51d72f65bfbcce71c0a0f25eb239cf3a8",
+   "size": 1248
+  },
+  "assets/quaternius/city/T_Ornaments_Normal.png": {
+   "sha": "a705b2e01130d5a34ac411dac4076e7495751c79b824f3f7b07904d2df878719",
+   "size": 479269
+  },
+  "assets/quaternius/city/T_Ornaments_Normal.png.import": {
+   "sha": "b6a068b43141e95dac0924f6074b839c075f0add79b71efb6d2f478b57931217",
+   "size": 1233
+  },
+  "assets/quaternius/city/T_Ornaments_ORM.png": {
+   "sha": "8913b9205dc2fdeb827da29789f5344dca5a546327723833574d1d5433e07144",
+   "size": 1706
+  },
+  "assets/quaternius/city/T_Ornaments_ORM.png.import": {
+   "sha": "b7ae6127c3f19b6bd4a13649a26009ab2b0533c4b691d06340abe78316563897",
+   "size": 1218
+  },
+  "assets/quaternius/city/T_RedBrick_BaseColor.png": {
+   "sha": "a73f85c658b92b5bd5fd7783ed2b1c7eb91078995afdd338d1879e98f0e03e17",
+   "size": 611215
+  },
+  "assets/quaternius/city/T_RedBrick_BaseColor.png.import": {
+   "sha": "7eb5ae1ba11bbe11bfc868808b94d9848d588ffff6771f6c4d394a268b05fb88",
+   "size": 1243
+  },
+  "assets/quaternius/city/T_RedBrick_Normal.png": {
+   "sha": "4030a8048d51379da5299568bbb084a93847fcd3c7ec75d754dee178cfa827b2",
+   "size": 500173
+  },
+  "assets/quaternius/city/T_RedBrick_Normal.png.import": {
+   "sha": "805f3c05309151a3eec5f4c188b715329a36fe5f3f5f18892704af25bbc12d5a",
+   "size": 1228
+  },
+  "assets/quaternius/city/T_RedBrick_ORM.png": {
+   "sha": "e86126e0506521c2a9efb6fc559c59a9c33d73a1db5b99493a8c2497b808b015",
+   "size": 1750
+  },
+  "assets/quaternius/city/T_RedBrick_ORM.png.import": {
+   "sha": "68604384f95c076273dd22699a98b01e7f2364165e4ac781ab84162e1edc0f04",
+   "size": 1213
+  },
+  "assets/quaternius/city/T_Trim_BaseColor.png": {
+   "sha": "1400f4250eecfc12b44aa02fccd9a96a227bd723ff14c4f8378031984f14e73d",
+   "size": 1075987
+  },
+  "assets/quaternius/city/T_Trim_BaseColor.png.import": {
+   "sha": "e4542874ab12fb9be944a391d9cdc43b1f14c7424f866b7c924100da40e1197c",
+   "size": 1222
+  },
+  "assets/quaternius/city/T_Trim_Normal.png": {
+   "sha": "82ed21a79a1eb9da2da521838b5895e1b39f10593a6bc9fce2baeb5fdeb304f3",
+   "size": 245703
+  },
+  "assets/quaternius/city/T_Trim_Normal.png.import": {
+   "sha": "e34d87ba038a22bbd9ce67552580004d3ac17dcc6997b15a85d7af696ac69c6b",
+   "size": 1207
+  },
+  "assets/quaternius/city/T_Trim_ORM.png": {
+   "sha": "9ece3ba937ffefc6087446bcb95482023aab0928ddb1eeaedacea2c1deff7142",
+   "size": 1076
+  },
+  "assets/quaternius/city/T_Trim_ORM.png.import": {
+   "sha": "6a286fec3a1fbe87048e0991363b276410e208f7d1907ee7119c1ae8466ad7bd",
+   "size": 1193
+  },
+  "assets/quaternius/city/T_dark_interior.png": {
+   "sha": "64ed491839dac651f427df8058bb45851e1882129a468e8b29e7fc2ef84d3047",
+   "size": 83366
+  },
+  "assets/quaternius/city/T_dark_interior.png.import": {
+   "sha": "ff09d72cab6e5b629a0737dface451b2db4445ebe68547e048c7741d1309922b",
+   "size": 1218
+  },
+  "assets/quaternius/city/T_lit_interior_1.png": {
+   "sha": "673dc07689a2ef9ff952820b3487f0945bc84ad9d0ef41dc1ff3ef4952692874",
+   "size": 108145
+  },
+  "assets/quaternius/city/T_lit_interior_1.png.import": {
+   "sha": "916882ca1b582a6f7bf0478488336b6e8b072370f68742067d6ddd9407e0908a",
+   "size": 1223
+  },
+  "assets/quaternius/city/T_lit_interior_2.png": {
+   "sha": "91324c7754a4fc7120998a9af18d37099972c8827fb6595d06b82fa8f95104f4",
+   "size": 86146
+  },
+  "assets/quaternius/city/T_lit_interior_2.png.import": {
+   "sha": "72a41bb7fe8eac075be8a3749b6d0c6f3ff8a83b11d0df9c94e34921a830bb0a",
+   "size": 1223
+  },
+  "assets/quaternius/cyber/AC.gltf": {
+   "sha": "756a3ce9a8d0de03aaf185b156a5adc8c62cb0c6a553ebd82872a1af019516e3",
+   "size": 53207
+  },
+  "assets/quaternius/cyber/AC.gltf.import": {
+   "sha": "3d2e4523f8e25dccecbcd8850ee0e79fe9c972c4602cedf962aae80dfc6a8235",
+   "size": 1148
+  },
+  "assets/quaternius/cyber/AC_Side.gltf": {
+   "sha": "31bb92371c136b69e25b0a98b54addf3d5d3af4e18b1a295d17c9ea82321693a",
+   "size": 44537
+  },
+  "assets/quaternius/cyber/AC_Side.gltf.import": {
+   "sha": "029aaccb686a3ffed106269ca54f4a8454106afbffddcdbf13052e5a231d9924",
+   "size": 1162
+  },
+  "assets/quaternius/cyber/AC_Stacked.gltf": {
+   "sha": "cc3f402027b0397759fd0e7b403196f0e9b7bbeb4a852645c2b5e14583d3ef7b",
+   "size": 473198
+  },
+  "assets/quaternius/cyber/AC_Stacked.gltf.import": {
+   "sha": "75a46757a8e2deeac819e580eaa7bac2db1d50ef04bb056823b9954f583aa387",
+   "size": 1172
+  },
+  "assets/quaternius/cyber/AC_Stacked_Sign.png": {
+   "sha": "9cf8637e787e417ea7372632459edf3f6807973470259c6fc7c6876e83e91e74",
+   "size": 321879
+  },
+  "assets/quaternius/cyber/AC_Stacked_Sign.png.import": {
+   "sha": "b7b30de7c6f2550c6986088c1bb8860af7a939a83cd878dfdffbf31e96a8cf82",
+   "size": 1039
+  },
+  "assets/quaternius/cyber/Antenna_1.gltf": {
+   "sha": "98a364e1aba5a485efd2723dc72075735fba96243e276322b569dbc9b0965fcb",
+   "size": 8751
+  },
+  "assets/quaternius/cyber/Antenna_1.gltf.import": {
+   "sha": "3a8e44d07a0f48f2bf39c13c3bb397143da480d721c74e6d9d54c68999592f4b",
+   "size": 1169
+  },
+  "assets/quaternius/cyber/Antenna_2.gltf": {
+   "sha": "6a5716d4e41fa9705e11d7c7ee2288b5c25e2edfac6a9c3a2965524439b6dae1",
+   "size": 21309
+  },
+  "assets/quaternius/cyber/Antenna_2.gltf.import": {
+   "sha": "d6772d421bda8512de3a1d492413ca912f261dd72dd5c0a771c4ab803d7a2616",
+   "size": 1169
+  },
+  "assets/quaternius/cyber/Light_Street_1.gltf": {
+   "sha": "34f81e3ab9966524fe51e0cca6b7da2f57eb8e3ed9d34ea53f573d6b99425b35",
+   "size": 26431
+  },
+  "assets/quaternius/cyber/Light_Street_1.gltf.import": {
+   "sha": "ccfdd4487e294ea9767a1d97690bf0b371cf8561058c1d059ef888256eb5d073",
+   "size": 1184
+  },
+  "assets/quaternius/cyber/Pipe_1.gltf": {
+   "sha": "63ded98e33fc83718f2117eebec79341ba82c89b0da072394829478f52bab45d",
+   "size": 9611
+  },
+  "assets/quaternius/cyber/Pipe_1.gltf.import": {
+   "sha": "14e8e6d6194557c1c6329c664cd2e38204628789ff271ec386a3be0a8130cee2",
+   "size": 1160
+  },
+  "assets/quaternius/food/Croissant.fbx": {
+   "sha": "e0b1533ec7f3d3f0171ce749ef4ff68b5e871ac6e97edad0e2c0eb8e3d6713b4",
+   "size": 16492
+  },
+  "assets/quaternius/food/Croissant.fbx.import": {
+   "sha": "69fff6d2941debf24c6f316e328707f954ffa3a0e05d61aecff0076366804f41",
+   "size": 1190
+  },
+  "assets/quaternius/food/CupOfCoffee.mtl": {
+   "sha": "c0621fba74eca8d4b71056fac34050909e53f6616ea73daf7d2046ca5458468d",
+   "size": 215
+  },
+  "assets/quaternius/food/CupOfCoffee.obj": {
+   "sha": "00320b2eb5f9a40ff56ab09574a31c4f073e885bf5e5c0b5f49a228d0c306c50",
+   "size": 20517
+  },
+  "assets/quaternius/food/CupOfCoffee.obj.import": {
+   "sha": "9aca9e2dffafba8abef26dc43ac27919aa966cd66b92c1aa857315d282bff63e",
+   "size": 737
+  },
+  "assets/quaternius/food/SodaCan.fbx": {
+   "sha": "a308b45d7a286c465e291d087646e78c172482755ab68808b81f6bc4999a333e",
+   "size": 22636
+  },
+  "assets/quaternius/food/SodaCan.fbx.import": {
+   "sha": "599df3855f648240d2a2e1ad0fcb4ff5a3f451cf185968cbcde62273d754887b",
+   "size": 1185
+  },
+  "assets/quaternius/interior/Houseplant_1.fbx": {
+   "sha": "20029d8f49768d4276968a9b610c49da4d7fb5c7c4e4a8cbeab8a148ae5e1182",
+   "size": 23324
+  },
+  "assets/quaternius/interior/Houseplant_1.fbx.import": {
+   "sha": "a91b0717600860d8dbe3b50133a289fb5e3e8362493ce279aa61c545a30b4151",
+   "size": 1204
+  },
+  "assets/quaternius/interior/Houseplant_7.fbx": {
+   "sha": "7211512ae209dcca280c0f87a867b6e07870e23c7d3f8eb855cafbfeaf488583",
+   "size": 29660
+  },
+  "assets/quaternius/interior/Houseplant_7.fbx.import": {
+   "sha": "6533d94d707eed89c05a2e5b5e75884d6beeaecc4e322bd49c95eb8e98fc392c",
+   "size": 1203
+  },
+  "assets/quaternius/interior/Light_Floor1.fbx": {
+   "sha": "114241b2681611c8a886631906e9a0f4dec7f8de812e0cd69629da788d152d1b",
+   "size": 20028
+  },
+  "assets/quaternius/interior/Light_Floor1.fbx.import": {
+   "sha": "a9a09c61360c39a95d95b9df5d0959919c85cca23df932fe4e7d4f3915fb3606",
+   "size": 1204
+  },
+  "assets/quaternius/noir/Matchbox.fbx": {
+   "sha": "541506dffbc513fa9fa35b63144afe540cc6640d109f9161c671c50eb542160c",
+   "size": 23500
+  },
+  "assets/quaternius/noir/Matchbox.fbx.import": {
+   "sha": "0be0284e8c7ad95609397410843a298293b8a65215f6ebb5a87073c2250c1e68",
+   "size": 1188
+  },
+  "assets/quaternius/noir/Radio.fbx": {
+   "sha": "a1a59f5ae515ade179a67a85042d89b2e1b3eb828398f0587cca8c369d4f7216",
+   "size": 24140
+  },
+  "assets/quaternius/noir/Radio.fbx.import": {
+   "sha": "8ee100d16276020abf781fef836af234f34178a5960dfa3b65798556594bc872",
+   "size": 1178
+  },
+  "assets/quaternius/pets/ShibaInu.gltf": {
+   "sha": "3236979b94a840eb72d9ce091b1361da327a96f5ce068e666680297480f30f6b",
+   "size": 2894445
+  },
+  "assets/quaternius/pets/ShibaInu.gltf.import": {
+   "sha": "ac82cf65fead3d8778eff6110ae162d7e19e4f4234413a1c5236a4283015caae",
+   "size": 1165
   },
   "beanbag_model.gd": {
    "sha": "eda4021e7d77641ef870c6a4033104c68cab4abdc4f4e5cfe48f2ed79abd206f",
@@ -214,8 +1154,8 @@
    "size": 4237
   },
   "docs/RELEASE_1.0.md": {
-   "sha": "aa72f1b00c31afedbf3252d1a35c27e8cfcde76f30e23bd32ce05db79e0a8930",
-   "size": 4715
+   "sha": "7f6789ea496848ab601d7b1ac5880e91169eda15b8f7bd96c3643563531e0de4",
+   "size": 4856
   },
   "emu.gd": {
    "sha": "a22385c51b750c4a610bae4941b9eb26ae4c15b2c4954fd13a6d81266f1b1ca6",
@@ -418,8 +1358,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "57344bbf4e90400796309c87947d4f12cbed86e85c4a96e5a8dcbd88fd817611",
-   "size": 244453
+   "sha": "30be85ba3f4482b63366a542e38e3f4e11323693d45f1c183d3df279ffd92371",
+   "size": 245222
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -438,8 +1378,8 @@
    "size": 9927
   },
   "models/CREDITS.txt": {
-   "sha": "5ac3d251a1ac3d3d99ab68b2aed6257b532b12ff658933d224b0074cd5f23c1c",
-   "size": 220
+   "sha": "103b4e5f9691b8638e397d6b198b57eaa25ca989e4b1e0ce2299bf2c768a1a5c",
+   "size": 1016
   },
   "models/lightgun_mesh.res": {
    "sha": "8ad60b9bcbcb6c7e7624b17a7dd94731602867f8636890bac176044f736a984b",
@@ -546,8 +1486,8 @@
    "size": 3618
   },
   "pc_player.gd": {
-   "sha": "27a07856d4019a8c9fb020f3ac3871374c936db651bee6f05306410dfc69c0ec",
-   "size": 54222
+   "sha": "1df09f39c8c078398d0d1e1c7df261038d2ab11750bfa0b4044d773227b307b1",
+   "size": 54869
   },
   "photos/.gdignore": {
    "sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -613,6 +1553,10 @@
    "sha": "a260c2e12a86c94e6a0eb5c8f5f1fb4320399f2b1aa2953af5e99c0a3608976f",
    "size": 6427
   },
+  "room_look.gd": {
+   "sha": "5663d87dbee8073a3ebee2135b69e4c1e72053f50d9b976980d71057b14a93ec",
+   "size": 17968
+  },
   "room_tv.gd": {
    "sha": "970f159633ef6b50cffb3cbde2067d1ae79cfe8f7fca934af412fe454be8bfc5",
    "size": 2661
@@ -640,6 +1584,10 @@
   "shaders/funnel.gdshader": {
    "sha": "48b0ddef8127eb6373c954838594725df6bce972bafc426d59507344a08201ed",
    "size": 1913
+  },
+  "shaders/lofi_tex.gdshader": {
+   "sha": "9ed200c1c028ee6f34d44eb79535767ef2e6f2841c21cc64fd8dab340d1482f1",
+   "size": 1348
   },
   "shaders/screen.gdshader": {
    "sha": "7a5f4e919db0bb4ddec7d72d97884aba5d12c416d9589389392957ade445ba6a",
@@ -694,7 +1642,7 @@
    "size": 44663
   },
   "version.txt": {
-   "sha": "690e07064753123c967bbac0180f32da6a753a5bd8b79a47644cef58e776d9f0",
+   "sha": "251afbc1fe2e0118f21efcd99a65edefb597b294c5b10ed79b7c46017614e8db",
    "size": 4
   },
   "weather.gd": {
