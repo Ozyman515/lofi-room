@@ -1,6 +1,6 @@
 extends RefCounted
 ## Painted cart labels. Each one is a small canvas drawn in code and shown with nearest filtering,
-## so it keeps a chunky pixel look. The characters are original drawings.
+## so it keeps a chunky pixel look. Every picture is an original drawing (no real games' characters).
 
 const SUN := Color(1.0, 0.72, 0.55)
 const MAG := Color(0.88, 0.25, 0.55)
@@ -81,119 +81,79 @@ static func _sprite(im: Image, ox: int, oy: int, rows: Array, pal: Dictionary, s
 				_rect(im, ox + rx * s, oy + ry * s, s, s, pal[ch])
 
 
-# ---------------------------------------------------------------- NES: a jumping little guy over a dusk hill
+# ---------------------------------------------------------------- 8-BIT: a cat in headphones on a rooftop, watching the moon
+
+# a thin ring (ripples, moon halos)
+static func _ring(im: Image, cx: float, cy: float, rx: float, ry: float, c: Color) -> void:
+	var n := int((rx + ry) * 4.0) + 8
+	for i in n:
+		var a := TAU * i / n
+		_px(im, int(round(cx + cos(a) * rx)), int(round(cy + sin(a) * ry)), c)
+
 
 static func nes_label() -> ImageTexture:
 	var im := _img(56, 92)
-	_grad(im, 0, 40, Color(0.26, 0.14, 0.48), Color(0.90, 0.30, 0.55))
-	_grad(im, 40, 62, Color(0.90, 0.30, 0.55), Color(1.0, 0.72, 0.5))
-	_ellipse(im, 40, 47, 9, 9, Color(1.0, 0.86, 0.6))                         # low sun
-	for sx in [6, 17, 33, 47, 11, 26]:
-		_px(im, sx, 3 + (sx * 7) % 14, Color(1, 0.95, 1))                      # stars
-	_poly(im, [Vector2(0, 62), Vector2(10, 52), Vector2(22, 58), Vector2(34, 50), Vector2(56, 60), Vector2(56, 70), Vector2(0, 70)], Color(0.35, 0.17, 0.5))
-	_rect(im, 0, 66, 56, 8, Color(0.52, 0.27, 0.38))                          # ground
-	for gx in range(0, 56, 8):
-		_rect(im, gx, 66, 4, 2, Color(0.66, 0.36, 0.40))
-	_rect(im, 0, 74, 56, 18, Color(0.12, 0.07, 0.22))                          # title band
-	_rect(im, 0, 74, 56, 1, Color(0.2, 0.8, 0.85))
-	var skin := Color(1.0, 0.78, 0.6)
-	var red := Color(0.88, 0.14, 0.16)
-	var blue := Color(0.16, 0.30, 0.86)
-	var yel := Color(1.0, 0.82, 0.25)
-	var ink := Color(0.1, 0.08, 0.12)
-	# a round-headed kid mid-jump: red cap, yellow top, blue overalls, white sneakers
-	_line(im, Vector2(23, 46), Vector2(16, 34), 4.0, yel)                       # arms up
-	_line(im, Vector2(33, 46), Vector2(40, 33), 4.0, yel)
-	_ellipse(im, 15, 32, 2.8, 2.8, skin)
-	_ellipse(im, 41, 31, 2.8, 2.8, skin)
-	_line(im, Vector2(25, 54), Vector2(19, 60), 4.5, blue)                      # tucked legs
-	_line(im, Vector2(31, 54), Vector2(37, 59), 4.5, blue)
-	_ellipse(im, 17, 61, 4.5, 2.8, Color(0.97, 0.97, 1.0))
-	_ellipse(im, 39, 60, 4.5, 2.8, Color(0.97, 0.97, 1.0))
-	_rect(im, 13, 62, 9, 1, red)
-	_rect(im, 35, 61, 9, 1, red)
-	_ellipse(im, 28, 49, 7.5, 7.5, blue)                                         # overalls
-	_rect(im, 21, 43, 14, 3, yel)                                                # shirt at the shoulders
-	_rect(im, 23, 42, 2, 7, blue)
-	_rect(im, 31, 42, 2, 7, blue)
-	_rect(im, 23, 47, 2, 2, yel)                                                 # buttons
-	_rect(im, 31, 47, 2, 2, yel)
-	_rect(im, 26, 51, 4, 3, Color(0.88, 0.25, 0.55))                             # a pink patch
-	_ellipse(im, 28, 36, 8, 7.5, skin)                                           # head
-	_rect(im, 20, 35, 2, 4, Color(0.42, 0.22, 0.12))                             # side hair
-	_rect(im, 34, 35, 2, 4, Color(0.42, 0.22, 0.12))
-	_ellipse(im, 28, 31, 9, 5.5, red)                                            # cap
-	_rect(im, 19, 32, 18, 3, red)
-	_poly(im, [Vector2(21, 34), Vector2(40, 34), Vector2(42, 36), Vector2(21, 36)], Color(0.62, 0.08, 0.14))   # brim
-	_rect(im, 26, 27, 4, 2, Color(0.97, 0.95, 0.9))                              # cap stripe
-	_rect(im, 24, 37, 2, 3, ink)                                                 # eyes
-	_rect(im, 31, 37, 2, 3, ink)
-	_rect(im, 22, 40, 2, 1, Color(1.0, 0.55, 0.6))                               # cheeks
-	_rect(im, 33, 40, 2, 1, Color(1.0, 0.55, 0.6))
-	_rect(im, 26, 41, 4, 1, Color(0.6, 0.2, 0.25))                               # smile
-	for cl in [Vector2(8, 16), Vector2(40, 8)]:                                  # clouds
-		_ellipse(im, cl.x, cl.y, 6, 2.6, Color(1, 0.9, 0.95))
-		_ellipse(im, cl.x + 4, cl.y - 2, 4, 3, Color(1, 0.9, 0.95))
+	_grad(im, 0, 44, Color(0.10, 0.07, 0.30), Color(0.55, 0.20, 0.55))
+	_grad(im, 44, 66, Color(0.55, 0.20, 0.55), Color(0.98, 0.58, 0.50))
+	_ellipse(im, 38, 17, 8, 8, Color(1.0, 0.93, 0.80))                          # the moon
+	_ring(im, 38, 17, 11, 11, Color(0.62, 0.40, 0.72))                          # its halo
+	for st in [Vector2(6, 6), Vector2(18, 13), Vector2(50, 33), Vector2(9, 27), Vector2(27, 4)]:
+		_px(im, int(st.x), int(st.y), Color(1, 0.95, 1))                          # a few stars
+	var far := Color(0.30, 0.13, 0.42)                                           # the city behind
+	for bl in [[0, 48, 8], [8, 42, 6], [14, 50, 9], [23, 45, 7], [30, 52, 8], [38, 40, 7], [45, 47, 11]]:
+		_rect(im, bl[0], bl[1], bl[2], 66 - bl[1], far)
+	for w in [Vector2(10, 45), Vector2(40, 44), Vector2(48, 51), Vector2(17, 54)]:  # four lit windows
+		_rect(im, int(w.x), int(w.y), 2, 2, Color(1.0, 0.80, 0.45))
+	_rect(im, 0, 64, 56, 10, Color(0.16, 0.08, 0.24))                           # the rooftop ledge
+	_rect(im, 0, 64, 56, 1, Color(0.62, 0.32, 0.55))
+	var fur := Color(0.07, 0.05, 0.12)                                           # the cat, from behind
+	_line(im, Vector2(28, 62), Vector2(36, 63), 3.0, fur)                       # tail along the ledge
+	_line(im, Vector2(36, 63), Vector2(40, 58), 3.0, fur)
+	_ellipse(im, 22, 56, 8, 8.5, fur)                                            # body
+	_ellipse(im, 22, 44, 6, 5.5, fur)                                            # head
+	_poly(im, [Vector2(16, 43), Vector2(16, 35), Vector2(21, 40)], fur)         # ears
+	_poly(im, [Vector2(28, 43), Vector2(28, 35), Vector2(23, 40)], fur)
+	var band := Color(0.20, 0.80, 0.85)                                          # headphones
+	_line(im, Vector2(15.5, 44), Vector2(17, 39), 1.2, band)
+	_line(im, Vector2(17, 39), Vector2(22, 37.5), 1.2, band)
+	_line(im, Vector2(22, 37.5), Vector2(27, 39), 1.2, band)
+	_line(im, Vector2(27, 39), Vector2(28.5, 44), 1.2, band)
+	_ellipse(im, 15.5, 45, 2.0, 2.8, MAG)
+	_ellipse(im, 28.5, 45, 2.0, 2.8, MAG)
+	_rect(im, 0, 74, 56, 18, Color(0.12, 0.07, 0.22))                           # title band
+	_rect(im, 0, 74, 56, 1, CYAN)
 	return tex(im)
 
 
-# ---------------------------------------------------------------- SNES: a monkey with bananas in the jungle (left part), dark panel on the right
+# ---------------------------------------------------------------- 16-BIT: two koi circling under the moon's reflection (left part), dark panel on the right
 
-static func _banana(im: Image, a: Vector2, b: Vector2, bend: float) -> void:
-	var yel := Color(1.0, 0.86, 0.22)
-	var mid := (a + b) * 0.5
-	var nrm := (b - a).orthogonal().normalized() * bend
-	var c := mid + nrm
-	var prev := a
-	for i in range(1, 9):
-		var t := i / 8.0
-		var p := a.lerp(c, t).lerp(c.lerp(b, t), t)
-		_line(im, prev, p, 3.0 if i < 8 else 2.0, yel)
-		prev = p
-	_px(im, int(b.x), int(b.y), Color(0.35, 0.22, 0.1))
-	_px(im, int(a.x), int(a.y), Color(0.35, 0.22, 0.1))
+static func _koi(im: Image, c: Vector2, dir: float, body: Color, patch: Color) -> void:
+	var fin := body.lerp(Color(1, 1, 1), 0.35)
+	_poly(im, [c + Vector2(-dir * 9, 0), c + Vector2(-dir * 16, -5), c + Vector2(-dir * 14, 0), c + Vector2(-dir * 16, 5)], fin)   # tail
+	_ellipse(im, c.x, c.y, 10, 4, body)
+	_ellipse(im, c.x - dir * 2, c.y - 1, 3.5, 2.2, patch)                       # one patch on its back
+	_ellipse(im, c.x + dir * 6, c.y, 3.5, 3, patch)                             # and its head
+	_poly(im, [c + Vector2(dir * 2, 3), c + Vector2(-dir * 2, 7), c + Vector2(-dir * 1, 3)], fin)                                    # side fin
+	_px(im, int(c.x + dir * 8), int(c.y - 1), Color(0.08, 0.06, 0.1))           # eye
 
 
 static func snes_label() -> ImageTexture:
 	var im := _img(120, 56)
-	_grad(im, 0, 56, Color(0.10, 0.34, 0.42), Color(0.05, 0.14, 0.26))
-	_ellipse(im, 20, 14, 8, 8, Color(0.95, 0.45, 0.62))                       # moon
-	var leaf := Color(0.12, 0.52, 0.40)
-	var leaf2 := Color(0.08, 0.38, 0.34)
-	_poly(im, [Vector2(0, 0), Vector2(26, 0), Vector2(14, 10), Vector2(0, 22)], leaf2)
-	_poly(im, [Vector2(0, 0), Vector2(14, 0), Vector2(6, 12), Vector2(0, 14)], leaf)
-	_poly(im, [Vector2(76, 0), Vector2(52, 0), Vector2(64, 10), Vector2(76, 20)], leaf2)
-	_poly(im, [Vector2(76, 0), Vector2(62, 0), Vector2(70, 12), Vector2(76, 14)], leaf)
-	_poly(im, [Vector2(0, 56), Vector2(0, 42), Vector2(14, 48), Vector2(28, 56)], leaf)
-	_poly(im, [Vector2(76, 56), Vector2(76, 44), Vector2(62, 50), Vector2(50, 56)], leaf)
-	_rect(im, 0, 50, 76, 6, Color(0.30, 0.20, 0.22))                          # branch
-	# the monkey
-	var fur := Color(0.58, 0.34, 0.20)
-	var fur2 := Color(0.42, 0.24, 0.15)
-	var face := Color(0.98, 0.80, 0.62)
-	_line(im, Vector2(46, 46), Vector2(34, 40), 3.0, fur)                    # tail curl
-	_line(im, Vector2(34, 40), Vector2(30, 32), 3.0, fur)
-	_ellipse(im, 40, 41, 11, 11, fur)                                          # body
-	_ellipse(im, 40, 43, 6, 7, face)                                           # belly
-	_line(im, Vector2(31, 36), Vector2(24, 44), 4.0, fur)                    # left arm down
-	_line(im, Vector2(49, 34), Vector2(56, 22), 4.0, fur)                    # right arm up
-	_ellipse(im, 56, 21, 3, 3, fur2)
-	_ellipse(im, 42, 20, 10, 9, fur)                                           # head
-	_ellipse(im, 33, 18, 4.5, 4.5, fur)                                        # ears
-	_ellipse(im, 51, 18, 4.5, 4.5, fur)
-	_ellipse(im, 33, 18, 2.5, 2.5, face)
-	_ellipse(im, 51, 18, 2.5, 2.5, face)
-	_ellipse(im, 42, 23, 7, 5, face)                                           # muzzle
-	_ellipse(im, 42, 17, 6, 3, face)                                           # brow patch
-	_rect(im, 37, 16, 2, 3, Color(0.1, 0.08, 0.1))                             # eyes
-	_rect(im, 46, 16, 2, 3, Color(0.1, 0.08, 0.1))
-	_rect(im, 40, 22, 1, 1, fur2)
-	_rect(im, 43, 22, 1, 1, fur2)
-	_rect(im, 38, 25, 8, 1, Color(0.6, 0.25, 0.3))                             # grin
-	_banana(im, Vector2(56, 24), Vector2(62, 8), 4.0)                         # banana held up
-	_banana(im, Vector2(66, 40), Vector2(70, 26), -4.0)                       # a bunch on the branch
-	_banana(im, Vector2(62, 42), Vector2(66, 28), -3.0)
-	_banana(im, Vector2(22, 46), Vector2(14, 36), 3.0)
+	_grad(im, 0, 56, Color(0.08, 0.30, 0.42), Color(0.04, 0.10, 0.24))
+	var shine := Color(0.98, 0.86, 0.80)                                         # the moon on the water, broken by ripples
+	for i in 6:
+		var w := 14 - absi(i - 2) * 3
+		_rect(im, 38 - w / 2 + (i % 2) * 2, 8 + i * 3, w, 1, shine)
+	_ring(im, 38, 15, 15, 7, Color(0.20, 0.52, 0.62))
+	_ring(im, 38, 15, 24, 11, Color(0.14, 0.42, 0.54))
+	var pad := Color(0.16, 0.54, 0.42)                                           # two lily pads
+	_ellipse(im, 9, 9, 7, 4, pad)
+	_poly(im, [Vector2(9, 9), Vector2(16, 6), Vector2(16, 10)], Color(0.08, 0.30, 0.42))
+	_ellipse(im, 66, 47, 8, 4.5, pad)
+	_poly(im, [Vector2(66, 47), Vector2(58, 44), Vector2(58, 49)], Color(0.05, 0.14, 0.27))
+	_ellipse(im, 63, 45, 2, 1.5, Color(0.98, 0.55, 0.70))                       # a flower on it
+	_koi(im, Vector2(30, 32), 1.0, Color(0.98, 0.95, 0.92), Color(0.98, 0.42, 0.18))
+	_koi(im, Vector2(46, 42), -1.0, Color(0.98, 0.48, 0.20), Color(0.99, 0.95, 0.90))
 	# the right-hand panel
 	_rect(im, 76, 0, 44, 56, Color(0.13, 0.08, 0.24))
 	_rect(im, 76, 0, 2, 56, MAG)
@@ -203,55 +163,42 @@ static func snes_label() -> ImageTexture:
 	return tex(im)
 
 
-# ---------------------------------------------------------------- Genesis style: a blue hedgehog on a sunset
+# ---------------------------------------------------------------- BLAST 16: a coupe heading down the highway into a striped sunset
+
+static func _palm(im: Image, base: Vector2, lean: float, c: Color) -> void:
+	var top := base + Vector2(lean, -26)
+	_line(im, base, base.lerp(top, 0.5) + Vector2(lean * 0.3, 0), 2.0, c)
+	_line(im, base.lerp(top, 0.5) + Vector2(lean * 0.3, 0), top, 1.6, c)
+	for f in [Vector2(-11, 3), Vector2(-8, -4), Vector2(0, -6), Vector2(8, -4), Vector2(11, 4)]:
+		_line(im, top, top + f, 1.6, c)
+
 
 static func gen_label() -> ImageTexture:
 	var im := _img(112, 60)
-	_grad(im, 0, 36, Color(0.20, 0.10, 0.42), Color(0.88, 0.28, 0.56))
-	_grad(im, 36, 60, Color(0.88, 0.28, 0.56), Color(1.0, 0.74, 0.5))
-	_ellipse(im, 24, 40, 14, 14, Color(1.0, 0.88, 0.62))                      # sun
-	for sy in [36, 40, 44]:
-		_rect(im, 8, sy, 34, 1, Color(0.88, 0.28, 0.56))                      # sun stripes
-	_rect(im, 0, 50, 112, 10, Color(0.14, 0.62, 0.72))                        # grass band
-	for gx in range(0, 112, 12):
-		_rect(im, gx, 50, 6, 10, Color(0.10, 0.52, 0.64))
-	_rect(im, 0, 50, 112, 1, Color(0.8, 0.95, 0.9))
-	var blue := Color(0.20, 0.38, 0.95)
-	var dk := Color(0.12, 0.22, 0.72)
-	var cream := Color(0.99, 0.88, 0.74)
-	var ink := Color(0.1, 0.08, 0.12)
-	# a chubby blue hedgehog hopping with a trailing yellow scarf
-	_poly(im, [Vector2(40, 22), Vector2(34, 8), Vector2(47, 16)], dk)           # a crown of spines
-	_poly(im, [Vector2(46, 17), Vector2(46, 3), Vector2(57, 13)], blue)
-	_poly(im, [Vector2(55, 13), Vector2(60, 1), Vector2(68, 13)], dk)
-	_poly(im, [Vector2(65, 14), Vector2(74, 3), Vector2(77, 16)], blue)
-	_poly(im, [Vector2(36, 30), Vector2(26, 22), Vector2(40, 20)], blue)
-	_ellipse(im, 56, 31, 16, 15, blue)                                           # round body
-	_ellipse(im, 58, 40, 9, 8, cream)                                            # tummy
-	_ellipse(im, 70, 26, 4, 4, blue)                                             # ears
-	_ellipse(im, 46, 24, 4, 4, blue)
-	_ellipse(im, 62, 28, 11, 9, cream)                                           # face
-	_ellipse(im, 56, 25, 4.2, 5, Color(1, 1, 1))                                 # big eyes
-	_ellipse(im, 66, 25, 4.2, 5, Color(1, 1, 1))
-	_ellipse(im, 57, 26, 2.2, 3, ink)
-	_ellipse(im, 67, 26, 2.2, 3, ink)
-	_rect(im, 56, 24, 1, 1, Color(1, 1, 1))
-	_rect(im, 66, 24, 1, 1, Color(1, 1, 1))
-	_ellipse(im, 61, 31, 2, 1.6, ink)                                            # nose
-	_ellipse(im, 52, 32, 2.5, 1.6, Color(1.0, 0.55, 0.6))                        # cheeks
-	_ellipse(im, 71, 32, 2.5, 1.6, Color(1.0, 0.55, 0.6))
-	_rect(im, 59, 34, 5, 1, Color(0.6, 0.2, 0.25))                               # smile
-	_line(im, Vector2(46, 41), Vector2(38, 33), 4.0, blue)                      # arms up
-	_line(im, Vector2(68, 40), Vector2(76, 31), 4.0, blue)
-	_ellipse(im, 37, 32, 2.5, 2.5, cream)
-	_ellipse(im, 77, 30, 2.5, 2.5, cream)
-	_line(im, Vector2(50, 44), Vector2(46, 51), 4.5, blue)                      # tucked feet
-	_line(im, Vector2(64, 44), Vector2(68, 51), 4.5, blue)
-	_ellipse(im, 44, 52, 5, 2.8, Color(1.0, 0.62, 0.2))
-	_ellipse(im, 70, 52, 5, 2.8, Color(1.0, 0.62, 0.2))
-	var scarf := Color(1.0, 0.86, 0.25)                                          # scarf flying off to the left
-	_line(im, Vector2(50, 36), Vector2(64, 36), 3.0, scarf)
-	_poly(im, [Vector2(50, 35), Vector2(36, 38), Vector2(40, 44), Vector2(52, 39)], scarf)
+	_grad(im, 0, 38, Color(0.16, 0.08, 0.38), Color(0.92, 0.32, 0.55))
+	_ellipse(im, 56, 37, 18, 18, Color(1.0, 0.82, 0.50))                        # the sun, sinking
+	for sy in [28, 32, 35]:
+		_rect(im, 38, sy, 36, 1 + (sy - 28) / 4, Color(0.92, 0.32, 0.55))       # its stripes
+	_grad(im, 38, 60, Color(0.18, 0.08, 0.30), Color(0.08, 0.04, 0.16))        # the ground
+	_rect(im, 0, 38, 112, 1, CYAN)                                               # horizon
+	for gx in [-60, -30, 0, 30, 60]:                                              # a few lines running to the horizon
+		_line(im, Vector2(56 + gx * 0.18, 39), Vector2(56 + gx * 1.4, 60), 1.0, Color(0.55, 0.20, 0.55))
+	_poly(im, [Vector2(52, 38), Vector2(60, 38), Vector2(88, 60), Vector2(24, 60)], Color(0.10, 0.08, 0.14))   # the road
+	for i in 3:                                                                    # centre dashes
+		var y := 41 + i * 6
+		_rect(im, 55, y, 2, 2 + i, Color(1.0, 0.85, 0.45))
+	_palm(im, Vector2(14, 44), 4.0, Color(0.10, 0.04, 0.16))
+	_palm(im, Vector2(99, 46), -5.0, Color(0.10, 0.04, 0.16))
+	var car := Color(0.20, 0.10, 0.34)                                            # the car, from behind
+	_poly(im, [Vector2(47, 45), Vector2(65, 45), Vector2(68, 49), Vector2(44, 49)], car)                        # roof and back window
+	_poly(im, [Vector2(48, 46), Vector2(64, 46), Vector2(66, 48.5), Vector2(46, 48.5)], Color(0.45, 0.60, 0.85))   # rear glass
+	_rect(im, 40, 49, 32, 6, Color(0.30, 0.12, 0.42))                            # body
+	_rect(im, 40, 49, 32, 1, Color(0.70, 0.40, 0.80))
+	_rect(im, 42, 51, 7, 2, Color(1.0, 0.25, 0.35))                              # tail lights
+	_rect(im, 63, 51, 7, 2, Color(1.0, 0.25, 0.35))
+	_rect(im, 50, 52, 12, 1, CYAN)
+	_rect(im, 42, 55, 6, 3, Color(0.03, 0.02, 0.05))                             # tyres
+	_rect(im, 64, 55, 6, 3, Color(0.03, 0.02, 0.05))
 	return tex(im)
 
 
