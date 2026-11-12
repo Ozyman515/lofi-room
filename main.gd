@@ -3821,6 +3821,15 @@ const CartArt := preload("res://cart_art.gd")
 const GOLD := Color(0.80, 0.66, 0.30)
 
 
+# a cart's picture: the player's own (carts/<console>/art.png, see emu.art) when there is one, else the room's
+func _cart_art(id: String, tex: Texture2D, size: Vector2, pos: Vector3, parent: Node3D) -> MeshInstance3D:
+	var own: Texture2D = emu.art(id, size.x / size.y) if emu != null else null
+	var q := _label_quad(own if own != null else tex, size, pos, parent)
+	if own != null:
+		(q.material_override as StandardMaterial3D).texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # (a photo, not pixel art)
+	return q
+
+
 func _label_quad(tex: Texture2D, size: Vector2, pos: Vector3, parent: Node3D) -> MeshInstance3D:
 	var q := QuadMesh.new()
 	q.size = size
@@ -3908,7 +3917,7 @@ func _nes_cart_mesh(egg: bool = false) -> Node3D:
 		_box(Vector3(-0.0353, 0.0758 - i * 0.0066, t / 2.0 + 0.0008), Vector3(0.032, 0.0042, 0.0014), light, n)
 	_box(Vector3(0.019, 0.0269, t / 2.0 + 0.0002), Vector3(0.0726, 0.1163, 0.0004), dark, n)                      # the label's pocket
 	var lab_tex := CartArt.egg_label() if egg else CartArt.nes_label()
-	_label_quad(lab_tex, Vector2(0.0686, 0.1123), Vector3(0.019, 0.0269, t / 2.0 + 0.0008), n)
+	_cart_art("egg" if egg else "nes", lab_tex, Vector2(0.0686, 0.1123), Vector3(0.019, 0.0269, t / 2.0 + 0.0008), n)
 	_extrude_poly([Vector2(-0.0155, -0.0369), Vector2(-0.0015, -0.0519), Vector2(0.0125, -0.0369)], t / 2.0 - 0.0004, t / 2.0 + 0.0006, dark, n)   # the triangle
 	if not egg:
 		_cart_name("nes", 52, 0.0006, Color(0.98, 0.92, 0.98), Vector3(0.019, -0.0192, t / 2.0 + 0.0014), n, 0.07)
@@ -3934,7 +3943,7 @@ func _snes_cart_mesh() -> Node3D:
 	for vx in [-0.0165, 0.0165]:
 		_box(Vector3(vx, -0.03, t / 2.0 + 0.0007), Vector3(0.0016, 0.0335, 0.0006), dark, n)
 	_box(Vector3(0.0006, 0.0241, t / 2.0 + 0.0002), Vector3(0.0953, 0.0462, 0.0004), _mat(Color(0.05, 0.04, 0.08), 0.6), n)
-	_label_quad(CartArt.snes_label(), Vector2(0.0923, 0.0432), Vector3(0.0006, 0.0241, t / 2.0 + 0.0008), n)
+	_cart_art("snes", CartArt.snes_label(), Vector2(0.0923, 0.0432), Vector3(0.0006, 0.0241, t / 2.0 + 0.0008), n)
 	_cart_name("snes", 28, 0.00045, Color(0.98, 0.92, 0.98), Vector3(0.031, 0.0298, t / 2.0 + 0.0014), n, 0.046)
 	return n
 
@@ -3959,6 +3968,9 @@ func _sgb_cart_mesh() -> Node3D:
 	_box(Vector3(0, -0.0575, 0.0), Vector3(0.06, 0.0025, 0.0238), dark, n)
 	_box(Vector3(0, -0.0585, 0), Vector3(0.12, 0.004, 0.012), _mat(GOLD, 0.4), n)                              # contacts
 	_box(Vector3(0, 0.014, 0.0125), Vector3(0.088, 0.054, 0.003), _mat(Color(0.86, 0.78, 0.96), 0.5), n)        # lavender label
+	var sgb_art: Texture2D = emu.art("sgb", 0.084 / 0.05) if emu != null else null
+	if sgb_art != null:                                                                                          # the player's own picture on it
+		_cart_art("sgb", sgb_art, Vector2(0.084, 0.05), Vector3(0, 0.014, 0.01405), n)
 
 	_box(Vector3(0.0, 0.034, 0.0143), Vector3(0.06, 0.0018, 0.0006), _mat(Color(0.88, 0.25, 0.55), 0.5), n)     # swoosh
 	_cart_name("sgb", 48, 0.0008, Color(0.20, 0.12, 0.45), Vector3(0, 0.016, 0.0147), n, 0.062)
@@ -3980,7 +3992,7 @@ func _gen_cart_mesh() -> Node3D:
 			_box(Vector3(sx * 0.0658, 0.025 - i * 0.017, 0.0132), Vector3(0.013, 0.003, 0.0006), dark, n)         # grips
 	_box(Vector3(0, -0.055, 0), Vector3(0.12, 0.008, 0.012), _mat(GOLD, 0.4), n)                                 # contacts
 	_box(Vector3(0, 0.0215, 0.0102), Vector3(0.1134, 0.0630, 0.0004), dark, n)                                   # label pocket
-	_label_quad(CartArt.gen_label(), Vector2(0.1094, 0.059), Vector3(0, 0.0215, 0.0108), n)
+	_cart_art("gen", CartArt.gen_label(), Vector2(0.1094, 0.059), Vector3(0, 0.0215, 0.0108), n)
 	_label_quad(CartArt.gen_grid(), Vector2(0.1094, 0.034), Vector3(0, -0.0255, 0.0104), n)
 	var sil := _mat(Color(0.74, 0.76, 0.84), 0.35, 0.0)
 	sil.metallic = 0.5
@@ -4361,7 +4373,7 @@ func _neo_cart_mesh() -> Node3D:
 	for i in 7:
 		_box(Vector3(0, -0.0865 + i * 0.0072, 0), Vector3(0.25, 0.0034, t + 0.002), fin, n)                      # fins
 	_box(Vector3(0, 0.052, t / 2.0 + 0.0002), Vector3(0.126, 0.0625, 0.0004), dark, n)                            # label pocket
-	_label_quad(CartArt.neo_label(), Vector2(0.116, 0.056), Vector3(0, 0.052, t / 2.0 + 0.0008), n)
+	_cart_art("neo", CartArt.neo_label(), Vector2(0.116, 0.056), Vector3(0, 0.052, t / 2.0 + 0.0008), n)
 	for sx in [-1.0, 1.0]:
 		for off in [0.0705, 0.0745]:
 			_box(Vector3(sx * off, 0.052, t / 2.0 + 0.0004), Vector3(0.0018, 0.058, 0.0006), _mat(Color(0.20, 0.80, 0.85), 0.5), n)

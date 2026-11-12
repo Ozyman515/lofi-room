@@ -151,6 +151,57 @@ func label(sys: String) -> String:
 	return out
 
 
+# A picture of the player's own for a console's carts (or its disc case and disc): carts/<console>/art.png
+# (or .jpg / .jpeg / .webp). Cropped from the middle to the sticker's shape, so any picture fits. null = the room's own art.
+const ART_NAMES := ["art.png", "art.jpg", "art.jpeg", "art.webp"]
+const ART_MAX_PX := 1024               # (bigger pictures are scaled down: plenty for a cart, and light on the headset)
+const ART_MAX_BYTES := 25 * 1024 * 1024
+var _art := {}
+
+func art(sys: String, aspect: float) -> Texture2D:
+	var key := "%s@%.3f" % [sys, aspect]
+	if _art.has(key):
+		return _art[key]
+	var tex: Texture2D = null
+	if base != "":
+		for nm in ART_NAMES:
+			var p := carts_dir().path_join(sys).path_join(nm)
+			if not FileAccess.file_exists(p):
+				continue
+			var f := FileAccess.open(p, FileAccess.READ)
+			if f == null or f.get_length() > ART_MAX_BYTES:
+				push_warning("cart art too big or unreadable: " + p)
+				break
+			f.close()
+			var img := Image.load_from_file(p)
+			if img != null and not img.is_empty():
+				tex = ImageTexture.create_from_image(_fit_art(img, aspect))
+			else:
+				push_warning("cart art could not be read: " + p)
+			break
+	_art[key] = tex
+	return tex
+
+
+func _fit_art(img: Image, aspect: float) -> Image:
+	img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	if float(w) / h > aspect:                        # too wide: trim the sides
+		var nw := maxi(1, int(round(h * aspect)))
+		img = img.get_region(Rect2i((w - nw) / 2, 0, nw, h))
+	else:                                            # too tall: trim top and bottom
+		var nh := maxi(1, int(round(w / aspect)))
+		img = img.get_region(Rect2i(0, (h - nh) / 2, w, nh))
+	w = img.get_width()
+	h = img.get_height()
+	if maxi(w, h) > ART_MAX_PX:
+		var k := float(ART_MAX_PX) / maxi(w, h)
+		img.resize(maxi(1, int(w * k)), maxi(1, int(h * k)), Image.INTERPOLATE_LANCZOS)
+	img.generate_mipmaps()
+	return img
+
+
 func _ensure_dirs() -> void:
 	for s in SYSTEMS:
 		DirAccess.make_dir_recursive_absolute(carts_dir().path_join(s).path_join("roms"))
@@ -159,13 +210,13 @@ func _ensure_dirs() -> void:
 			var lf := FileAccess.open(lp, FileAccess.WRITE)
 			if lf != null:
 				lf.store_string(String(DEFAULT_LABEL.get(s, s.to_upper())) + "\n(The line above is what this console's carts are called in the room, up to "
-					+ str(LABEL_MAX) + " letters. Change it and restart the room.)\n")
+					+ str(LABEL_MAX) + " letters. Change it and restart the room.)\n(To put your own picture on them too, save it in this folder as art.png or art.jpg; it is cropped from the middle to fit.)\n")
 		DirAccess.make_dir_recursive_absolute(carts_dir().path_join(s).path_join("saves"))
 	var readme := carts_dir().path_join("README.txt")
 	if not FileAccess.file_exists(readme):
 		var f := FileAccess.open(readme, FileAccess.WRITE)
 		if f != null:
-			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n  gc/roms      GameCube discs: .iso, .gcm, .rvz, .gcz or .ciso (the mini disc; PC only, needs a graphics card with OpenGL 3.3)\n\nBattery saves are written to the saves folder next to roms.\nEach console also needs its emulator core in the cores folder: see cores/CORES.txt.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
+			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n  gc/roms      GameCube discs: .iso, .gcm, .rvz, .gcz or .ciso (the mini disc; PC only, needs a graphics card with OpenGL 3.3)\n\nBattery saves are written to the saves folder next to roms.\nTo rename a console's carts, edit the first line of its label.txt. To put your own picture on them (or on the disc case), save it in that console's folder as art.png or art.jpg.\nEach console also needs its emulator core in the cores folder: see cores/CORES.txt.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
 
 
 # ---------------------------------------------------------------- the text screen (menu, messages)

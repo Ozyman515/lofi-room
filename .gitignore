@@ -22,3 +22,4 @@ cores/*_libretro.dll
 cores/*_libretro.so
 cores/fbneo/
 carts/*/label.txt
+carts/*/art.*

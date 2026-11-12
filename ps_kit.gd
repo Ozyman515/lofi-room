@@ -141,7 +141,8 @@ func _build_case() -> void:
 	q.size = Vector2(cw - 0.008, ch - 0.008)
 	art.mesh = q
 	var am := StandardMaterial3D.new()
-	am.albedo_texture = _cover_art()
+	var own_cover: Texture2D = main.emu.art(sys, (cw - 0.008) / (ch - 0.008)) if main.emu != null else null   # the player's own picture (carts/<console>/art.png)
+	am.albedo_texture = own_cover if own_cover != null else _cover_art()
 	am.roughness = 0.6
 	art.material_override = am
 	art.position = Vector3(hw, 0, -0.0012)
@@ -156,7 +157,8 @@ func _build_case() -> void:
 	_cyl(disc, Vector3(0, -0.0003, 0), dr, 0.0006, _mat(Color(0.03, 0.03, 0.035), 0.15, 0.6), 48)
 	var label := _cyl(disc, Vector3(0, 0.0003, 0), dr - 0.001, 0.0006, null, 48)
 	var lm := StandardMaterial3D.new()
-	lm.albedo_texture = _disc_art()
+	var own_disc: Texture2D = main.emu.art(sys, 1.0) if main.emu != null else null
+	lm.albedo_texture = own_disc if own_disc != null else _disc_art()
 	lm.roughness = 0.4
 	lm.uv1_triplanar = true
 	lm.uv1_scale = Vector3(1.0 / (dr * 2.0), 1.0 / (dr * 2.0), 1.0 / (dr * 2.0))
