@@ -123,7 +123,6 @@ func start() -> void:
 
 
 func _process(delta: float) -> void:
-	_toy_process(delta)
 	if not active:
 		return
 	if not _shown and _x >= PEEK_X:
@@ -228,8 +227,9 @@ func _jolt(near: float) -> void:
 var _toy: Node3D
 var _tp := {}
 var _toy_plays := 0
-var _toy_t := -1.0                   # time since it was picked up (-1 = on the shelf)
-const TOY_HOLD := 4.2                # how long he stays in your hand
+var _toy_prev := -1.0
+var _hold: Node                      # toy_hold.gd: picking him up to look at him
+const TOY_HOLD := 4.2                # how long his show in your hand lasts
 const TOY_HOME_YAW := PI + 0.35      # facing out into the room
 
 
@@ -264,6 +264,9 @@ func _build_toy() -> void:
 	for n in [_toy, _stand, _hit]:
 		main.study_kit.add_child(n)
 	place_toy(main.study_kit, TOY_POS, TOY_HOME_YAW)
+	_hold = load("res://toy_hold.gd").new()
+	add_child(_hold)
+	_hold.setup(main, _toy, Vector3.RIGHT, TOY_HOLD, _toy_show, _toy_home, _toy_roared)
 	main.interactables.append({"node": _hit, "half": Vector3(0.12, 0.11, 0.12), "guest_ok": true,
 		"label": func() -> String: return "KING GABOON" if not active else "KING GABOON  (he's here)", "cb": pick_up_toy})
 
@@ -286,45 +289,32 @@ func place_toy(parent: Node3D, pos: Vector3, yaw: float) -> void:
 
 
 func pick_up_toy() -> void:
-	if _toy_t >= 0.0:
-		return
-	_toy_t = 0.0
+	_hold.pick()                                          # to look at him; his roar (the show) is what counts
+
+
+func _toy_roared() -> void:
 	_toy_plays += 1
 	if main.fight != null and main.fight.toy_played("gaboon"):
-		_toy_plays = 0                                    # the T-Rex was played with too: they fight instead
+		_toy_plays = 0                                    # the T-Rex was roared too: they fight instead
 
 
-func _toy_process(delta: float) -> void:
-	if _toy_t < 0.0:
-		return
-	var was := _toy_t
-	_toy_t += delta
-	var k := 1.0 - exp(-8.0 * delta)
-	if _toy_t < TOY_HOLD:
-		# in front of you, a little low, facing you
-		var hx: Transform3D = main.head.global_transform
-		var fwd := -hx.basis.z
-		fwd.y = 0.0
-		fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD
-		var xa := -fwd                                   # the figure faces +x: turn +x toward you
-		var b := Basis(xa, Vector3.UP, xa.cross(Vector3.UP)).scaled(Vector3.ONE * TOY_SCALE)
-		var target := Transform3D(b, hx.origin + fwd * 0.42 + Vector3(0, -0.16, 0))
-		_glide(_toy, target, k)
-		# the show, sped up to fit in your hand
-		var st := clampf((_toy_t - 0.4) * 1.9, 0.0, SHOW_TIME - 0.01)
-		_show_pose(_tp, st, 0.0)
-		if was < 0.4 + 3.4 / 1.9 and _toy_t >= 0.4 + 3.4 / 1.9:
-			_squeak.play()
-	else:
-		var home := Transform3D(Basis(Vector3.UP, _toy_parent.global_rotation.y + _toy_yaw).scaled(Vector3.ONE * TOY_SCALE), _toy_parent.global_transform * (_toy_pos + Vector3(0, 0.012, 0)))
-		_glide(_toy, home, k)
+# the show in your hand (t seconds into it, -1 = back to standing), sped up to fit
+func _toy_show(t: float, _k: float) -> void:
+	if t < 0.0:
 		_walk_pose(_tp, 0.0)
-		if _toy.global_position.distance_to(home.origin) < 0.004:
-			_toy.global_transform = home
-			_toy_t = -1.0
-			if _toy_plays >= TOY_PLAYS:
-				_toy_plays = 0
-				_call_the_real_one()
+		_toy_prev = -1.0
+		return
+	_show_pose(_tp, clampf((t - 0.4) * 1.9, 0.0, SHOW_TIME - 0.01), 0.0)
+	var mark := 0.4 + 3.4 / 1.9
+	if _toy_prev < mark and t >= mark:
+		_squeak.play()
+	_toy_prev = t
+
+
+func _toy_home() -> void:
+	if _toy_plays >= TOY_PLAYS:
+		_toy_plays = 0
+		_call_the_real_one()
 
 
 func _call_the_real_one() -> void:

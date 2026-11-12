@@ -184,18 +184,28 @@ func _build_model() -> void:
 
 	# buttons you can point at
 	var defs := [
-		[0.025, Color(0.55, 0.55, 0.65), "REWIND  10 s", seek_rel.bind(-10.0)],
-		[0.085, Color(0.55, 0.55, 0.65), "FAST FORWARD  30 s", seek_rel.bind(30.0)],
-		[0.145, Color(0.25, 0.70, 0.35), "PLAY / PAUSE", play_pause],
-		[0.205, Color(0.70, 0.30, 0.30), "STOP", stop],
-		[0.265, Color(0.75, 0.62, 0.25), "EJECT", eject],
-		[0.34, Color(0.30, 0.45, 0.80), "AUDIO / SUBTITLES", open_options],
-		[0.40, Color(0.55, 0.35, 0.75), _picture_label, cycle_aspect],
+		[0.025, Color(0.55, 0.55, 0.65), "REWIND  10 s", seek_rel.bind(-10.0), "REW"],
+		[0.085, Color(0.55, 0.55, 0.65), "FAST FORWARD  30 s", seek_rel.bind(30.0), "FF"],
+		[0.145, Color(0.25, 0.70, 0.35), "PLAY / PAUSE", play_pause, "PLAY"],
+		[0.205, Color(0.70, 0.30, 0.30), "STOP", stop, "STOP"],
+		[0.265, Color(0.75, 0.62, 0.25), "EJECT", eject, "EJECT"],
+		[0.34, Color(0.30, 0.45, 0.80), "AUDIO / SUBTITLES", open_options, "AUDIO"],
+		[0.40, Color(0.55, 0.35, 0.75), _picture_label, cycle_aspect, "PIC"],
 	]
 	for d in defs:
 		var mi := _mk(Vector3(d[0], 0.022, 0.204), Vector3(0.05, 0.026, 0.012), d[1])
-		buttons.append({"node": mi, "half": Vector3(0.034, 0.03, 0.04), "label": d[2], "cb": d[3], "hover": _glow(mi)})
-	buttons.append({"node": slot, "half": Vector3(0.24, 0.04, 0.05), "label": "TAPE SLOT", "cb": open_menu, "hover": _glow(slot)})
+		# (hit boxes kept to the button itself, so the tape slot above never steals REW / FF)
+		buttons.append({"node": mi, "half": Vector3(0.029, 0.016, 0.03), "label": d[2], "cb": d[3], "hover": _glow(mi)})
+		var name_lb := Label3D.new()                  # its name printed on the key
+		name_lb.text = d[4]
+		name_lb.font_size = 20
+		name_lb.pixel_size = 0.00042
+		name_lb.outline_size = 4
+		name_lb.modulate = Color(0.98, 0.96, 1.0)
+		name_lb.outline_modulate = Color(0.05, 0.03, 0.08, 0.9)
+		name_lb.position = Vector3(d[0], 0.022, 0.2105)
+		add_child(name_lb)
+	buttons.append({"node": slot, "half": Vector3(0.23, 0.02, 0.012), "label": "TAPE SLOT", "cb": open_menu, "hover": _glow(slot)})
 
 
 func _glow(mi: MeshInstance3D) -> Callable:

@@ -682,6 +682,14 @@ func _build_desk() -> void:
 	_typewriter.position = Vector3(1.45, DESK_Y, -1.40)
 	_desk.add_child(_typewriter)
 	_text = _typewriter.get_node("Sheet/Text")
+	# an invisible, unclickable "screen" over the page, so V (B / Y in VR) zooms in to read what's being typed
+	var page_focus: Node3D = preload("res://screen_ui.gd").new()
+	page_focus.name = "PageFocus"
+	page_focus.screen_size = Vector2(0.21, 0.24)
+	page_focus.enabled = false
+	page_focus.position = Vector3(0, 0.12, 0.002)
+	_typewriter.get_node("Sheet").add_child(page_focus)
+	main.screens.append(page_focus)
 	_clack = AudioStreamPlayer3D.new()
 	_clack.stream = _make_clack()
 	_clack.unit_size = 1.2

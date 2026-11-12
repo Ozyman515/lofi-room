@@ -285,7 +285,7 @@ func _build_toy() -> void:
 	_toy_roar.pitch_scale = 2.1                      # a little roar, higher than King Gaboon's figure
 	_hold = load("res://toy_hold.gd").new()
 	add_child(_hold)
-	_hold.setup(main, _toy, Vector3.RIGHT, 2.8, _toy_show, _toy_back)
+	_hold.setup(main, _toy, Vector3.RIGHT, 2.8, _toy_show, _toy_back, _toy_roared_now)
 
 
 # put the figure (on its base, with its name card) somewhere: pos is the top of what it stands on
@@ -304,11 +304,16 @@ func place_toy(parent: Node3D, pos: Vector3, yaw: float) -> void:
 	_card = ToyCard.place(parent, pos, yaw, "BANIRA", 0.075)
 
 
-# pick the figure up: it rears back and roars a little roar in your hand, then goes back on the console; the tenth
-# time, something out there answers (and played with King Gaboon's figure too, the two of them fight instead)
+# pick the figure up to look at it (toy_hold.gd); make it roar and it rears back with a little roar. The tenth roar,
+# something out there answers (and with King Gaboon's figure roared too, the two of them fight instead)
 func play_with_toy() -> void:
-	if active or not _hold.pick():
+	if active:
 		return
+	_hold.pick()
+
+
+# its roar (R / A / the trigger while you hold it) is what the easter eggs count
+func _toy_roared_now() -> void:
 	_toy_plays += 1
 	_toy_fight = main.fight != null and main.fight.toy_played("kaiju")
 

@@ -160,10 +160,10 @@ func _place_toys() -> void:
 	if main.gaboon != null:
 		var wood := _mat(Color(0.30, 0.15, 0.18), 0.6)
 		var gz := HALL_S + 0.1
-		_box(Vector3(-0.6, 1.3, gz + 0.13), Vector3(0.42, 0.03, 0.26), wood, game)            # a little wall shelf
-		for bx in [-0.75, -0.45]:
-			_box(Vector3(bx, 1.22, gz + 0.06), Vector3(0.02, 0.14, 0.1), wood, game)            # its brackets
-		main.gaboon.place_toy(game, Vector3(-0.6, 1.315, gz + 0.11), -PI / 2.0 + 0.3)
+		_box(Vector3(-0.6, 1.3, gz + 0.19), Vector3(0.52, 0.03, 0.38), wood, game)            # a wall shelf deep enough for all of him
+		for bx in [-0.79, -0.41]:
+			_box(Vector3(bx, 1.21, gz + 0.11), Vector3(0.02, 0.16, 0.2), wood, game)            # its brackets
+		main.gaboon.place_toy(game, Vector3(-0.6, 1.315, gz + 0.21), -PI / 2.0 + 0.3)   # (clear of the wall behind)
 	# Jogari
 	var jt: Node3D = load("res://black_kaiju_model.gd").build()
 	var jpos := Vector3(2.32, 2.215, 0.55)
@@ -468,6 +468,10 @@ func _build_hallway() -> void:
 	var bd := _door_slab(doors_root, Vector3(BED_DOOR.x, 0.0, FRONT_Z), 0.0, BED_DOOR.y - BED_DOOR.x, wood, panel, brass)
 	_doors.append({"pivot": bd, "at": Vector2((BED_DOOR.x + BED_DOOR.y) / 2.0, FRONT_Z), "open": 0.0, "sign": -1.0,
 		"links": ["bedroom", "hallway"]})
+	# its name over the door, on the hallway side, like the other rooms'
+	var bplate := _mat(Color(0.12, 0.05, 0.16), 0.5)
+	_box(Vector3((BED_DOOR.x + BED_DOOR.y) / 2.0, 2.38, FRONT_Z + 0.105), Vector3(0.44, 0.13, 0.01), bplate, p)
+	_label("LOFI ROOM", Vector3((BED_DOOR.x + BED_DOOR.y) / 2.0, 2.38, FRONT_Z + 0.112), 0.0, 34, Color(0.5, 0.95, 1.0), p)
 	# the arch into the living room
 	_door_frame(p, Vector3((ARCH.x + ARCH.y) / 2.0, 0.0, FRONT_Z + 0.05), 0.0, ARCH.y - ARCH.x, ARCH_TOP, trim)
 
@@ -1747,10 +1751,18 @@ func _process(delta: float) -> void:
 				people.append(Vector2(hp.x, hp.z))
 	for d in _doors:
 		var near := false
+		var nearest := 1.3
+		var from_z := 0.0                                  # the side the nearest person is on (their z)
 		for pp in people:
-			if (pp as Vector2).distance_to(d["at"]) < 1.3:
+			var dd := (pp as Vector2).distance_to(d["at"])
+			if dd < nearest:
 				near = true
-				break
+				nearest = dd
+				from_z = (pp as Vector2).y
+		# a closed door picks its way when it starts to open: away from whoever walked up (sign -1 swings toward +z).
+		# It keeps that way until it has shut again, so it never flips mid-swing.
+		if near and float(d["open"]) <= 0.0:
+			d["sign"] = -1.0 if from_z < float((d["at"] as Vector2).y) else 1.0
 		var target := 1.0 if near else 0.0
 		var o: float = move_toward(float(d["open"]), target, delta / 0.6)
 		d["open"] = o

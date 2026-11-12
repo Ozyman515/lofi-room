@@ -1081,6 +1081,8 @@ var _shelf_check_t := 0.0
 var library: Array = []                # [{"title", "path", "size"}], what is in the books folder
 var books: Array = []                  # Book nodes in the room (held or lying about)
 var held_book: Node3D
+var held_toy: Node = null               # a figure picked up to look at (toy_hold.gd): it has the input while held
+var toy_hint_t := 0.0
 var diary: Node3D                   # the little book on the nightstand (diary_book.gd)
 var _diary_home := Transform3D.IDENTITY
 var book_hint_t := 0.0
@@ -2192,6 +2194,8 @@ func _aim_hits(ui: ScreenUI) -> bool:
 func _process(delta: float) -> void:
 	pad_hint_t = maxf(0.0, pad_hint_t - delta)
 	book_hint_t = maxf(0.0, book_hint_t - delta)
+	toy_hint_t = maxf(0.0, toy_hint_t - delta)
+	_toy_keys(delta)
 	if leave_prompt:
 		leave_t -= delta
 		if leave_t <= 0.0 or head.global_position.distance_to(leave_panel.global_position) > 3.0:
@@ -2315,8 +2319,15 @@ func _room_pad_tick(delta: float) -> void:
 	if game_mode or sleeping:
 		_pad_edges(d, true)                 # the console has the gamepad; only keep the edge state current
 		return
-	# look
-	if rs != Vector2.ZERO and cam_t >= 1.0:
+	# look (or, holding a figure, turn it; the shoulder buttons bring it closer / push it away)
+	if held_toy != null and held_toy.hand == 2:
+		if rs != Vector2.ZERO:
+			held_toy.turn(rs.x * 2.6 * delta, rs.y * 2.6 * delta)
+		var zin := Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_SHOULDER)
+		var zout := Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_SHOULDER)
+		if zin != zout:
+			held_toy.zoom((3.0 if zin else -3.0) * delta)
+	elif rs != Vector2.ZERO and cam_t >= 1.0:
 		desktop_cam.rotation.y -= rs.x * PAD_LOOK_SPEED * delta
 		pitch = clampf(pitch - rs.y * PAD_LOOK_SPEED * 0.75 * delta, -1.2, 1.2)
 		desktop_cam.rotation.x = pitch
@@ -2360,6 +2371,13 @@ func _pad_edges(d: int, quiet: bool) -> void:
 	if quiet:
 		return
 	var pressed := func(k: String) -> bool: return bool(now[k]) and not bool(was.get(k, true))
+	if held_toy != null and held_toy.hand == 2:
+		if pressed.call("click"):
+			pad_in_use = true
+			held_toy.roar()
+		if pressed.call("back") or pressed.call("drop"):
+			held_toy.put_back()
+		return
 	if bool(now["click"]) != bool(was.get("click", false)):
 		if now["click"]:
 			pad_in_use = true
@@ -2431,6 +2449,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _gun_in(-1) != null and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_BACKSPACE]:
 			_gun_in(-1).aux(0 if event.keycode != KEY_BACKSPACE else 1, true)
 			return
+		if held_toy != null and held_toy.hand == 2:
+			match event.keycode:
+				KEY_E, KEY_G:
+					held_toy.put_back()
+					return
+				KEY_R:
+					held_toy.roar()
+					return
+				KEY_EQUAL, KEY_KP_ADD, KEY_PAGEUP:
+					held_toy.zoom(1.0)
+					return
+				KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN:
+					held_toy.zoom(-1.0)
+					return
+				KEY_V, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN:
+					return                                   # (the arrows turn it: _toy_keys)
 		if event.keycode == KEY_E:
 			if _gun_in(-1) != null:
 				_gun_in(-1).put_down()
@@ -2475,6 +2509,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			if event.pressed:
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			return
+		if held_toy != null and held_toy.hand == 2:
+			if event.pressed:
+				match event.button_index:
+					MOUSE_BUTTON_LEFT: held_toy.put_back()
+					MOUSE_BUTTON_RIGHT: held_toy.roar()
+					MOUSE_BUTTON_WHEEL_UP: held_toy.zoom(1.0)
+					MOUSE_BUTTON_WHEEL_DOWN: held_toy.zoom(-1.0)
+			return
 		if _gun_in(-1) != null and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				_gun_in(-1).trigger(event.pressed)
@@ -2499,6 +2541,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_book_page(-1)
 		return
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and held_toy != null and held_toy.hand == 2:
+		pad_in_use = false
+		held_toy.turn(event.relative.x * 0.008, event.relative.y * 0.008)     # the view holds still; the figure turns
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and cam_t >= 1.0:
 		pad_in_use = false
 		desktop_cam.rotation.y -= event.relative.x * 0.003
@@ -2507,6 +2553,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 # Konami code: up up down down left right left right B A, entered while the console is on and the TV is showing it.
+# holding a figure on the desktop: the arrow keys turn it too
+func _toy_keys(delta: float) -> void:
+	if held_toy == null or held_toy.hand != 2 or xr_active:
+		return
+	var dx := float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT))
+	var dy := float(Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_UP))
+	if dx != 0.0 or dy != 0.0:
+		held_toy.turn(dx * 2.2 * delta, dy * 2.2 * delta)
+
+
 func _konami_feed(sym: String) -> bool:
 	if egg_active or sleeping or not console_on or not vcr.tv_on or egg == null or slot_cart != "egg":
 		konami_progress = 0
@@ -3123,6 +3179,14 @@ func _on_button(button_name: String, hand: int) -> void:
 		if button_name == "grip_click":
 			_put_pad()
 		return
+	if held_toy != null and held_toy.hand == hand:
+		# the figure in this hand: the trigger makes it roar, the grip puts it back
+		if button_name == "trigger_click":
+			held_toy.roar()
+			return
+		if button_name == "grip_click":
+			held_toy.put_back()
+			return
 	var g := _gun_in(hand)
 	if g != null:
 		match button_name:
@@ -3327,11 +3391,12 @@ func _build_city() -> void:
 		idx += 1
 
 
-# Continues a row along a circle around the room (side = +1 right, -1 left) until it is behind the room.
+# Continues a row along a circle around the room (side = +1 right, -1 left), on round behind the building, so no
+# view from a window or the balcony ever finds the city stopping.
 func _wrap_row(city: Node3D, mat: Material, rng: RandomNumberGenerator, z: float, edge_x: float, hmin: float, hmax: float, grow: float, side: int) -> void:
 	var r := Vector2(edge_x, z).length()
 	var ang := atan2(edge_x, -z)
-	var limit := deg_to_rad(105.0)
+	var limit := deg_to_rad(182.0 if side > 0 else 176.0)    # all the way round behind the building (the two ends meet at the back)
 	while absf(ang) < limit:
 		var w := rng.randf_range(2.6, 5.0) * grow
 		var depth := rng.randf_range(3.0, 5.0) * grow
@@ -5582,7 +5647,19 @@ func _update_pointer(delta: float) -> void:
 		hover_pos = found_pos
 		hover_screen.send_motion(found_pos, ptr_down)
 
-	if not found_item.is_empty():
+	if held_toy != null and toy_hint_t > 0.0:
+		if held_toy.hand != 2:
+			hint_label.text = "TURN YOUR HAND TO LOOK AT IT     TRIGGER  =  ROAR     GRIP  =  PUT IT BACK"
+		elif pad_in_use:
+			hint_label.text = "RIGHT STICK  =  TURN     LB / RB  =  ZOOM     A  =  ROAR     B  =  PUT IT BACK"
+		else:
+			hint_label.text = "MOUSE  =  TURN     WHEEL  =  ZOOM     R  =  ROAR     E  =  PUT IT BACK"
+		hint_label.scale = Vector3.ONE * 0.45
+		hint_label.global_position = head.global_position - head.global_transform.basis.z * 0.8 + Vector3(0.0, -0.3, 0.0)
+		hint_label.visible = true
+	elif held_toy != null and held_toy.hand == 2:
+		hint_label.visible = false                  # (looking at the figure: no signs from what's behind it)
+	elif not found_item.is_empty():
 		var lbl: Variant = found_item["label"]
 		hint_label.text = str((lbl as Callable).call()) if lbl is Callable else str(lbl)
 		if egg_active and found_item.get("egg_lock", false):

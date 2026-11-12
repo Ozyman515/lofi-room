@@ -165,7 +165,7 @@ func _build_figure() -> void:
 			_fig_said = true
 			_fig_warble.play()
 		if t >= 0.0 and t < 0.1:
-			_fig_said = false, Callable())
+			_fig_said = false, Callable(), _fig_warbled)
 	var hit := Node3D.new()
 	hit.position = FIG_POS + Vector3(0, 0.073, 0)
 	main.room.add_child(hit)
@@ -274,8 +274,13 @@ var _fig_said := false
 
 # pick it up: its head bobbles away in your hand and it warbles at you; ten times and the real one visits
 func tap_figure() -> void:
-	if _fig_hold != null and not _fig_hold.pick():
-		return
+	if _fig_hold != null:
+		_fig_hold.pick()                            # to look at it; its warble (the "roar" button) is what counts
+	else:
+		_fig_warbled()
+
+
+func _fig_warbled() -> void:
 	_fig_t = 1.2                                    # bobble
 	set_process(true)
 	if active:

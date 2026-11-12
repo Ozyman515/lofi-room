@@ -104,6 +104,13 @@ Press V (desktop) or B/Y (VR) to cycle: normal -> zoomed in -> screen fills the 
 It targets the screen you're pointing at, or the one you're looking toward. In VR it moves you in front of the screen
 (it never comes closer than 45 cm, which is about as close as eyes can focus). Walking away ends the close-up.
 A/X and the trigger (when not pointing at a screen) still sit and stand.
+The page in the Noir office's typewriter works the same way: V twice and the page fills the view, so you can read the case as it's typed.
+
+## The monster figures
+Click a figure (King Gaboon, Banira, Jogari, the Visitor) to pick it up and look at it; it stays until you put it back.
+- **Desktop:** move the mouse (or the arrow keys) to turn it, the wheel (or + / -) to bring it closer or push it away, R or right click to make it roar, E, G or left click to put it back.
+- **Gamepad:** right stick turns it, LB / RB zoom, A or RT roars, B or X puts it back.
+- **VR:** it sits in the hand that picked it up: turn your wrist to look round it, bring it closer to your eyes. The trigger roars, the grip puts it back.
 
 ## Weather, curtains and the monitor button
 - **Weather:** on the PC click **Weather** in the taskbar and pick Clear, Rain, Snow or Storm. It changes the sky and haze, adds falling
