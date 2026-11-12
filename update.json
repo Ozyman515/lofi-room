@@ -1,5 +1,5 @@
 {
- "version": 137,
+ "version": 138,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -174,8 +174,8 @@
    "size": 2500
   },
   "cart_art.gd": {
-   "sha": "ce00a7f9a209b1bf06209d59d7ed905fd3452d95a8000f273b0d3845f7959a92",
-   "size": 16823
+   "sha": "1f0224efd2305d4e54397a81f7c8f0b8e2c73a77449838c37aa2b4cd4d88bf15",
+   "size": 14365
   },
   "cat_frames.gd": {
    "sha": "232f999a0f4a381e15a20045578ba823701078af6d27533f27548ceae0ec2002",
@@ -212,6 +212,10 @@
   "docs/QUEST.md": {
    "sha": "a73266aec08dcee806978608e4c4e49e37c432038c7419db380b09383fa709bf",
    "size": 4237
+  },
+  "docs/RELEASE_1.0.md": {
+   "sha": "aa72f1b00c31afedbf3252d1a35c27e8cfcde76f30e23bd32ce05db79e0a8930",
+   "size": 4715
   },
   "emu.gd": {
    "sha": "a22385c51b750c4a610bae4941b9eb26ae4c15b2c4954fd13a6d81266f1b1ca6",
@@ -690,7 +694,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "e3b9c2844b5a5c2677b3a2279db2ec8487491dd9a23d6b22fac153391b3bb63c",
+   "sha": "806ed966b29024dcd0b6c125cc9dd50f85cb9b180bed1a909de0f410983ac10e",
    "size": 4
   },
   "weather.gd": {
