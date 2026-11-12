@@ -16,15 +16,15 @@ enum State { IDLE, MENU, STARTING, RUNNING, ERROR }
 
 const NEO_BIOS := ["neogeo.zip", "aes.zip", "neocdz.zip", "neocd.zip", "irrmaze.zip"]   # system files, not games
 const SYSTEMS := {
-	"nes": {"title": "NES", "core": "fceumm_libretro", "ext": ["nes", "fds", "unf", "unif"]},
-	"snes": {"title": "SNES", "core": "snes9x2010_libretro", "ext": ["sfc", "smc", "swc", "fig"]},
-	"sgb": {"title": "SGB", "core": "mgba_libretro", "ext": ["gb", "gbc", "gba", "sgb"]},
-	"neo": {"title": "NEO GEO", "core": "fbneo_neogeo_libretro", "ext": ["zip", "7z"]},
-	"gen": {"title": "GENESIS", "core": "genesis_plus_gx_libretro", "ext": ["md", "gen", "smd", "bin", "sms", "gg", "sg"]},
-	"ps": {"title": "PLAYSTATION", "core": "pcsx_rearmed_libretro", "ext": ["cue", "chd", "pbp", "m3u", "bin", "iso", "img", "exe"]},
+	"nes": {"title": "8-BIT", "core": "fceumm_libretro", "ext": ["nes", "fds", "unf", "unif"]},
+	"snes": {"title": "16-BIT", "core": "snes9x2010_libretro", "ext": ["sfc", "smc", "swc", "fig"]},
+	"sgb": {"title": "POCKET", "core": "mgba_libretro", "ext": ["gb", "gbc", "gba", "sgb"]},
+	"neo": {"title": "ARCADE", "core": "fbneo_libretro", "alt": ["fbneo_neogeo_libretro"], "ext": ["zip", "7z"]},
+	"gen": {"title": "BLAST 16", "core": "genesis_plus_gx_libretro", "ext": ["md", "gen", "smd", "bin", "sms", "gg", "sg"]},
+	"ps": {"title": "DISC", "core": "pcsx_rearmed_libretro", "ext": ["cue", "chd", "pbp", "m3u", "bin", "iso", "img", "exe"]},
 	# GameCube through Dolphin (it draws with the graphics card; retro_host gives it an OpenGL context). Its Sys folder
 	# lives in cores/dolphin-emu/Sys, memory cards in carts/gc/saves/User. Wii discs boot too, with the pad as a Wii Remote.
-	"gc": {"title": "GAMECUBE", "core": "dolphin_libretro", "ext": ["iso", "gcm", "gcz", "rvz", "wia", "ciso", "tgc", "dol", "elf", "m3u", "wbfs"]},
+	"gc": {"title": "MINI DISC", "core": "dolphin_libretro", "ext": ["iso", "gcm", "gcz", "rvz", "wia", "ciso", "tgc", "dol", "elf", "m3u", "wbfs"]},
 }
 # libretro joypad bits
 const B_B := 1 << 0
@@ -131,15 +131,41 @@ func carts_dir() -> String:
 	return base.path_join("carts")
 
 
+# What each console's carts and discs are called in the room (printed on them, on the TV's game list, in "INSERT ..."):
+# generic names by default, no trademarks. Anyone can rename them: the first line of carts/<console>/label.txt.
+const DEFAULT_LABEL := {"nes": "8-BIT", "snes": "16-BIT", "sgb": "POCKET", "gen": "BLAST 16", "neo": "ARCADE",
+	"ps": "DISC", "gc": "MINI DISC"}
+const LABEL_MAX := 14                  # (it has to fit on a cart)
+var _labels := {}
+
+func label(sys: String) -> String:
+	if _labels.has(sys):
+		return _labels[sys]
+	var out: String = DEFAULT_LABEL.get(sys, sys.to_upper())
+	var f := FileAccess.open(carts_dir().path_join(sys).path_join("label.txt"), FileAccess.READ) if base != "" else null
+	if f != null:
+		var line := f.get_line().strip_edges()
+		if line != "" and not line.begins_with("("):
+			out = line.left(LABEL_MAX)
+	_labels[sys] = out
+	return out
+
+
 func _ensure_dirs() -> void:
 	for s in SYSTEMS:
 		DirAccess.make_dir_recursive_absolute(carts_dir().path_join(s).path_join("roms"))
+		var lp := carts_dir().path_join(s).path_join("label.txt")
+		if not FileAccess.file_exists(lp):
+			var lf := FileAccess.open(lp, FileAccess.WRITE)
+			if lf != null:
+				lf.store_string(String(DEFAULT_LABEL.get(s, s.to_upper())) + "\n(The line above is what this console's carts are called in the room, up to "
+					+ str(LABEL_MAX) + " letters. Change it and restart the room.)\n")
 		DirAccess.make_dir_recursive_absolute(carts_dir().path_join(s).path_join("saves"))
 	var readme := carts_dir().path_join("README.txt")
 	if not FileAccess.file_exists(readme):
 		var f := FileAccess.open(readme, FileAccess.WRITE)
 		if f != null:
-			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n  gc/roms      GameCube discs: .iso, .gcm, .rvz, .gcz or .ciso (the GameCube cart; PC only, needs a graphics card with OpenGL 3.3)\n\nBattery saves are written to the saves folder next to roms.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
+			f.store_string("Game carts\n==========\n\nPut your own game files here, one folder per console:\n\n  nes/roms     .nes files\n  snes/roms    .sfc or .smc files (not zipped)\n  sgb/roms     .gb, .gbc or .gba files (Game Boy, Game Boy Color and Game Boy Advance)\n  gen/roms     .md, .gen or .smd files (Sega Genesis / Mega Drive), also .sms (Master System) and .gg (Game Gear)\n  neo/roms     Neo Geo games as .zip (for example mslug3.zip) AND the BIOS file neogeo.zip in the same folder (arcade cabinet)\n  ps/roms      PlayStation discs: .cue (with its .bin tracks next to it), .chd or .pbp (the disc console; a real BIOS file such as scph5501.bin in the cores folder is optional)\n  gc/roms      GameCube discs: .iso, .gcm, .rvz, .gcz or .ciso (the mini disc; PC only, needs a graphics card with OpenGL 3.3)\n\nBattery saves are written to the saves folder next to roms.\nEach console also needs its emulator core in the cores folder: see cores/CORES.txt.\nIn the room: put a cart in the console, switch it on, pick up a controller from the rug and choose a game.\nHold START + SELECT for a second to go back to the game list.\nIf something does not start, look at emulator.log in this folder.\n")
 
 
 # ---------------------------------------------------------------- the text screen (menu, messages)
@@ -224,13 +250,13 @@ func _refresh_screen() -> void:
 			if system == "":
 				_show_text("NO CART", ["", "  Put a game cart in the console."], "SELECT  CONTROLS" if pad_held else "")
 			elif remote:
-				_show_text(SYSTEMS[system]["title"], ["", "  WAITING FOR THE HOST", "  TO PICK A GAME"], "")
+				_show_text(label(system), ["", "  WAITING FOR THE HOST", "  TO PICK A GAME"], "")
 			else:
-				_show_text(SYSTEMS[system]["title"], [], "")
+				_show_text(label(system), [], "")
 		State.MENU:
 			_draw_menu()
 		State.STARTING:
-			_show_text(SYSTEMS[system]["title"], ["", "  LOADING..."], _game_name)
+			_show_text(label(system), ["", "  LOADING..."], _game_name)
 		State.ERROR:
 			var ls: Array = ["", "  COULD NOT PLAY THIS GAME", ""]
 			for part in _err_text.split("\n"):
@@ -238,8 +264,26 @@ func _refresh_screen() -> void:
 			_show_text("ERROR", ls, "PRESS A TO GO BACK")
 
 
+# the emulator core this console needs (the room ships none: players add their own, see cores/CORES.txt)
+# (the first of its names that's in the cores folder; the standard name when none is)
+func core_file() -> String:
+	var ext := ".dll" if OS.get_name() == "Windows" else ".so"
+	for n in [SYSTEMS[system]["core"]] + Array(SYSTEMS[system].get("alt", [])):
+		if FileAccess.file_exists(base.path_join("cores").path_join(String(n) + ext)):
+			return String(n) + ext
+	return String(SYSTEMS[system]["core"]) + ext
+
+
+func _core_missing() -> bool:
+	return Plat.can_spawn_programs() and not FileAccess.file_exists(base.path_join("cores").path_join(core_file()))
+
+
 func _draw_menu() -> void:
-	var title: String = SYSTEMS[system]["title"] + "  GAMES"
+	var title: String = label(system) + "  GAMES"
+	if _core_missing():
+		_show_text(title, ["", "  THIS CONSOLE NEEDS ITS EMULATOR", "  (the room doesn't come with them).", "", "  Put this file in the cores folder:",
+			"  " + core_file(), "", "  Where to get it: cores/CORES.txt"], "")
+		return
 	var foot := "UP/DOWN CHOOSE    A PLAY    SELECT CONTROLS" if pad_held else ("USE THE LEFT OR RIGHT PLAYER PANEL" if system == "neo" else "PICK UP A CONTROLLER FROM THE RUG")
 	if _roms.is_empty():
 		_show_text(title, ["", "  NO GAMES FOUND", "", "  Put your game files in the folder", "  carts/%s/roms" % system, "  next to the game, then put the cart", "  back in the console."], foot)
@@ -500,14 +544,14 @@ func _launch(rom_file: String) -> void:
 		return _fail("Game consoles can't run on this headset yet.\nThey work in the PC version of the room.")
 	var win := OS.get_name() == "Windows"
 	var host := base.path_join("bin").path_join("retro_host.exe" if win else "retro_host_linux")
-	var core := base.path_join("cores").path_join(SYSTEMS[system]["core"] + (".dll" if win else ".so"))
+	var core := base.path_join("cores").path_join(core_file())
 	var rom := carts_dir().path_join(system).path_join("roms").path_join(rom_file)
 	var saves := carts_dir().path_join(system).path_join("saves")
 	_game_name = _pretty(rom_file)
 	if not FileAccess.file_exists(host):
 		return _fail("The emulator program is missing:\nbin/" + host.get_file())
 	if not FileAccess.file_exists(core):
-		return _fail("The emulator core is missing:\ncores/" + core.get_file())
+		return _fail("The emulator core is missing:\ncores/" + core.get_file() + "\nWhere to get it: cores/CORES.txt")
 	if not FileAccess.file_exists(rom):
 		return _fail("The game file is gone.")
 	if not win:

@@ -17,3 +17,8 @@ books
 cores/dolphin-emu/Sys/
 cores/dolphin-emu/Sys.unpacking/
 cores/dolphin-emu/Sys.old/
+# emulator cores: the room ships none, players add their own (cores/CORES.txt)
+cores/*_libretro.dll
+cores/*_libretro.so
+cores/fbneo/
+carts/*/label.txt

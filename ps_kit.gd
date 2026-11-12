@@ -1,6 +1,7 @@
 extends Node
-## PlayStation discs for the cartridge console: it has a disc door on its upper front, and the disc goes in there
-## (emu.gd's "ps" system: the PlayStation core). Its "cart" is a tall long-box case lying with the other carts.
+## Discs for the cartridge console: it has a disc door on its upper front, and a disc goes in there. One kit per disc
+## system: "ps" (the PlayStation core) in a tall long box, "gc" (the GameCube core) in a smaller case with a small
+## 8 cm disc. Both use the same slit in the door (the second kit borrows the first one's).
 ## Inserting: the case flies over beside the console, lies down and opens, the disc lifts off the hub and slides
 ## into the door's slit; the empty case shuts and goes home. Ejecting is the same backwards. Our own designs: no logos.
 
@@ -11,9 +12,19 @@ const DISC_R := 0.06
 const SLOT_X := 0.0275           # the slit in the console's disc door (console space; the door is on its upper front)
 const SLOT_Y := 0.0725
 const SLOT_W := 0.13
+# the sizes, per disc system: case width, height (its long side), thickness, and the disc's radius
+const SIZES := {"ps": [0.152, 0.27, 0.024, 0.06], "gc": [0.135, 0.19, 0.016, 0.04]}
+# the cover and disc colours: top and bottom of the sky, the sun (or moon), the grid
+const LOOKS := {"ps": [Color(0.95, 0.45, 0.35), Color(0.35, 0.12, 0.45), Color(1.0, 0.85, 0.35), Color(0.4, 0.9, 1.0)],
+	"gc": [Color(0.32, 0.26, 0.70), Color(0.08, 0.30, 0.42), Color(0.88, 0.86, 1.0), Color(0.75, 0.55, 1.0)]}
 const STAGE_AT := Vector3(-0.47, 0.0, 0.08)   # where the open case lies: beside the console's left side, by its front (clear of the controllers and the guns)
 
 var main: Node3D
+var sys := "ps"
+var cw := CASE_W                  # this kit's case and disc sizes (SIZES)
+var ch := CASE_H
+var ct := CASE_T
+var dr := DISC_R
 var console: Node3D
 var case_node: Node3D
 var lid: Node3D
@@ -22,9 +33,19 @@ var _hub := Vector3.ZERO          # where the disc sits in the case (case space)
 var _slot_glow: StandardMaterial3D
 
 
-func build(m: Node3D) -> void:
+func build(m: Node3D, s := "ps", shared: Node = null) -> void:
 	main = m
-	_build_console()
+	sys = s
+	var sz: Array = SIZES[sys]
+	cw = sz[0]
+	ch = sz[1]
+	ct = sz[2]
+	dr = sz[3]
+	if shared == null:
+		_build_console()
+	else:
+		console = main.console_root
+		_slot_glow = shared._slot_glow
 	_build_case()
 
 
@@ -99,25 +120,25 @@ func _build_case() -> void:
 	clear.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	clear.roughness = 0.08
 	clear.metallic_specular = 0.9
-	var hw := CASE_W / 2.0
-	var hh := CASE_H / 2.0
-	_box(case_node, Vector3(0, 0, -CASE_T / 2.0 + 0.002), Vector3(CASE_W, CASE_H, 0.004), tray)                # the back
+	var hw := cw / 2.0
+	var hh := ch / 2.0
+	_box(case_node, Vector3(0, 0, -ct / 2.0 + 0.002), Vector3(cw, ch, 0.004), tray)                # the back
 	for sx in [-1.0, 1.0]:
-		_box(case_node, Vector3(sx * (hw - 0.002), 0, -0.002), Vector3(0.004, CASE_H, CASE_T - 0.008), tray)    # the sides
+		_box(case_node, Vector3(sx * (hw - 0.002), 0, -0.002), Vector3(0.004, ch, ct - 0.008), tray)    # the sides
 	for sy in [-1.0, 1.0]:
-		_box(case_node, Vector3(0, sy * (hh - 0.002), -0.002), Vector3(CASE_W, 0.004, CASE_T - 0.008), tray)
-	_box(case_node, Vector3(0, 0, -CASE_T / 2.0 + 0.0045), Vector3(CASE_W - 0.01, CASE_H - 0.01, 0.001), _mat(Color(0.1, 0.1, 0.12), 0.6))   # the inner tray
-	_hub = Vector3(0, -hh + 0.012 + DISC_R, -CASE_T / 2.0 + 0.006)
+		_box(case_node, Vector3(0, sy * (hh - 0.002), -0.002), Vector3(cw, 0.004, ct - 0.008), tray)
+	_box(case_node, Vector3(0, 0, -ct / 2.0 + 0.0045), Vector3(cw - 0.01, ch - 0.01, 0.001), _mat(Color(0.1, 0.1, 0.12), 0.6))   # the inner tray
+	_hub = Vector3(0, -hh + 0.012 + dr, -ct / 2.0 + 0.006)
 	var hub := _cyl(case_node, _hub, 0.012, 0.004, tray, 16)
 	hub.rotation.x = PI / 2.0
 	# the lid: hinged on the left edge, a clear front over the cover art
 	lid = Node3D.new()
 	lid.name = "Lid"
-	lid.position = Vector3(-hw, 0, CASE_T / 2.0 - 0.002)
+	lid.position = Vector3(-hw, 0, ct / 2.0 - 0.002)
 	case_node.add_child(lid)
 	var art := MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(CASE_W - 0.008, CASE_H - 0.008)
+	q.size = Vector2(cw - 0.008, ch - 0.008)
 	art.mesh = q
 	var am := StandardMaterial3D.new()
 	am.albedo_texture = _cover_art()
@@ -125,34 +146,35 @@ func _build_case() -> void:
 	art.material_override = am
 	art.position = Vector3(hw, 0, -0.0012)
 	lid.add_child(art)
-	_box(lid, Vector3(hw, 0, 0.0), Vector3(CASE_W, CASE_H, 0.0016), clear)
+	_box(lid, Vector3(hw, 0, 0.0), Vector3(cw, ch, 0.0016), clear)
 	# the disc: black underneath (the data side), a printed label on top
 	disc = Node3D.new()
 	disc.name = "Disc"
 	disc.position = _hub + Vector3(0, 0, 0.004)
 	disc.rotation.x = PI / 2.0                       # (flat against the tray: its axis along the case's z)
 	case_node.add_child(disc)
-	_cyl(disc, Vector3(0, -0.0003, 0), DISC_R, 0.0006, _mat(Color(0.03, 0.03, 0.035), 0.15, 0.6), 48)
-	var label := _cyl(disc, Vector3(0, 0.0003, 0), DISC_R - 0.001, 0.0006, null, 48)
+	_cyl(disc, Vector3(0, -0.0003, 0), dr, 0.0006, _mat(Color(0.03, 0.03, 0.035), 0.15, 0.6), 48)
+	var label := _cyl(disc, Vector3(0, 0.0003, 0), dr - 0.001, 0.0006, null, 48)
 	var lm := StandardMaterial3D.new()
 	lm.albedo_texture = _disc_art()
 	lm.roughness = 0.4
 	lm.uv1_triplanar = true
-	lm.uv1_scale = Vector3(1.0 / (DISC_R * 2.0), 1.0 / (DISC_R * 2.0), 1.0 / (DISC_R * 2.0))
+	lm.uv1_scale = Vector3(1.0 / (dr * 2.0), 1.0 / (dr * 2.0), 1.0 / (dr * 2.0))
 	lm.uv1_offset = Vector3(0.5, 0.5, 0.5)
 	label.material_override = lm
 	_cyl(disc, Vector3(0, 0.0, 0), 0.0075, 0.0016, _mat(Color(0.02, 0.02, 0.025), 0.5), 20)                 # the centre hole
-	case_node.set_meta("half", Vector3(hw, hh, CASE_T / 2.0 + 0.005))
+	case_node.set_meta("half", Vector3(hw, hh, ct / 2.0 + 0.005))
 
 
 # a cover of our own: a black band down the left edge, a sunset over a grid, "DISC" in big letters
 func _cover_art() -> Texture2D:
-	var w := 152
-	var h := 270
+	var lk: Array = LOOKS[sys]
+	var w := int(cw * 1000.0)
+	var h := int(ch * 1000.0)
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for y in h:
 		var t := float(y) / h
-		var col := Color(0.95, 0.45, 0.35).lerp(Color(0.35, 0.12, 0.45), t)
+		var col := (lk[0] as Color).lerp(lk[1], t)
 		for x in w:
 			img.set_pixel(x, y, col)
 	var cx := w * 0.58
@@ -160,12 +182,12 @@ func _cover_art() -> Texture2D:
 	for y in h:                                      # the sun
 		for x in w:
 			var d := Vector2(x - cx, y - cy).length()
-			if d < 38.0 and (y < cy or int(y - cy) % 9 > 3):
-				img.set_pixel(x, y, Color(1.0, 0.85, 0.35))
+			if d < w * 0.25 and (y < cy or int(y - cy) % 9 > 3):
+				img.set_pixel(x, y, lk[2])
 	for y in range(int(h * 0.62), h):                # the grid
 		for x in w:
 			if int(x - cx) % 16 == 0 or int(y - h * 0.62) % 12 == 0:
-				img.set_pixel(x, y, Color(0.4, 0.9, 1.0))
+				img.set_pixel(x, y, lk[3])
 	for y in h:                                      # the band down the left
 		for x in 18:
 			img.set_pixel(x, y, Color(0.05, 0.05, 0.06))
@@ -173,6 +195,7 @@ func _cover_art() -> Texture2D:
 
 
 func _disc_art() -> Texture2D:
+	var lk: Array = LOOKS[sys]
 	var s := 128
 	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
 	for y in s:
@@ -182,7 +205,7 @@ func _disc_art() -> Texture2D:
 			if d < 0.32:
 				col = Color(0.75, 0.75, 0.8)
 			elif d < 0.62:
-				col = Color(0.35, 0.12, 0.45).lerp(Color(0.95, 0.45, 0.35), (float(y) / s))
+				col = (lk[1] as Color).lerp(lk[0], (float(y) / s))
 			elif d > 0.97:
 				col = Color(0.6, 0.6, 0.65)
 			img.set_pixel(x, y, col)
@@ -199,7 +222,7 @@ func _console_xf(local: Transform3D) -> Transform3D:
 func _stage_xf() -> Transform3D:
 	var lay := Basis(Vector3.RIGHT, -PI / 2.0)                       # front up
 	var b := lay.rotated(Vector3.UP, 0.0) * Basis(Vector3.BACK, -PI / 2.0)     # long side across the console
-	return _console_xf(Transform3D(Basis(Vector3.UP, 0.0) * b, Vector3(STAGE_AT.x, 0.003 + CASE_T / 2.0, STAGE_AT.z)))
+	return _console_xf(Transform3D(Basis(Vector3.UP, 0.0) * b, Vector3(STAGE_AT.x, 0.003 + ct / 2.0, STAGE_AT.z)))
 
 
 # (for keeping the carts out of the way)
@@ -231,8 +254,8 @@ func _lid(tw: Tween, open: bool, secs := 0.45) -> void:
 	tw.tween_property(lid, "rotation:y", -PI * 0.97 if open else 0.0, secs).set_trans(Tween.TRANS_SINE)
 
 
-func insert(home_done: Callable) -> void:
-	var c: Dictionary = main.carts["ps"]
+func insert(home_done: Callable) -> Tween:
+	var c: Dictionary = main.carts[sys]
 	c["busy"] = true
 	var tw := create_tween()
 	_fly(tw, case_node, _stage_xf, 0.6, 0.14)
@@ -250,10 +273,11 @@ func insert(home_done: Callable) -> void:
 	_lid(tw, false)
 	tw.tween_callback(func() -> void: c["busy"] = false)
 	tw.tween_callback(home_done)
+	return tw
 
 
-func eject(home: Callable) -> void:
-	var c: Dictionary = main.carts["ps"]
+func eject(home: Callable) -> Tween:
+	var c: Dictionary = main.carts[sys]
 	c["busy"] = true
 	var tw := create_tween()
 	_fly(tw, case_node, _stage_xf, 0.6, 0.14)
@@ -269,3 +293,4 @@ func eject(home: Callable) -> void:
 	_lid(tw, false)
 	_fly(tw, case_node, home, 0.55, 0.14)
 	tw.tween_callback(func() -> void: c["busy"] = false)
+	return tw

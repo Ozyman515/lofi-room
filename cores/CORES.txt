@@ -1,18 +1,35 @@
-The emulator cores (libretro), and where their source is
-=========================================================
+Emulator cores: add your own
+============================
 
-pcsx_rearmed_libretro (PlayStation)   GPL-2.0   https://github.com/libretro/pcsx_rearmed  (commit c881679)
-    Built for this room: Linux with gcc (make -f Makefile.libretro), Windows with llvm-mingw / clang
-    (make -f Makefile.libretro platform=win CC="x86_64-w64-mingw32-clang -static").
-fceumm_libretro (NES)                 GPL-2.0   https://github.com/libretro/libretro-fceumm
-snes9x2010_libretro (SNES)            non-commercial (Snes9x licence)  https://github.com/libretro/snes9x2010
-mgba_libretro (Game Boy / GBC / GBA)  MPL-2.0   https://github.com/libretro/mgba
-dolphin_libretro (GameCube / Wii)     GPL-2.0+  https://github.com/libretro/dolphin  (the RetroArch nightly from EmuDeck, 2026-07)
-    Its data folder ships as cores/dolphin-emu/Sys.zip (Data/Sys of that repository at commit 3aac3f0, without the
-    UI themes); the room unpacks it to cores/dolphin-emu/Sys the first time a GameCube game starts.
-genesis_plus_gx_libretro (Genesis)    non-commercial (Genesis Plus GX licence)  https://github.com/libretro/Genesis-Plus-GX
-fbneo_neogeo_libretro (Neo Geo)       non-commercial (FBNeo licence)  https://github.com/libretro/FBNeo
+The room doesn't come with any emulators. Each console needs one "core" file in this folder (the cores folder,
+next to lofi-room.exe). Download the ones you want from libretro, the people who make them, unzip each one and
+put the file here. Then put the cart (or disc) in the console again.
 
-The host program that runs them (bin/retro_host.exe, bin/retro_host_linux) is ours: its source is in
+Console in the room          File to put here (Windows)          Linux / Steam Frame
+---------------------------  ----------------------------------  ----------------------------------
+8-BIT (NES / Famicom)        fceumm_libretro.dll                  fceumm_libretro.so
+16-BIT (SNES)                snes9x2010_libretro.dll              snes9x2010_libretro.so
+POCKET (Game Boy, Color, GBA) mgba_libretro.dll                   mgba_libretro.so
+BLAST 16 (Genesis / Mega Drive, Master System, Game Gear)
+                             genesis_plus_gx_libretro.dll         genesis_plus_gx_libretro.so
+ARCADE (Neo Geo, the cabinet) fbneo_libretro.dll                  fbneo_libretro.so
+DISC (PlayStation)           pcsx_rearmed_libretro.dll            pcsx_rearmed_libretro.so
+MINI DISC (GameCube)         dolphin_libretro.dll                 dolphin_libretro.so
+
+Where to download them (the official nightly builds, one zip per core):
+  Windows:  https://buildbot.libretro.com/nightly/windows/x86_64/latest/
+  Linux:    https://buildbot.libretro.com/nightly/linux/x86_64/latest/
+For example, the 8-BIT console's core for Windows is fceumm_libretro.dll.zip in the first folder.
+
+Notes
+- Your games go in carts/<console>/roms (see carts/README.txt). The Neo Geo also needs its BIOS, neogeo.zip, in
+  carts/neo/roms. The PlayStation runs without a BIOS file.
+- The GameCube core needs a graphics card with OpenGL 3.3. Its data folder comes with the room
+  (cores/dolphin-emu/Sys.zip) and is unpacked the first time a GameCube game starts.
+- The consoles don't run on the Quest 3 version of the room.
+- Each core has its own licence (several are free for non-commercial use only). See the libretro page of each one.
+
+The program that runs the cores (bin/retro_host.exe, bin/retro_host_linux) is part of the room; its source is in
 bin/retro_host_src (build: gcc -O2 -o retro_host_linux retro_host.c -ldl -lpthread; Windows:
 x86_64-w64-mingw32-clang -O2 -o retro_host.exe retro_host.c -lws2_32 -lwinmm -lopengl32 -lgdi32 -luser32 -static).
+Dolphin's data folder (Sys.zip) is Data/Sys of https://github.com/libretro/dolphin (GPL-2.0+), without the UI themes.
