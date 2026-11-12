@@ -2,15 +2,15 @@
 """Writes update.json (SHA-256 of every updatable file). Run before each release:  python3 make_update.py <version>"""
 import hashlib, json, os, sys
 SKIP = (".godot/editor/", ".godot/shader_cache/", ".godot/exported/", ".git/", "carts/", "addons/godot-vlc/bin/", "addons/webrtc/lib/", "server/", "tools/", "books/", "pack/",
-        "cores/dolphin-emu/Sys/", "cores/dolphin-emu/Sys.unpacking/", "cores/dolphin-emu/Sys.old/")   # (Dolphin's data: unpacked on each PC from Sys.zip)
-SKIP_FILES = {"update.json", "update.json.sig", "update_key.pub", "make_update.py", ".gitattributes", ".gitignore", "project.godot", "CLAUDE.md"}  # project.godot: the editor rewrites it; the key only changes with a fresh install
+        "cores/fbneo/", "cores/dolphin-emu/Sys/", "cores/dolphin-emu/Sys.unpacking/", "cores/dolphin-emu/Sys.old/")   # (Dolphin's data: unpacked on each PC from Sys.zip)
+SKIP_FILES = {".godot/.gdignore", "update.json", "update.json.sig", "update_key.pub", "make_update.py", ".gitattributes", ".gitignore", "project.godot", "CLAUDE.md"}  # project.godot: the editor rewrites it; the key only changes with a fresh install
 ver = int(sys.argv[1])
 open("version.txt", "w").write("%d\n" % ver)
 files = {}
 for d, _, fs in os.walk("."):
     for f in fs:
         p = os.path.relpath(os.path.join(d, f), ".").replace(os.sep, "/")
-        if p.startswith(SKIP) or p in SKIP_FILES or f.endswith(".uid"):
+        if p.startswith(SKIP) or p in SKIP_FILES or f.endswith(".uid") or (p.startswith("cores/") and "_libretro." in f):   # players add their own cores
             continue
         b = open(p, "rb").read()
         files[p] = {"sha": hashlib.sha256(b).hexdigest(), "size": len(b)}
