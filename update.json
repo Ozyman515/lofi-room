@@ -1,5 +1,5 @@
 {
- "version": 136,
+ "version": 137,
  "files": {
   ".godot/extension_list.cfg": {
    "sha": "10dc26f7f83ef9b542e9f07ba763a302078d5d6a53a41f55b4a8bd7add7fd9d5",
@@ -62,8 +62,8 @@
    "size": 1448
   },
   "README.md": {
-   "sha": "b4e77f1daca92a0d8eaa386039a14ca2c3b80087f15e9d19ab678299103d1fa0",
-   "size": 18522
+   "sha": "af237bc70f4b5f18c36f70508f2eba1a89bf19bc6aba8a2013b525727bb935a5",
+   "size": 19450
   },
   "addons/godot-vlc/LICENSE": {
    "sha": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
@@ -190,64 +190,12 @@
    "size": 35543
   },
   "cores/CORES.txt": {
-   "sha": "cb00dbdfd64329af779906bc0c1e3847ef3d0ff672e83161b7d8be9569219dc0",
-   "size": 1575
+   "sha": "3af84c805d85b59afebc34aba7c3bd296b2a6cff83f1defd6523b4604a198588",
+   "size": 2496
   },
   "cores/dolphin-emu/Sys.zip": {
    "sha": "dc7f92c259804001928ee0386ddff59202a6d1b2f53b360fd8ca7e64ef4b46ac",
    "size": 2034212
-  },
-  "cores/dolphin_libretro.dll": {
-   "sha": "f977af176e3bea9f82c92efc6aac184df74a3ecb80ccb4e66200b1b995a83eda",
-   "size": 16822406
-  },
-  "cores/fbneo_neogeo_libretro.dll": {
-   "sha": "2e3850ac9940ece5626ce1acf68cb6512c2e833745c5bc088076562c8f6c66b7",
-   "size": 7804416
-  },
-  "cores/fbneo_neogeo_libretro.so": {
-   "sha": "f0b8684a225ed1a472c68aa7909e90540612630729a68a7015d0061e314d89a4",
-   "size": 9370512
-  },
-  "cores/fceumm_libretro.dll": {
-   "sha": "b0643e0fa2852a60cdb13b3de58905b1f27d19cdb3789e046c145ee6318d106a",
-   "size": 4082688
-  },
-  "cores/fceumm_libretro.so": {
-   "sha": "ff0aa3f2e1550e7e5231fd0b175e2ad4e09046d5eab658e716cd81e79206fab2",
-   "size": 4715456
-  },
-  "cores/genesis_plus_gx_libretro.dll": {
-   "sha": "a858ff3c8a61bbe876b4bad8ea92314198732183d050aaa73a1ad5dac0bfcf20",
-   "size": 9193472
-  },
-  "cores/genesis_plus_gx_libretro.so": {
-   "sha": "98a0a7361cf17beaac2a8cd924b2dca1d4441bd109fee9525defe00401a2894d",
-   "size": 12628280
-  },
-  "cores/mgba_libretro.dll": {
-   "sha": "4441777a247aac7d5be25851892c1fef68c27d54420eecec10e98d488624d300",
-   "size": 2689024
-  },
-  "cores/mgba_libretro.so": {
-   "sha": "c486b289b739cf096af1ed51cc57f5d347a1052c65f53910a797a86d6296acd6",
-   "size": 2727400
-  },
-  "cores/pcsx_rearmed_libretro.dll": {
-   "sha": "7e5e5c01a614ca57a4653c0ae05500f41801ae4dfd75e312bf054ffcf3325508",
-   "size": 1646080
-  },
-  "cores/pcsx_rearmed_libretro.so": {
-   "sha": "24a5dc82a58704d3f4445f1708965dc181ecd90e8eef677cf0ceeddd6651fb3f",
-   "size": 2287440
-  },
-  "cores/snes9x2010_libretro.dll": {
-   "sha": "6e185b1d30358cbcaeb927810e75ff9843343eee9ca3328e893eaf7a493e01c8",
-   "size": 2889728
-  },
-  "cores/snes9x2010_libretro.so": {
-   "sha": "3479b968b8d3f9124d1f1f1b4af3a4a66453f6b58d3c6ed351a9d52ef41188c5",
-   "size": 2896968
   },
   "cozy_cat.gd": {
    "sha": "cd14d042a55aad1601ddf7f6900dadfafac255aa923cc0464087071821306651",
@@ -266,8 +214,8 @@
    "size": 4237
   },
   "emu.gd": {
-   "sha": "27c2470b6bd883854acba964b0103c81027806899bb6e84a1ad81a9c3883d56f",
-   "size": 36068
+   "sha": "a22385c51b750c4a610bae4941b9eb26ae4c15b2c4954fd13a6d81266f1b1ca6",
+   "size": 40527
   },
   "fight.gd": {
    "sha": "488edd22e79533ec90ad1da696c1ca13e0ca50b7d31a309bc118855ca7573796",
@@ -466,8 +414,8 @@
    "size": 3474
   },
   "main.gd": {
-   "sha": "f4334bdcd4dc6372e64c7669b21f5e8332e3ca87b7554a9eb7553eddf5c7f62f",
-   "size": 240695
+   "sha": "faa78bf450f9348845056f1b4fbea7f04cbef0e698c36290941579f60a092162",
+   "size": 241034
   },
   "main.tscn": {
    "sha": "48c33cef16d91f694062d8411c71806eede0a530f57f4664f260340e374b4d41",
@@ -642,8 +590,8 @@
    "size": 1204579
   },
   "ps_kit.gd": {
-   "sha": "f027bc896c77f7fcf26345fecf413d5405104be4a18c0ed29d8b9b5c283eff5b",
-   "size": 10597
+   "sha": "22976a20102edcf159fddb948f9fff3be4843f025fe1d95597faffc0565eebd8",
+   "size": 11772
   },
   "recliner.gd": {
    "sha": "57929133100e0c132f2c80dd34ce087e29cb70c73aeccf96f88c0d1c9a47bd85",
@@ -742,7 +690,7 @@
    "size": 44163
   },
   "version.txt": {
-   "sha": "748ea33db356501af68a9e37a1583cfa57192a894aab2a692c5475f031d1e81a",
+   "sha": "e3b9c2844b5a5c2677b3a2279db2ec8487491dd9a23d6b22fac153391b3bb63c",
    "size": 4
   },
   "weather.gd": {
