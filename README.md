@@ -144,6 +144,7 @@ Click a figure (King Gaboon, Banira, Jogari, the Visitor) to pick it up and look
   - The game's sound comes out of the TV and follows its volume and power. Windows only for now. If a game does not start, `carts/emulator.log` says why. The games are your own files; none are included.
   - **The plain cart** plays a built-in run-and-gun demo, and is the only one the easter egg works with.
 - **Settings (PC taskbar):** **Aiming dot** turns the small dot in the middle of the view on or off (desktop view only; in VR the laser does that) and lets you pick its colour: Pink, Cyan, Amber, Lavender or White. The dot grows a thin ring when you point at something you can click. Your choice is remembered.
+- **Room look (PC Settings):** **OG** is the room as it was built; **NEW** swaps in models from Quaternius's free packs, recoloured to the room's palette: brick buildings with rooftop air-con units and antennas across the east street (seen with "Below the balcony" set to STREET), model cars in the traffic, plants, a floor lamp, a mug, a croissant and a soda can in the living room, a Shiba on the rug, and a radio and a matchbox on the Noir office desk. Your choice is remembered. On the Quest 3 the heavy buildings stay as they were.
 - **Monitor:** the small button at the bottom right of the monitor's frame switches the screen off and on. The music keeps playing.
 
 ## ffmpeg for the VCR

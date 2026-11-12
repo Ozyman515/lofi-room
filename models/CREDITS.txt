@@ -1,2 +1,13 @@
 lightgun_mesh.res: "Pistol_6" from Quaternius's "Ultimate Gun Pack", https://quaternius.itch.io - CC0 1.0 (public domain).
 Turned to face -z, grip down, scaled to 19 cm and merged into one mesh for the room's light gun.
+
+The NEW room look (Settings > Room look, room_look.gd) uses models from Quaternius's packs, https://quaternius.com,
+all CC0 1.0 (public domain), recoloured in the room to its palette (assets/quaternius, licence in LICENSE_Quaternius_CC0.txt):
+  Downtown City MegaKit (free Standard version): Building_Small_1, Building_Medium_2_001, Building_Large_2, Prop_ACUnit
+    (textures scaled down for the room)
+  Cyberpunk Game Kit: AC, AC_Side, AC_Stacked, Antenna_1, Antenna_2, Pipe_1, Light_Street_1
+  Realistic Car Pack: NormalCar1, NormalCar2, SUV, SportsCar, Taxi
+  Ultimate House Interior Pack: Houseplant_1, Houseplant_7, Light_Floor1
+  Ultimate Food Pack: Croissant;  Junk Food Pack: SodaCan;  Food Pack Vol.1: CupOfCoffee
+  Survival Pack: Radio, Matchbox
+  Ultimate Animated Animals: ShibaInu

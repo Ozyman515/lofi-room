@@ -272,8 +272,14 @@ func _ready() -> void:
 	add_child(pr)
 	ComicBook.renderer = pr
 	_build_multiplayer()
+	room_look_node = load("res://room_look.gd").new()
+	room_look_node.name = "RoomLook"
+	add_child(room_look_node)
+	room_look_node.setup(self)
 	_load_prefs()
 	_apply_below_view()
+	if room_look == "new":
+		room_look_node.set_look("new")
 	pc.play_random_default()
 	_keep_fog_outside.call_deferred()
 
@@ -3932,6 +3938,8 @@ const CART_WASH := Color(0.86, 0.30, 0.58)
 
 
 var cart_wash := true                  # true = the lofi pink wash, false = the plastic's original colours
+var room_look := "og"                  # "og" the room as built, "new" the recoloured Quaternius models (room_look.gd)
+var room_look_node: Node
 var _cart_tints: Array = []            # [material, colour function] for every cart body part
 
 
@@ -3949,6 +3957,15 @@ func set_cart_style_quiet(wash: bool) -> void:
 	cart_wash = wash
 	for e in _cart_tints:
 		(e[0] as StandardMaterial3D).albedo_color = (e[1] as Callable).call(cart_wash)
+
+
+# OG / NEW on the PC's Settings: the room as built, or with the recoloured Quaternius models
+func set_room_look(v: String) -> void:
+	room_look = "new" if v == "new" else "og"
+	if room_look_node != null:
+		room_look_node.set_look(room_look)
+	_save_settings()
+	settings_changed.emit()
 
 
 func set_cart_style(wash: bool) -> void:
@@ -4833,6 +4850,7 @@ func _load_prefs() -> void:
 			weather.snap()
 		emu.resume_games = bool(cfg.get_value("settings", "resume_games", true))
 		set_cart_style_quiet(bool(cfg.get_value("settings", "cart_wash", true)))
+		room_look = "new" if str(cfg.get_value("settings", "room_look", "og")) == "new" else "og"
 		below_view = str(cfg.get_value("settings", "below_view", "fog"))
 		slap_minutes = int(cfg.get_value("settings", "slap_minutes", 30))
 		for gk in guest_allow:
@@ -4937,6 +4955,7 @@ func _save_settings() -> void:
 	cfg.set_value("settings", "weather_start", weather_start)
 	cfg.set_value("settings", "resume_games", emu.resume_games if emu != null else true)
 	cfg.set_value("settings", "cart_wash", cart_wash)
+	cfg.set_value("settings", "room_look", room_look)
 	cfg.set_value("settings", "below_view", below_view)
 	cfg.set_value("settings", "phone_hidden", phone_hidden)
 	cfg.set_value("settings", "slap_minutes", slap_minutes)

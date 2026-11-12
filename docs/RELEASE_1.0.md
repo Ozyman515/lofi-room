@@ -34,6 +34,9 @@ A change belongs in 1.0 only if it does one of these:
 - Books and comics (ebooks, .cbz and folders of images) you can carry and read; the diary of what you read and played.
 - The poster and the screens: your own pictures and GIFs on the poster, TV and monitor.
 
+### The look
+- Room look on the PC: OG (built in code) or NEW (Quaternius CC0 models, recoloured); the heavy buildings are PC / Frame only.
+
 ### Video
 - The VCR on the CRT, the Big TV and the Theater Screen, each with its own player (VLC built in: mkv, mp4, avi, mov, webm and more).
 - Picture shape, subtitle and audio tracks, the channel knob's picture styles, thumbs up / down ratings.
